@@ -191,7 +191,24 @@ select option{background:var(--bg3)}
     <div class="sb-logo-sub">GCSE History · Edexcel</div>
   </div>
   <nav id="nav"></nav>
-  <a class="sb-link" href="https://blagos1195.github.io/Gcse-QuoteVault/" target="_blank">📚 Switch to QuoteVault</a>
+  <div style="padding:10px">
+
+  <a class="sb-link"
+     href="/GcseVault/dates">
+     DateVault
+  </a>
+
+  <a class="sb-link"
+     href="/GcseVault/quotes">
+     QuoteVault
+  </a>
+
+  <a class="sb-link"
+     href="/GcseVault/feedback">
+     Feedback & Bugs
+  </a>
+
+</div>
   <div class="sb-foot">
     <div>⚡ <span id="sb-xp">0</span> XP · Lv <span id="sb-lv">1</span></div>
     <div class="sb-xp">🔥 <span id="sb-str">0</span> day streak</div>
@@ -939,6 +956,34 @@ function save(){
   updateSB();
   lbUpdateThrottled();
 }
+function validateStreak(){
+
+  if(!S.lastXpDate) return;
+
+  const today =
+    new Date().toISOString().slice(0,10);
+
+  const todayDate =
+    new Date(today);
+
+  const lastDate =
+    new Date(S.lastXpDate);
+
+  const days =
+    Math.floor(
+      (todayDate - lastDate) /
+      86400000
+    );
+
+  if(days > 1){
+
+    S.streak = 0;
+
+    save();
+
+    streakSyncToServer();
+  }
+}
 let _lbThrottleTimer=null;
 function lbUpdateThrottled(){clearTimeout(_lbThrottleTimer);_lbThrottleTimer=setTimeout(lbUpdate,3000);}
 
@@ -1299,6 +1344,53 @@ function updateSB(){
 function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';}
 function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';}
 function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modal-bg').classList.add('open');}
+function openDateModal(id){
+
+  const q = getQ(id);
+
+  if(!q) return;
+
+  openModal(`
+    <div class="card">
+
+      <div class="pt">${q.year}</div>
+
+      <div class="sec">Event</div>
+      <div>${q.event}</div>
+
+      <div class="sec">Significance</div>
+      <div>${q.significance}</div>
+
+      <div class="sec">Topic</div>
+      <div>${q.topic}</div>
+
+      <div class="sec">Period</div>
+      <div>${q.period}</div>
+
+      <div class="sec">Category</div>
+      <div>${q.category || ''}</div>
+
+      ${
+        q.section
+        ? `
+          <div class="sec">Section</div>
+          <div>${q.section}</div>
+        `
+        : ''
+      }
+
+      <div style="margin-top:15px">
+        <button
+          class="btn"
+          onclick="closeModal()"
+        >
+          Close
+        </button>
+      </div>
+
+    </div>
+  `);
+}
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
 let _tt;
 function toast(msg,dur=2400){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),dur);}
@@ -1758,7 +1850,7 @@ function rFC(){
   </div>
   <div style="font-size:.68rem;color:var(--text3);margin-bottom:3px;text-align:center">Card ${(S.fc.idx%pool.length)+1} / ${pool.length}</div>
   <div class="pb"><div class="pbf pu" style="width:${pct((S.fc.idx%pool.length)+1,pool.length)}%"></div></div>
-  <div class="fc-wrap" onclick="S.fc.flipped=!S.fc.flipped;render()">
+  <div class="fc-wrap" onclick="S.fc.flipped=!S.fc.flipped;if(S.fc.flipped){openDateModal('${q.id}');}render()">
     <div class="fc${S.fc.flipped?' flip':''}">
       <div class="fc-s fc-front">
         <div class="fc-lbl">${mode==='date'?'Date':'Event'}</div>
@@ -2287,7 +2379,7 @@ function tlZoomReset(){_tlState.zoom=_tlState.baseZoom;_tlState.offset=_tlState.
 function tlHighlightDate(id){
   _tlState.selectedId=id;const q=getQ(id);if(!q)return;
   const x=(q.yearNum-_tlState.minY)*_tlState.zoom;
-  _tlState.offset=_tlState.WIDTH/2-x;tlClampOffset();tlSaveState();tlDraw();if(q)tlShowDetail(q);
+  _tlState.offset=_tlState.WIDTH/2-x;tlClampOffset();tlSaveState();tlDraw();if(q)tlShowDetail(q);openDateModal(id);
 }
 
 // ════════════════════════════════════════════════
@@ -2656,7 +2748,7 @@ function ddUpdateUI(){
   if(bank){
     bank.innerHTML=allPlaced
       ?'<div style="font-size:.75rem;color:var(--teal2);padding:8px">✅ All cards placed! Press Check Answers.</div>'
-      :bankCards.map(q=>`<div style="background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:grab;line-height:1.4;max-width:180px;flex-shrink:0" id="dcard-${q.id}" draggable="true" ondragstart="dragStart('${q.id}',event)" ontouchstart="ddTouchStart('${q.id}',event)" ontouchmove="ddTouchMove(event)" ontouchend="ddTouchEnd(event)"><div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${q.period||''}</div><div style="font-weight:500">${q.event.slice(0,50)}${q.event.length>50?'…':''}</div></div>`).join('');
+      :bankCards.map(q=>`<div style="background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:grab;line-height:1.4;max-width:180px;flex-shrink:0" id="dcard-${q.id}" draggable="true" ondragstart="dragStart('${q.id}',event)" ondblclick="openDateModal('${q.id}')" ontouchstart="ddTouchStart('${q.id}',event)" ontouchmove="ddTouchMove(event)" ontouchend="ddTouchEnd(event)"><div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${q.period||''}</div><div style="font-weight:500">${q.event.slice(0,50)}${q.event.length>50?'…':''}</div></div>`).join('');
   }
   // Update placed counter
   const counter=document.getElementById('dd-placed-counter');
@@ -3511,7 +3603,7 @@ function _dvReadFields(pfx){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-initTheme();buildNav();updateSB();render();
+initTheme();buildNav();updateSB();validateStreak();render();
 loadCloudFacts();
 // Sync progress from worker if user has a key (multi-device support)
 if(getUserKey())syncFromWorker();
