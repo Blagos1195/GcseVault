@@ -123,9 +123,9 @@ select option{background:var(--bg3)}
 .div{height:1px;background:var(--border);margin:11px 0}
 #toast{position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--teal);color:var(--teal2);padding:7px 13px;border-radius:9px;font-size:.78rem;z-index:9999;transform:translateX(130px);opacity:0;transition:all .22s;pointer-events:none;max-width:260px}
 #toast.show{transform:translateX(0);opacity:1}
-#modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
+#modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:14px}
 #modal-bg.open{display:flex}
-#modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:18px;max-width:480px;width:92%;max-height:80vh;overflow-y:auto}
+#modal{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:22px 20px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.55)}
 #modal::-webkit-scrollbar{width:3px}
 #modal::-webkit-scrollbar-thumb{background:var(--border2)}
 .srow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
@@ -1340,49 +1340,52 @@ function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.
 function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';}
 function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modal-bg').classList.add('open');}
 function openDateModal(id){
-
   const q = getQ(id);
-
   if(!q) return;
-
+  const mp=mastPct(q.id);const mc=mastColor(mp);
+  const catColors={'Political':'var(--blue)','Military':'var(--coral)','Social':'var(--teal2)','Economic':'var(--gold)','Legal':'var(--purple3)','Religious':'var(--pink)','Cultural':'var(--amber)'};
+  const catCol=catColors[q.category]||'var(--text3)';
   openModal(`
-    <div class="card">
+    <div style="position:relative">
+      <button onclick="closeModal()" style="position:absolute;top:0;right:0;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);border-radius:50%;width:28px;height:28px;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;padding:0;line-height:1" onmouseover="this.style.background='var(--bg5)'" onmouseout="this.style.background='var(--bg4)'">✕</button>
 
-      <div class="pt">${q.year}</div>
-
-      <div class="sec">Event</div>
-      <div>${q.event}</div>
-
-      <div class="sec">Significance</div>
-      <div>${q.significance}</div>
-
-      <div class="sec">Topic</div>
-      <div>${q.topic}</div>
-
-      <div class="sec">Period</div>
-      <div>${q.period}</div>
-
-      <div class="sec">Category</div>
-      <div>${q.category || ''}</div>
-
-      ${
-        q.section
-        ? `
-          <div class="sec">Section</div>
-          <div>${q.section}</div>
-        `
-        : ''
-      }
-
-      <div style="margin-top:15px">
-        <button
-          class="btn"
-          onclick="closeModal()"
-        >
-          Close
-        </button>
+      <!-- Date badge -->
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(232,197,71,.1);border:1px solid rgba(232,197,71,.3);border-radius:8px;padding:6px 12px;margin-bottom:12px">
+        <span style="font-size:.65rem;color:var(--gold);opacity:.7;text-transform:uppercase;letter-spacing:.1em">Date</span>
+        <span style="font-family:'DM Mono',monospace;font-size:1.1rem;color:var(--gold);font-weight:500">${q.year}</span>
       </div>
 
+      <!-- Event -->
+      <div style="font-size:1rem;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:10px">${q.event}</div>
+
+      <!-- Significance block -->
+      <div style="background:rgba(124,92,191,.07);border-left:3px solid var(--purple);border-radius:0 8px 8px 0;padding:10px 13px;margin-bottom:14px">
+        <div style="font-size:.6rem;color:var(--purple3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-weight:600">Why it matters</div>
+        <div style="font-size:.8rem;color:var(--text);line-height:1.65">${q.significance}</div>
+      </div>
+
+      ${q.note?`<div style="background:rgba(245,166,35,.08);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:7px 12px;margin-bottom:14px;font-size:.74rem;color:var(--amber);line-height:1.5">⚠ ${q.note}</div>`:''}
+
+      <!-- Meta row -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+        <span class="tag tp">${q.topic}</span>
+        <span class="tag tb">${q.period||''}</span>
+        ${q.section?`<span class="tag tg">${q.section}</span>`:''}
+        ${q.category?`<span style="display:inline-block;font-size:.62rem;padding:1px 7px;border-radius:20px;font-weight:500;line-height:1.5;background:rgba(0,0,0,.2);color:${catCol};border:1px solid ${catCol}33">${q.category}</span>`:''}
+        <span style="color:var(--gold);font-size:.72rem">${'★'.repeat(q.stars||0)}</span>
+      </div>
+
+      <!-- Mastery bar -->
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:7px;padding:8px 11px;margin-bottom:14px">
+        <div style="font-size:.65rem;color:var(--text3);min-width:52px">Mastery</div>
+        <div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${mp}%;background:${mc};border-radius:3px;transition:width .4s ease"></div>
+        </div>
+        <div style="font-size:.65rem;color:${mc};font-weight:600;min-width:28px;text-align:right">${mp}%</div>
+        <span style="font-size:.65rem">${S.mastered.has(q.id)?'<span style="color:var(--teal2)">Mastered</span>':S.learning.has(q.id)?'<span style="color:var(--gold)">Learning</span>':'<span style="color:var(--text3)">New</span>'}</span>
+      </div>
+
+      <button class="btn bp bblk" onclick="closeModal()">Done</button>
     </div>
   `);
 }
@@ -1653,6 +1656,7 @@ function rLib(){
       ${isDue(srs)?'<span class="bd">Due</span>':''}
     </div>
     ${q.note?`<div class="dc-note">⚠ ${q.note}</div>`:''}
+    <button class="btn bsm" onclick="openDateModal('${q.id}')" style="margin-top:6px;color:var(--purple3);border-color:var(--purple);font-size:.65rem">📖 More Info</button>
   </div>`}).join('')}
   </div>`;
 }
@@ -1845,7 +1849,7 @@ function rFC(){
   </div>
   <div style="font-size:.68rem;color:var(--text3);margin-bottom:3px;text-align:center">Card ${(S.fc.idx%pool.length)+1} / ${pool.length}</div>
   <div class="pb"><div class="pbf pu" style="width:${pct((S.fc.idx%pool.length)+1,pool.length)}%"></div></div>
-  <div class="fc-wrap" onclick="S.fc.flipped=!S.fc.flipped;if(S.fc.flipped){openDateModal('${q.id}');}render()">
+  <div class="fc-wrap" onclick="S.fc.flipped=!S.fc.flipped;render()">
     <div class="fc${S.fc.flipped?' flip':''}">
       <div class="fc-s fc-front">
         <div class="fc-lbl">${mode==='date'?'Date':'Event'}</div>
@@ -2017,7 +2021,10 @@ function rQuizQ(){
       <div style="margin-top:6px;font-size:.78rem"><strong style="color:var(--gold)">Answer:</strong><br>${correct}</div>
       ${type!=='significance'?`<div style="margin-top:5px;font-size:.73rem;color:var(--text2)">${q.significance.slice(0,180)}…</div>`:''}
     </div>
-    <button class="btn bp" style="margin-top:9px" onclick="nextQQ()">Next →</button>`;
+    <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
+      <button class="btn bp" onclick="nextQQ()">Next →</button>
+      <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple)">📖 More Info</button>
+    </div>`;
   }
 
   const activeType=S.quiz.type==='adaptive'?getAdaptiveType(idx,qs.length):S.quiz.type;
@@ -2359,10 +2366,11 @@ function tlShowDetail(q){
     <div style="flex:1;min-width:160px">
       <div style="font-size:.82rem;color:var(--text);margin-bottom:3px">${q.event}</div>
       <div style="font-size:.7rem;color:var(--text2);line-height:1.5;margin-bottom:4px">${q.significance.slice(0,180)}${q.significance.length>180?'…':''}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
         <span class="tag tp">${q.topic}</span><span class="tag tb">${q.period||''}</span>
         ${q.section?`<span class="tag tg">${q.section}</span>`:''}
         ${S.mastered.has(q.id)?'<span class="bm">Mastered</span>':S.learning.has(q.id)?'<span class="bl">Learning</span>':'<span class="bn">New</span>'}
+        <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple);font-size:.62rem;padding:2px 8px">📖 More Info</button>
       </div>
     </div>
   </div>`;
@@ -2374,7 +2382,7 @@ function tlZoomReset(){_tlState.zoom=_tlState.baseZoom;_tlState.offset=_tlState.
 function tlHighlightDate(id){
   _tlState.selectedId=id;const q=getQ(id);if(!q)return;
   const x=(q.yearNum-_tlState.minY)*_tlState.zoom;
-  _tlState.offset=_tlState.WIDTH/2-x;tlClampOffset();tlSaveState();tlDraw();if(q)tlShowDetail(q);openDateModal(id);
+  _tlState.offset=_tlState.WIDTH/2-x;tlClampOffset();tlSaveState();tlDraw();if(q)tlShowDetail(q);
 }
 
 // ════════════════════════════════════════════════
@@ -2743,7 +2751,7 @@ function ddUpdateUI(){
   if(bank){
     bank.innerHTML=allPlaced
       ?'<div style="font-size:.75rem;color:var(--teal2);padding:8px">✅ All cards placed! Press Check Answers.</div>'
-      :bankCards.map(q=>`<div style="background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:grab;line-height:1.4;max-width:180px;flex-shrink:0" id="dcard-${q.id}" draggable="true" ondragstart="dragStart('${q.id}',event)" ondblclick="openDateModal('${q.id}')" ontouchstart="ddTouchStart('${q.id}',event)" ontouchmove="ddTouchMove(event)" ontouchend="ddTouchEnd(event)"><div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${q.period||''}</div><div style="font-weight:500">${q.event.slice(0,50)}${q.event.length>50?'…':''}</div></div>`).join('');
+      :bankCards.map(q=>`<div style="background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:grab;line-height:1.4;max-width:180px;flex-shrink:0" id="dcard-${q.id}" draggable="true" ondragstart="dragStart('${q.id}',event)" ontouchstart="ddTouchStart('${q.id}',event)" ontouchmove="ddTouchMove(event)" ontouchend="ddTouchEnd(event)"><div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${q.period||''}</div><div style="font-weight:500">${q.event.slice(0,50)}${q.event.length>50?'…':''}</div></div>`).join('');
   }
   // Update placed counter
   const counter=document.getElementById('dd-placed-counter');
@@ -2874,6 +2882,7 @@ function rDump(){
     <span>${r.s==='ok'?'✅':r.s==='near'?'⚠️':'❌'}</span> <em>${r.input}</em>
     ${r.s!=='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">Closest: ${r.match.year} — ${r.match.event}</div>`:''}
     ${r.s==='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">${r.match.year} · ${r.match.topic}</div>`:''}
+    ${r.match?`<button class="btn bsm" onclick="openDateModal('${r.match.id}')" style="margin-top:5px;color:var(--purple3);border-color:var(--purple);font-size:.62rem">📖 More Info</button>`:''}
   </div>`).join('')}
   `}
   </div>`;
