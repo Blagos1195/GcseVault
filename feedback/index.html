@@ -1,1 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GCSE Vault Feedback</title>
 
+<style>
+:root{
+  --bg:#0f1117;
+  --card:#1b1f2a;
+  --text:#ffffff;
+  --muted:#b7bcc9;
+  --accent:#4f8cff;
+  --border:#2d3445;
+}
+
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  padding:20px;
+  border-bottom:1px solid var(--border);
+}
+
+h1{
+  margin:0;
+  font-size:1.5rem;
+}
+
+nav{
+  display:flex;
+  gap:12px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+
+nav a{
+  color:var(--accent);
+  text-decoration:none;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px;
+}
+
+label{
+  display:block;
+  margin-top:16px;
+  margin-bottom:6px;
+  font-weight:600;
+}
+
+input,
+select,
+textarea{
+  width:100%;
+  box-sizing:border-box;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:#11151f;
+  color:var(--text);
+}
+
+textarea{
+  min-height:180px;
+  resize:vertical;
+}
+
+button{
+  margin-top:20px;
+  border:none;
+  padding:12px 18px;
+  border-radius:8px;
+  cursor:pointer;
+  background:var(--accent);
+  color:white;
+  font-weight:600;
+}
+
+button:hover{
+  opacity:.9;
+}
+
+.status{
+  margin-top:15px;
+}
+
+.small{
+  color:var(--muted);
+  font-size:.9rem;
+}
+
+.success{
+  color:#52d273;
+}
+
+.error{
+  color:#ff6b6b;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GCSE Vault Feedback</h1>
+
+  <nav>
+    <a href="/GcseVault/dates/">DateVault</a>
+    <a href="/GcseVault/quotes/">QuoteVault</a>
+    <a href="/GcseVault/feedback/">Feedback & Bugs</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="card">
+
+    <p class="small">
+      Submit feature requests, bug reports, or general feedback.
+    </p>
+
+    <form id="feedbackForm">
+
+      <label for="type">Type</label>
+
+      <select id="type" required>
+        <option value="Feature Request">Feature Request</option>
+        <option value="Bug Report">Bug Report</option>
+        <option value="General Feedback">General Feedback</option>
+      </select>
+
+      <label for="title">Title</label>
+
+      <input
+        id="title"
+        maxlength="150"
+        required
+      >
+
+      <label for="description">Description</label>
+
+      <textarea
+        id="description"
+        maxlength="5000"
+        required
+      ></textarea>
+
+      <label for="device">
+        Device (optional)
+      </label>
+
+      <input
+        id="device"
+        placeholder="PC, Laptop, Mobile, Tablet..."
+      >
+
+      <label for="version">
+        App Version (optional)
+      </label>
+
+      <input
+        id="version"
+        placeholder="1.0.0"
+      >
+
+      <button type="submit">
+        Submit Feedback
+      </button>
+
+    </form>
+
+    <div
+      id="status"
+      class="status"
+    ></div>
+
+  </div>
+
+</div>
+
+<script>
+
+/* ===========================
+   Theme Sync
+=========================== */
+
+<script>
+
+/* ===========================
+   Theme Sync
+=========================== */
+
+const THEMES = {
+  'default': {
+    label:'Vault', desc:'The original dark-purple theme',
+    '--bg':'#0b0a14','--bg2':'#12111f','--bg3':'#1a192b','--bg4':'#22203a','--bg5':'#2a2840',
+    '--card':'#161526','--border':'rgba(255,255,255,0.07)','--border2':'rgba(255,255,255,0.13)','--border3':'rgba(255,255,255,0.22)',
+    '--text':'#dddaf0','--text2':'#9a98b5','--text3':'#5a587a',
+    '--gold':'#e8c547','--gold2':'#f5d76e','--gold3':'#a88a20',
+    '--purple':'#7c5cbf','--purple2':'#9b7ee0','--purple3':'#c4aaff',
+    '--teal':'#2cb67d','--teal2':'#3de09a',
+    '--coral':'#e85d4a','--coral2':'#ff7b6b',
+    '--blue':'#4a9eff','--pink':'#d4549a','--amber':'#f5a623','--green':'#3ecf8e','--red':'#ff4d4d',
+  },
+  'midnight': {
+    label:'Midnight', desc:'Deep navy with indigo accents',
+    '--bg':'#080c14','--bg2':'#0e1220','--bg3':'#141a2c','--bg4':'#1c2438','--bg5':'#242e46',
+    '--card':'#0e1220','--border':'rgba(99,132,255,0.09)','--border2':'rgba(99,132,255,0.16)','--border3':'rgba(99,132,255,0.26)',
+    '--text':'#e4eaf8','--text2':'#8899cc','--text3':'#3d4d78',
+    '--gold':'#f0c060','--gold2':'#f8d880','--gold3':'#a07820',
+    '--purple':'#6366f1','--purple2':'#818cf8','--purple3':'#c7d2fe',
+    '--teal':'#06b6d4','--teal2':'#22d3ee',
+    '--coral':'#f43f5e','--coral2':'#fb7185',
+    '--blue':'#60a5fa','--pink':'#e879f9','--amber':'#fbbf24','--green':'#34d399','--red':'#f87171',
+  },
+  'forest': {
+    label:'Forest', desc:'Rich emerald & golden moss',
+    '--bg':'#080f0a','--bg2':'#0e1a10','--bg3':'#142318','--bg4':'#1b2e20','--bg5':'#223929',
+    '--card':'#0e1a10','--border':'rgba(80,200,120,0.09)','--border2':'rgba(80,200,120,0.15)','--border3':'rgba(80,200,120,0.24)',
+    '--text':'#d8f0d0','--text2':'#7ab888','--text3':'#3a6644',
+    '--gold':'#d4a840','--gold2':'#e8c060','--gold3':'#8a6818',
+    '--purple':'#8b7cc8','--purple2':'#a898e0','--purple3':'#ccc4f8',
+    '--teal':'#2ecc80','--teal2':'#48e8a0',
+    '--coral':'#e06040','--coral2':'#f08060',
+    '--blue':'#5ab0e8','--pink':'#d478b8','--amber':'#d4a030','--green':'#40d890','--red':'#e04848',
+  },
+  'paper': {
+    label:'Parchment', desc:'Soft warm cream — easy on the eyes in daylight',
+    '--bg':'#f7f3eb','--bg2':'#ffffff','--bg3':'#eee8dc','--bg4':'#e4ddd0','--bg5':'#d9d0c2',
+    '--card':'#ffffff','--border':'rgba(160,120,60,0.12)','--border2':'rgba(160,120,60,0.22)','--border3':'rgba(160,120,60,0.35)',
+    '--text':'#211c14','--text2':'#7a6a52','--text3':'#b8a888',
+    '--gold':'#b06a00','--gold2':'#d08820','--gold3':'#7a4800',
+    '--purple':'#6040b8','--purple2':'#8060d8','--purple3':'#3a2888',
+    '--teal':'#1a7860','--teal2':'#22a07a',
+    '--coral':'#c82c18','--coral2':'#e04830',
+    '--blue':'#1a58b0','--pink':'#b02878','--amber':'#b86000','--green':'#1e7840','--red':'#b81818',
+  },
+  'slate': {
+    label:'Obsidian', desc:'Pure black with electric teal',
+    '--bg':'#05080d','--bg2':'#0a0e16','--bg3':'#10141f','--bg4':'#171d2e','--bg5':'#1f273d',
+    '--card':'#0a0e16','--border':'rgba(0,220,200,0.08)','--border2':'rgba(0,220,200,0.14)','--border3':'rgba(0,220,200,0.24)',
+    '--text':'#e0f0f4','--text2':'#60a8b8','--text3':'#2a5868',
+    '--gold':'#f0c040','--gold2':'#f8d860','--gold3':'#a07820',
+    '--purple':'#8060e0','--purple2':'#a080ff','--purple3':'#c8b4ff',
+    '--teal':'#00d8c8','--teal2':'#20f0e0',
+    '--coral':'#ff4060','--coral2':'#ff6080',
+    '--blue':'#40b0f8','--pink':'#f060d0','--amber':'#f8a800','--green':'#00e890','--red':'#ff3050',
+  },
+  'rose': {
+    label:'Rose', desc:'Warm rose-noir with blush accents',
+    '--bg':'#100a0c','--bg2':'#180e12','--bg3':'#201419','--bg4':'#2a1c22','--bg5':'#34242c',
+    '--card':'#180e12','--border':'rgba(240,100,130,0.09)','--border2':'rgba(240,100,130,0.16)','--border3':'rgba(240,100,130,0.26)',
+    '--text':'#f4e0e6','--text2':'#c07888','--text3':'#705058',
+    '--gold':'#e8a060','--gold2':'#f0b880','--gold3':'#a06030',
+    '--purple':'#c060b0','--purple2':'#d880c8','--purple3':'#f0b8e8',
+    '--teal':'#60c0a0','--teal2':'#80d8b8',
+    '--coral':'#e84060','--coral2':'#f06080',
+    '--blue':'#80a8f0','--pink':'#e868b0','--amber':'#e8a040','--green':'#60c888','--red':'#e83050',
+  },
+  'amber': {
+    label:'Amber', desc:'Warm amber & coffee — cosy and focused',
+    '--bg':'#0e0a04','--bg2':'#160f06','--bg3':'#1e160a','--bg4':'#281e10','--bg5':'#322618',
+    '--card':'#160f06','--border':'rgba(220,150,40,0.09)','--border2':'rgba(220,150,40,0.16)','--border3':'rgba(220,150,40,0.26)',
+    '--text':'#f4e8cc','--text2':'#c09858','--text3':'#806030',
+    '--gold':'#f0b020','--gold2':'#f8c840','--gold3':'#a07010',
+    '--purple':'#9870d0','--purple2':'#b090e8','--purple3':'#d0c0ff',
+    '--teal':'#50b888','--teal2':'#70d0a0',
+    '--coral':'#e86040','--coral2':'#f07858',
+    '--blue':'#70a8e0','--pink':'#d07098','--amber':'#f09820','--green':'#60c070','--red':'#e85030',
+  },
+};
+
+function applyTheme(key){
+
+  const t =
+    THEMES[key] ||
+    THEMES.default;
+
+  Object.entries(t).forEach(([k,v])=>{
+
+    if(k.startsWith('--')){
+      document.documentElement.style
+        .setProperty(k,v);
+    }
+
+  });
+
+}
+
+applyTheme(
+  localStorage.getItem('vt_theme')
+  || 'default'
+);
+
+/* ===========================
+   Feedback Submission
+=========================== */
+
+const WORKER_URL =
+  "https://quotevault-api.noah-l-barker.workers.dev";
+
+const form =
+  document.getElementById(
+    "feedbackForm"
+  );
+
+const statusBox =
+  document.getElementById(
+    "status"
+  );
+
+form.addEventListener(
+  "submit",
+  async (e)=>{
+
+    e.preventDefault();
+
+    statusBox.textContent =
+      "Submitting...";
+
+    try{
+
+      const payload = {
+
+        type:
+          document.getElementById("type").value,
+
+        title:
+          document.getElementById("title").value.trim(),
+
+        description:
+          document.getElementById("description").value.trim(),
+
+        device:
+          document.getElementById("device").value.trim(),
+
+        browser:
+          navigator.userAgent,
+
+        appVersion:
+          document.getElementById("version").value.trim(),
+
+        sourceApplication:
+          "Feedback"
+
+      };
+
+      const response =
+        await fetch(
+          WORKER_URL +
+          "/feedback/submit",
+          {
+            method:"POST",
+            headers:{
+              "Content-Type":
+              "application/json"
+            },
+            body:
+              JSON.stringify(payload)
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if(!response.ok){
+        throw new Error(
+          data.error ||
+          "Submission failed"
+        );
+      }
+
+      statusBox.innerHTML =
+        `<span class="success">
+          Feedback submitted successfully.
+        </span>`;
+
+      form.reset();
+
+    }
+    catch(err){
+
+      statusBox.innerHTML =
+        `<span class="error">
+          ${err.message}
+        </span>`;
+    }
+
+  }
+);
+
+</script>
+
+</body>
+</html>
