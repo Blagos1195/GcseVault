@@ -239,6 +239,9 @@ details>summary::-webkit-details-marker{display:none}
   </div>
   <div id="nav"></div>
   <a class="sb-link" href="https://blagos1195.github.io/GcseVault/dates" target="_blank">🏛 Switch to DateVault</a>
+  <a class="sb-link" href="/GcseVault/feedback/">
+  Feedback & Bugs
+</a>
   <div class="sb-foot">
     <div>⚡ <span id="sb-xp">0</span> XP · Lv <span id="sb-lv">1</span></div>
     <div class="sb-xp">🔥 <span id="sb-str">0</span> day streak</div>
@@ -1114,6 +1117,51 @@ function save(){
 }
 let _lbThrottleTimer=null;
 function lbUpdateThrottled(){clearTimeout(_lbThrottleTimer);_lbThrottleTimer=setTimeout(lbUpdate,3000);}
+function validateStreak(){
+
+  if(!S.lastXpDate) return;
+
+  const today =
+    new Date().toISOString().slice(0,10);
+
+  const todayDate =
+    new Date(today);
+
+  const lastDate =
+    new Date(S.lastXpDate);
+
+  const days =
+    Math.floor(
+      (todayDate - lastDate) /
+      86400000
+    );
+
+  if(days > 1){
+
+    S.streak = 0;
+
+    save();
+
+    const k = getUserKey();
+
+    if(k){
+      fetch(
+        WORKER_URL + '/lb/streak',
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json'
+          },
+          body:JSON.stringify({
+            userKey:k,
+            streak:0,
+            max_streak:S.maxStreak
+          })
+        }
+      ).catch(()=>{});
+    }
+  }
+}
 
 // ════════════════════════════════════════════════
 // USERNAME & LEADERBOARD
@@ -3702,7 +3750,7 @@ function _readEditFields(pfx){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-initTheme();buildNav();updateSB();render();
+initTheme();validateStreak();buildNav();updateSB();render();
 loadCloudQuotes();
 // Sync progress from worker if user has a key (multi-device support)
 if(getUserKey())syncFromWorker();
