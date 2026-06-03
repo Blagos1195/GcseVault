@@ -614,14 +614,17 @@ async function loadServerCustomThemes(){
     if(!r.ok)return;
     const d=await r.json();
     if(d.themes&&typeof d.themes==='object'){
-      const ct=getCustomThemes();
-      let changed=false;
-      Object.entries(d.themes).forEach(([k,v])=>{if(!ct[k]){ct[k]=v;changed=true;}});
-      if(changed){saveCustomThemes(ct);render();}
+      // Server is source of truth — replace local custom themes entirely
+      saveCustomThemes(d.themes);
+      // Re-apply active theme in case it was updated, or fall back if it was deleted
+      const activeKey=localStorage.getItem('vt_theme')||(S&&S.settings&&S.settings.theme)||'default';
+      const allNow=getAllThemes();
+      if(!allNow[activeKey]){applyTheme('default');}
+      else{applyTheme(activeKey);}
+      render();
     }
   }catch(e){}
 }
-
 function deleteCustomTheme(key){
   if(!confirm('Delete this custom theme?'))return;
   const ct=getCustomThemes();delete ct[key];saveCustomThemes(ct);
