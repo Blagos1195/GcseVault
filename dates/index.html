@@ -1354,7 +1354,7 @@ function goBack(){
 }
 function updateSB(){
   document.getElementById('sb-xp').textContent=S.xp;
-  document.getElementById('sb-lv').textContent=Math.floor(S.xp/100)+1;
+  document.getElementById('sb-lv').textContent=Math.floor(S.xp/1000)+1;
   document.getElementById('sb-str').textContent=S.streak;
   const dc=dueCount();
   document.getElementById('sb-due').textContent=dc>0?`📅 ${dc} due for review`:'';
