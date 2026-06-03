@@ -629,9 +629,13 @@ function deleteCustomTheme(key){
   if(!confirm('Delete this custom theme?'))return;
   const ct=getCustomThemes();delete ct[key];saveCustomThemes(ct);
   if(S.settings?.theme===key){applyTheme('default');}
+  const uk=getUserKey();
+  if(uk){
+    fetch(WORKER_URL+'/themes/delete',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userKey:uk,key})}).catch(()=>{});
+  }
   closeModal();render();toast('Theme deleted');
 }
-
 function lighten(hex,amt){
   try{
     let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
