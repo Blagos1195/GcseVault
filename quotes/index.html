@@ -3974,13 +3974,15 @@ function _readEditFields(pfx){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-initTheme();buildNav();updateSB();validateStreak();render();
-// Load custom themes saved on server
-if(getUserKey())loadServerCustomThemes();
-loadCloudQuotes();
-// Sync progress from worker if user has a key (multi-device support)
-if(getUserKey())syncFromWorker();
-
+async function startup(){
+  await loadCloudFacts();
+  if(getUserKey()){
+    await loadServerCustomThemes();
+  }
+  initTheme();buildNav();updateSB();validateStreak();render();
+  if(getUserKey())syncFromWorker();
+}
+startup();
 // ── Global keyboard shortcuts ─────────────────────────────────────────────
 document.addEventListener('keydown', function(e) {
   // Don't fire when typing in an input/textarea (except blanks which handle themselves)
