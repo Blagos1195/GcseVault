@@ -370,6 +370,7 @@ const THEMES = {
 };
 
 // ── custom themes stored in localStorage ──
+// ── custom themes stored in localStorage ──
 function getCustomThemes(){
   try{return JSON.parse(localStorage.getItem('qv_custom_themes')||'{}');}catch{return {};}
 }
@@ -407,62 +408,255 @@ function initTheme(){
 }
 
 // ── custom theme builder ──
+// All CSS vars, grouped, with human labels
+const THEME_VAR_GROUPS = [
+  { group: 'Backgrounds', vars: [
+    ['Background (deepest)','--bg'],
+    ['Background 2 (sidebar/topbar)','--bg2'],
+    ['Background 3 (surface)','--bg3'],
+    ['Background 4','--bg4'],
+    ['Background 5 (lightest)','--bg5'],
+    ['Card','--card'],
+  ]},
+  { group: 'Borders', vars: [
+    ['Border (subtle)','--border'],
+    ['Border 2 (normal)','--border2'],
+    ['Border 3 (strong)','--border3'],
+  ]},
+  { group: 'Text', vars: [
+    ['Text (primary)','--text'],
+    ['Text 2 (muted)','--text2'],
+    ['Text 3 (faint)','--text3'],
+  ]},
+  { group: 'Gold / Accent', vars: [
+    ['Gold','--gold'],
+    ['Gold 2 (lighter)','--gold2'],
+    ['Gold 3 (darker)','--gold3'],
+  ]},
+  { group: 'Purple / Primary', vars: [
+    ['Purple','--purple'],
+    ['Purple 2 (hover)','--purple2'],
+    ['Purple 3 (light)','--purple3'],
+  ]},
+  { group: 'Teal / Success', vars: [
+    ['Teal','--teal'],
+    ['Teal 2','--teal2'],
+  ]},
+  { group: 'Coral / Danger', vars: [
+    ['Coral','--coral'],
+    ['Coral 2','--coral2'],
+  ]},
+  { group: 'Misc Accents', vars: [
+    ['Blue','--blue'],
+    ['Pink','--pink'],
+    ['Amber','--amber'],
+    ['Green','--green'],
+    ['Red','--red'],
+  ]},
+];
+
+// Border vars need special handling — they can be rgba strings not hex
+function _varToHex(val){
+  if(!val)return'#000000';
+  if(val.startsWith('#'))return val.slice(0,7);
+  // rgba(r,g,b,a) → hex (ignore alpha)
+  const m=val.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if(m)return'#'+[m[1],m[2],m[3]].map(n=>parseInt(n).toString(16).padStart(2,'0')).join('');
+  return'#888888';
+}
+function _varToAlpha(val){
+  if(!val)return 1;
+  const m=val.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/);
+  return m?parseFloat(m[1]):1;
+}
+function _buildRgba(hexVal,alphaVal){
+  const r=parseInt(hexVal.slice(1,3),16),g=parseInt(hexVal.slice(3,5),16),b=parseInt(hexVal.slice(5,7),16);
+  if(alphaVal>=1)return hexVal;
+  return`rgba(${r},${g},${b},${alphaVal})`;
+}
+
 function openThemeBuilder(editKey){
   const all=getAllThemes();
   const base=editKey?all[editKey]:THEMES['default'];
   const isNew=!editKey||!getCustomThemes()[editKey];
   const title=isNew?'Create Custom Theme':'Edit Theme';
-  const picks=[
-    ['Background','--bg'],['Surface','--bg2'],['Card','--card'],
-    ['Text','--text'],['Muted text','--text2'],
-    ['Accent (gold)','--gold'],['Primary (purple)','--purple'],['Purple light','--purple2'],
-    ['Teal','--teal'],['Coral','--coral'],['Blue','--blue'],
-  ];
-  const rows=picks.map(([lbl,v])=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:.78rem;color:var(--text2)">${lbl}</span>
-      <input type="color" id="tc-${v.replace(/-/g,'_')}" value="${base[v]||'#000000'}"
-        style="width:40px;height:26px;border:none;border-radius:5px;cursor:pointer;background:none;padding:0">
-    </div>`).join('');
+
+  // Build colour rows per group
+  const groupHtml=THEME_VAR_GROUPS.map(({group,vars})=>{
+    const isBorder=group==='Borders';
+    const rows=vars.map(([lbl,v])=>{
+      const raw=base[v]||'#000000';
+      const hexVal=_varToHex(raw);
+      const alphaVal=_varToAlpha(raw);
+      const alphaRow=isBorder?`<input type="range" min="0" max="1" step="0.01" id="tca-${v.replace(/-/g,'_')}" value="${alphaVal}"
+        oninput="tcLiveUpdate()" style="width:70px;accent-color:var(--purple)">`:'';
+      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);gap:6px">
+        <span style="font-size:.75rem;color:var(--text2);flex:1;min-width:0">${lbl}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${alphaRow}
+          <input type="color" id="tc-${v.replace(/-/g,'_')}" value="${hexVal}"
+            oninput="tcLiveUpdate()"
+            style="width:36px;height:26px;border:none;border-radius:5px;cursor:pointer;background:none;padding:0;flex-shrink:0">
+        </div>
+      </div>`;
+    }).join('');
+    return`<div style="margin-bottom:10px">
+      <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;padding-top:2px">${group}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+
   openModal(`<div>
     <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:10px">🎨 ${title}</div>
-    <div class="fg"><label>Theme name</label>
-      <input type="text" id="tc-name" placeholder="My theme" value="${editKey&&!isNew?all[editKey].label||editKey:''}">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label>Theme name</label>
+        <input type="text" id="tc-name" placeholder="My theme" value="${editKey&&!isNew?all[editKey].label||editKey:''}">
+      </div>
+      <div class="fg" style="flex:2;min-width:180px;margin-bottom:0"><label>Description (optional)</label>
+        <input type="text" id="tc-desc" placeholder="A short description" value="${editKey?all[editKey].desc||'':''}">
+      </div>
     </div>
-    <div class="fg"><label>Description (optional)</label>
-      <input type="text" id="tc-desc" placeholder="A short description" value="${editKey?all[editKey].desc||'':''}">
+    <!-- Live mini-preview -->
+    <div id="tc-preview" style="border-radius:8px;overflow:hidden;border:1px solid var(--border2);margin-bottom:10px;height:42px;display:flex;align-items:stretch"></div>
+    <!-- Import from code -->
+    <details style="margin-bottom:8px">
+      <summary style="font-size:.72rem;color:var(--text3);cursor:pointer;user-select:none;padding:4px 0">📋 Import from code (paste a theme object)</summary>
+      <div style="margin-top:6px">
+        <textarea id="tc-import-code" rows="4" placeholder="Paste a THEMES object value here e.g. { '--bg':'#0b0a14', ... }" style="font-family:'DM Mono',monospace;font-size:.7rem"></textarea>
+        <button class="btn bsm" style="margin-top:4px" onclick="tcImportFromCode()">⬆ Apply to pickers</button>
+      </div>
+    </details>
+    <div style="font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">All colours
+      <span style="color:var(--text3);font-size:.6rem;text-transform:none;letter-spacing:0;margin-left:4px">(border alpha = slider, colour = swatch)</span>
     </div>
-    <div style="margin:8px 0 4px;font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Colours</div>
-    <div style="max-height:300px;overflow-y:auto;padding-right:4px">${rows}</div>
+    <div style="max-height:340px;overflow-y:auto;padding-right:4px">${groupHtml}</div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
       <button class="btn bp" onclick="saveCustomTheme('${editKey||''}')">💾 Save & Apply</button>
+      <button class="btn" style="color:var(--teal2);border-color:var(--teal)" onclick="tcCopyAsCode()">📋 Copy as code</button>
       ${editKey&&!isNew?`<button class="btn br" onclick="deleteCustomTheme('${editKey}')">🗑 Delete</button>`:''}
-      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="tcCancelPreview('${editKey||''}')">Cancel</button>
     </div>
   </div>`);
+  tcLiveUpdate();
+}
+
+// Read all picker values into a theme object (without label/desc)
+function _tcReadAll(){
+  const t={};
+  THEME_VAR_GROUPS.forEach(({group,vars})=>{
+    const isBorder=group==='Borders';
+    vars.forEach(([,v])=>{
+      const el=document.getElementById('tc-'+v.replace(/-/g,'_'));
+      if(!el)return;
+      if(isBorder){
+        const aEl=document.getElementById('tca-'+v.replace(/-/g,'_'));
+        const alpha=aEl?parseFloat(aEl.value):1;
+        t[v]=_buildRgba(el.value,alpha);
+      } else {
+        t[v]=el.value;
+      }
+    });
+  });
+  return t;
+}
+
+// Live preview strip
+function tcLiveUpdate(){
+  const t=_tcReadAll();
+  // Apply to root instantly
+  const root=document.documentElement.style;
+  Object.entries(t).forEach(([k,v])=>root.setProperty(k,v));
+  // Update mini preview bar
+  const prev=document.getElementById('tc-preview');
+  if(prev){
+    const cols=[t['--bg2'],t['--bg3'],t['--card'],t['--purple'],t['--gold'],t['--teal'],t['--coral'],t['--blue']];
+    prev.innerHTML=cols.map(c=>`<div style="flex:1;background:${c||'#333'}"></div>`).join('');
+  }
+}
+
+function tcCancelPreview(editKey){
+  // Restore previous theme
+  const k=localStorage.getItem('vt_theme')||'default';
+  applyTheme(k);
+  closeModal();
+}
+
+function tcImportFromCode(){
+  const raw=(document.getElementById('tc-import-code')?.value||'').trim();
+  try{
+    // Allow pasting either a full object literal or JSON
+    const jsonStr=raw.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$-]*)\s*:/g,'$1"$2":').replace(/'/g,'"');
+    const obj=JSON.parse(jsonStr);
+    THEME_VAR_GROUPS.forEach(({group,vars})=>{
+      const isBorder=group==='Borders';
+      vars.forEach(([,v])=>{
+        if(obj[v]===undefined)return;
+        const el=document.getElementById('tc-'+v.replace(/-/g,'_'));
+        if(el)el.value=_varToHex(obj[v]);
+        if(isBorder){
+          const aEl=document.getElementById('tca-'+v.replace(/-/g,'_'));
+          if(aEl)aEl.value=_varToAlpha(obj[v]);
+        }
+      });
+    });
+    tcLiveUpdate();
+    toast('✅ Colours imported from code');
+  }catch(e){toast('⚠️ Could not parse theme code');}
+}
+
+function tcCopyAsCode(){
+  const name=(document.getElementById('tc-name')?.value.trim()||'My Theme');
+  const desc=(document.getElementById('tc-desc')?.value.trim()||'');
+  const t=_tcReadAll();
+  const key=name.toLowerCase().replace(/[^a-z0-9]/g,'_');
+  // Format exactly like the THEMES object in source
+  const lines=[`'${key}': {`];
+  lines.push(`  label: '${name.replace(/'/g,"\\'")}', desc: '${desc.replace(/'/g,"\\'")}',`);
+  lines.push(`  '--bg': '${t['--bg']}', '--bg2': '${t['--bg2']}', '--bg3': '${t['--bg3']}', '--bg4': '${t['--bg4']}', '--bg5': '${t['--bg5']}',`);
+  lines.push(`  '--card': '${t['--card']}', '--border': '${t['--border']}', '--border2': '${t['--border2']}', '--border3': '${t['--border3']}',`);
+  lines.push(`  '--text': '${t['--text']}', '--text2': '${t['--text2']}', '--text3': '${t['--text3']}',`);
+  lines.push(`  '--gold': '${t['--gold']}', '--gold2': '${t['--gold2']}', '--gold3': '${t['--gold3']}',`);
+  lines.push(`  '--purple': '${t['--purple']}', '--purple2': '${t['--purple2']}', '--purple3': '${t['--purple3']}',`);
+  lines.push(`  '--teal': '${t['--teal']}', '--teal2': '${t['--teal2']}',`);
+  lines.push(`  '--coral': '${t['--coral']}', '--coral2': '${t['--coral2']}',`);
+  lines.push(`  '--blue': '${t['--blue']}', '--pink': '${t['--pink']}', '--amber': '${t['--amber']}', '--green': '${t['--green']}', '--red': '${t['--red']}',`);
+  lines.push(`},`);
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copied as code!')).catch(()=>toast('Copy failed'));
 }
 
 function saveCustomTheme(editKey){
   const name=document.getElementById('tc-name')?.value.trim()||'My Theme';
   const desc=document.getElementById('tc-desc')?.value.trim()||'';
   const key=editKey||(name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now());
-  const picks=[
-    '--bg','--bg2','--card','--text','--text2',
-    '--gold','--purple','--purple2','--teal','--coral','--blue',
-  ];
   const base=getAllThemes()[editKey]||THEMES['default'];
-  const t={...base,label:name,desc};
-  picks.forEach(v=>{
-    const el=document.getElementById('tc-'+v.replace(/-/g,'_'));
-    if(el)t[v]=el.value;
-  });
-  t['--bg3']=lighten(t['--bg'],10);t['--bg4']=lighten(t['--bg'],18);t['--bg5']=lighten(t['--bg'],26);
-  t['--text3']=lighten(t['--text2'],-30);
-  t['--gold2']=lighten(t['--gold'],15);t['--gold3']=lighten(t['--gold'],-20);
-  t['--teal2']=lighten(t['--teal'],18);
-  t['--coral2']=lighten(t['--coral'],15);
+  const t={...base,..._tcReadAll(),label:name,desc};
   const ct=getCustomThemes();ct[key]=t;saveCustomThemes(ct);
+  // Push to server for cross-device sync
+  _syncCustomThemeToServer(key,t);
   closeModal();applyTheme(key);render();toast('🎨 Theme saved & applied!');
+}
+
+// ── Server sync for custom themes ──
+async function _syncCustomThemeToServer(key,t){
+  const uk=getUserKey();if(!uk)return;
+  try{
+    await fetch(WORKER_URL+'/themes/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userKey:uk,key,theme:t})});
+  }catch(e){}
+}
+async function loadServerCustomThemes(){
+  const uk=getUserKey();if(!uk)return;
+  try{
+    const r=await fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk));
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.themes&&typeof d.themes==='object'){
+      const ct=getCustomThemes();
+      let changed=false;
+      Object.entries(d.themes).forEach(([k,v])=>{if(!ct[k]){ct[k]=v;changed=true;}});
+      if(changed){saveCustomThemes(ct);render();}
+    }
+  }catch(e){}
 }
 
 function deleteCustomTheme(key){
@@ -3772,7 +3966,9 @@ function _readEditFields(pfx){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-initTheme();validateStreak();buildNav();updateSB();render();
+initTheme();buildNav();updateSB();validateStreak();render();
+// Load custom themes saved on server
+if(getUserKey())loadServerCustomThemes();
 loadCloudQuotes();
 // Sync progress from worker if user has a key (multi-device support)
 if(getUserKey())syncFromWorker();
