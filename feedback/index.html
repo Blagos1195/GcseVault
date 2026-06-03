@@ -309,29 +309,33 @@ const THEMES = {
   '--blue': '#000000', '--pink': '#000000', '--amber': '#000000', '--green': '#000000', '--red': '#000000',
 },
 };
-
-function applyTheme(key){
-
-  const t =
-    THEMES[key] ||
-    THEMES.default;
-
-  Object.entries(t).forEach(([k,v])=>{
-
-    if(k.startsWith('--')){
-      document.documentElement.style
-        .setProperty(k,v);
-    }
-
-  });
-
+// ════════════════════════════════════════════════
+// COLOUR THEMES (read-only — applies & syncs, no builder)
+// ════════════════════════════════════════════════
+function _getReadOnlyAllThemes(){
+  try{
+    const dvCustom=JSON.parse(localStorage.getItem('dv_custom_themes')||'{}');
+    const qvCustom=JSON.parse(localStorage.getItem('qv_custom_themes')||'{}');
+    return{...THEMES,...dvCustom,...qvCustom};
+  }catch{return THEMES;}
 }
 
-applyTheme(
-  localStorage.getItem('vt_theme')
-  || 'default'
-);
+function applyTheme(key){
+  const all=_getReadOnlyAllThemes();
+  const t=all[key]||THEMES['default'];
+  const root=document.documentElement.style;
+  Object.entries(t).forEach(([k,v])=>{if(k.startsWith('--'))root.setProperty(k,v);});
+}
 
+function initTheme(){
+  const k=localStorage.getItem('vt_theme')||'default';
+  applyTheme(k);
+}
+
+// Stay in sync when theme changes in another tab/vault
+window.addEventListener('storage',e=>{
+  if(e.key==='vt_theme'&&e.newValue)applyTheme(e.newValue);
+});
 /* ===========================
    Feedback Submission
 =========================== */
