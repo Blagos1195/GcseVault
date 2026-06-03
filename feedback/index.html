@@ -330,8 +330,19 @@ function applyTheme(key){
 function initTheme(){
   const k=localStorage.getItem('vt_theme')||'default';
   applyTheme(k);
+  // Load custom themes from server in case we're on a new device
+  const uk=localStorage.getItem('dv_userkey')||localStorage.getItem('qv_userkey');
+  if(uk){
+    fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk))
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{
+        if(d&&d.themes&&typeof d.themes==='object'){
+          localStorage.setItem('dv_custom_themes',JSON.stringify(d.themes));
+          applyTheme(k);
+        }
+      }).catch(()=>{});
+  }
 }
-
 // Stay in sync when theme changes in another tab/vault
 window.addEventListener('storage',e=>{
   if(e.key==='vt_theme'&&e.newValue)applyTheme(e.newValue);
