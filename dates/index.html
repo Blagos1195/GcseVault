@@ -1276,10 +1276,11 @@ async function syncFromWorker(){
       }
     }
     if(remoteMaxStreak>S.maxStreak){S.maxStreak=remoteMaxStreak;}
-    // Sync theme
+// Sync theme — load custom themes first so a custom theme key can be resolved
     if(u.theme){
       const localTheme=(S.settings&&S.settings.theme)||'default';
       if(u.theme&&u.theme!==localTheme){
+        await loadServerCustomThemes();
         applyTheme(u.theme);
         if(S.settings)S.settings.theme=u.theme;
       }
