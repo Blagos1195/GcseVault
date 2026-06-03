@@ -3830,13 +3830,15 @@ function _dvReadFields(pfx){
 // ════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════
-initTheme();buildNav();updateSB();validateStreak();render();
-loadCloudFacts();
-// Sync progress from worker if user has a key (multi-device support)
-if(getUserKey())syncFromWorker();
-// Load custom themes saved on server
-if(getUserKey())loadServerCustomThemes();
-
+async function startup(){
+  await loadCloudFacts();
+  if(getUserKey()){
+    await loadServerCustomThemes();
+  }
+  initTheme();buildNav();updateSB();validateStreak();render();
+  if(getUserKey())syncFromWorker();
+}
+startup();
 
 // ── Global keyboard shortcuts ─────────────────────────────────────────────
 document.addEventListener('keydown', function(e) {
