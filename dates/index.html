@@ -1394,23 +1394,29 @@ function promptRejectedFacts(rejected,allRejectedIds){
 }
 
 function dismissRejectedFacts(remove){
-  const rejectedIds=window._pendingRejectedIds||[];
+  const rejectedIds = window._pendingRejectedIds || [];
   if(remove){
-    const rejSet=new Set(rejectedIds.map(String));
-    S.pending=S.pending.filter(p=>!rejSet.has(String(p.id)));
+    const rejSet = new Set(rejectedIds.map(String));
+    S.pending = S.pending.filter(p => !rejSet.has(String(p.id)));
     save();
-    const k=getUserKey();
+
+    const k = getUserKey();
     if(k){
-      // Clear pending AND rejected IDs on server so they don't reappear
-      fetch(WORKER_URL+'/lb/register',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userKey:k,username:getUsername(),site:'dv',mastered:S.mastered.size,xp:S.xp,
-          mastered_ids:[...S.mastered].map(String),pending_ids:[],pending_data:[]})
-      }).catch(()=>{});
+      Promise.all(
+        rejectedIds.map(id =>
+          fetch(WORKER_URL + '/dv/withdraw', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ userKey: k, id })
+          })
+        )
+      ).catch(()=>{});
     }
+
     // Clear the local acknowledgement store too
-    const existing=JSON.parse(localStorage.getItem('dv_rej_ack')||'[]');
-    const cleaned=existing.filter(id=>!rejectedIds.map(String).includes(String(id)));
-    localStorage.setItem('dv_rej_ack',JSON.stringify(cleaned));
+    const existing = JSON.parse(localStorage.getItem('dv_rej_ack') || '[]');
+    const cleaned = existing.filter(id => !rejectedIds.map(String).includes(String(id)));
+    localStorage.setItem('dv_rej_ack', JSON.stringify(cleaned));
   }else{
     // "Keep for now" — remember these IDs so we don't prompt again next load
     const existing=JSON.parse(localStorage.getItem('dv_rej_ack')||'[]');
@@ -3270,12 +3276,18 @@ async function saveFact(){
 
 async function deletePendingFact(id){
   if(!confirm('Remove this pending fact from your library?\nIf it hasn\'t been reviewed yet, the submission will also be withdrawn.'))return;
-  try{
-    await fetch(WORKER_URL+'/dv/reject',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({token:'',id,pw:''})});
-  }catch(e){/* non-fatal */}
-  S.pending=S.pending.filter(p=>String(p.id)!==String(id));
-  save();lbUpdate();buildNav();toast('🗑 Submission removed');render();
+  const k = getUserKey();
+  if(k){
+    try{
+      await fetch(WORKER_URL+'/dv/withdraw',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({userKey:k,id})
+      });
+    }catch(e){/* non-fatal */}
+  }
+  S.pending = S.pending.filter(p=>String(p.id)!==String(id));
+  save(); lbUpdate(); buildNav(); toast('🗑 Submission removed'); render();
 }
 
 // ════════════════════════════════════════════════
