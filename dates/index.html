@@ -1530,7 +1530,7 @@ function showUsernameModal(onConfirm){
             setUserKey(uk);
           }
           
-          const r = await fetch(WORKER_URL + '/leaderboard/register', {
+          const r = await fetch(WORKER_URL + '/lb/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: u, userKey: uk })
