@@ -1413,28 +1413,39 @@ function setUserKey(k){
 }
 
 async function lbUpdate(){
-  const u=getUsername();
-  if(!u)return;
-  const myPending=S.pending.filter(p=>p._submittedByMe);
- const payload={
- username:u,site:'dv',mastered:S.mastered.size,xp:S.xp,
- mastered_ids:[...S.mastered].map(String),
- pending_ids:myPending.map(p=>String(p.id)),
- pending_data:myPending,
- theme: localStorage.getItem('vt_theme') || 'default',
- streak:S.streak,max_streak:S.maxStreak
- };
-  const k=getUserKey();
-  if(k)payload.userKey=k;
-  try{
-    const r=await fetch(WORKER_URL+'/lb/register',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
+  const u = getUsername();
+  if(!u) return;
+  
+  // Safe array assignment to prevent crashes if cloud data hasn't loaded yet
+  const myPending = (S.pending || []).filter(p => p._submittedByMe);
+  
+  const payload = {
+    username: u,
+    site: 'qv', // Code 'qv' strictly maps to English Literature
+    mastered: S.mastered ? S.mastered.size : 0,
+    xp: S.xp || 0,
+    mastered_ids: S.mastered ? [...S.mastered].map(String) : [],
+    pending_ids: myPending.map(p => String(p.id)),
+    pending_data: myPending,
+    theme: localStorage.getItem('vt_theme') || 'default',
+    streak: S.streak || 0,
+    max_streak: S.maxStreak || 0
+  };
+  
+  const k = getUserKey();
+  if(k) payload.userKey = k;
+  
+  try {
+    const r = await fetch(WORKER_URL + '/lb/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    const d=await r.json();
-    if(d.userKey&&d.userKey!==k)setUserKey(d.userKey);
-  }catch(e){/* non-fatal */}
+    if(r.ok) {
+      const d = await r.json();
+      if(d.userKey && d.userKey !== k) setUserKey(d.userKey);
+    }
+  } catch(e) { /* non-fatal */ }
 }
 
 // ── Sync FROM worker on load (multi-device support) ──
