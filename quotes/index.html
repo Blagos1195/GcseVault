@@ -1294,7 +1294,15 @@ const S = {
   hist:[],
   verifyResult:null,
 };
-
+// Safe localized routine to clear out duplicate global strings without touching data arrays
+(function targetPurgeRedundant() {
+  const staleKeys = ['dv_username', 'qv_username', 'qv_userKey', 'lb_userKey'];
+  staleKeys.forEach(k => {
+    if (localStorage.getItem(k) !== null) {
+      localStorage.removeItem(k);
+    }
+  });
+})();
 function allQincHidden(){
   const seen=new Set();const out=[];
   for(const q of[...DB,...S.custom,...S.pending]){
@@ -1392,34 +1400,30 @@ function validateStreak(){
 // Username is just a display name inside the KV value, freely editable.
 // ════════════════════════════════════════════════
 function getUsername(){
-  return localStorage.getItem('qv_username') || localStorage.getItem('dv_username') || null;
+  return localStorage.getItem('vault_username') || null;
 }
 function setUsername(u){
-  localStorage.setItem('qv_username',u);
-  localStorage.setItem('dv_username',u); // keep in sync with DateVault
+  localStorage.setItem('vault_username', u);
 }
 function getUserKey(){
-  let k=localStorage.getItem('lb_userKey');
-  if(!k){k=localStorage.getItem('qv_userKey');}
-  return k||null;
+  return localStorage.getItem('vault_userKey') || null;
 }
 function setUserKey(k){
-  localStorage.setItem('lb_userKey',k);
-  localStorage.setItem('qv_userKey',k);
+  localStorage.setItem('vault_userKey', k);
 }
 
 async function lbUpdate(){
   const u=getUsername();
   if(!u)return;
   const myPending=S.pending.filter(p=>p._submittedByMe);
-  const payload={
-    username:u,site:'qv',mastered:S.mastered.size,xp:S.xp,
-    mastered_ids:[...S.mastered].map(String),
-    pending_ids:myPending.map(p=>String(p.id)),
-    pending_data:myPending,
-    theme:(S.settings&&S.settings.theme)||'default',
-    streak:S.streak,max_streak:S.maxStreak
-  };
+ const payload={
+ username:u,site:'dv',mastered:S.mastered.size,xp:S.xp,
+ mastered_ids:[...S.mastered].map(String),
+ pending_ids:myPending.map(p=>String(p.id)),
+ pending_data:myPending,
+ theme: localStorage.getItem('vt_theme') || 'default',
+ streak:S.streak,max_streak:S.maxStreak
+ };
   const k=getUserKey();
   if(k)payload.userKey=k;
   try{
@@ -1627,15 +1631,12 @@ function onMastery(){
 }
 
 function showUsernameModal(onConfirm){
-  const crossSite=localStorage.getItem('dv_username');
-  const suggestion=crossSite?` value="${crossSite}"`:'';
-  openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
-    <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
-      You just mastered a quote! Choose a username to appear on the leaderboard.<br>
-      <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
-      ${crossSite?`<br><span style="color:var(--teal2)">✓ Found your DateVault username pre-filled</span>`:''}
-    </div>
+ openModal(`<div>
+ <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
+ <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
+ You just mastered a date! Choose a username to appear on the leaderboard.<br>
+ <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
+ </div>
     <div class="fg">
       <label>Username</label>
       <input type="text" id="lb-uname" placeholder="e.g. LitLegend99" maxlength="20"${suggestion} oninput="lbCheckName(this.value)">
@@ -3975,7 +3976,12 @@ function _readEditFields(pfx){
 // INIT
 // ════════════════════════════════════════════════
 async function startup(){
-  await loadCloudFacts();
+  try {
+    await loadCloudQuotes();
+  } catch(e) { 
+    console.error("Cloud quotes load failed:", e); 
+  }
+  
   if(getUserKey()){
     await loadServerCustomThemes();
   }
