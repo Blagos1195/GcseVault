@@ -1496,7 +1496,6 @@ function onMastery(){
 }
 
 function showUsernameModal(onConfirm){
-  // Safe structural fallback to prevent any template string crashes
   const suggestion = getUsername() ? ` value="${getUsername()}"` : '';
   
   openModal(`<div>
@@ -1530,10 +1529,25 @@ function showUsernameModal(onConfirm){
             setUserKey(uk);
           }
           
+          const myPending = S.pending ? S.pending.filter(p => p._submittedByMe) : [];
+          
+          // Construct full state bundle to satisfy strict backend checks
+          const payload = {
+            userKey: uk,
+            username: u,
+            site: 'dv', // Identifies history vault
+            mastered: S.mastered.size,
+            xp: S.xp,
+            mastered_ids: [...S.mastered].map(String),
+            pending_ids: myPending.map(p => String(p.id)),
+            pending_data: myPending,
+            theme: localStorage.getItem('vt_theme') || 'default'
+          };
+          
           const r = await fetch(WORKER_URL + '/lb/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: u, userKey: uk })
+            body: JSON.stringify(payload)
           });
           
           if(r.ok) {
