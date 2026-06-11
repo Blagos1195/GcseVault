@@ -1496,24 +1496,65 @@ function onMastery(){
 }
 
 function showUsernameModal(onConfirm){
- openModal(`<div>
- <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
- <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
- You just mastered a date! Choose a username to appear on the leaderboard.<br>
- <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
- </div>
-    <div class="fg">
-      <label>Username</label>
-      <input type="text" id="lb-uname" placeholder="e.g. HistoryNerd42" maxlength="20"${suggestion} oninput="lbCheckName(this.value)">
+  // Safe structural fallback to prevent any template string crashes
+  const suggestion = getUsername() ? ` value="${getUsername()}"` : '';
+  
+  openModal(`<div>
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
+    <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
+      Choose a username to appear on the leaderboard.<br>
+      <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
     </div>
-    <div id="lb-name-err" style="font-size:.72rem;margin-bottom:8px"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn bg" onclick="lbConfirmUsername()">✓ Set Username</button>
-      <button class="btn" onclick="closeModal()">Skip for now</button>
-    </div>
+    <input type="text" id="usernameInput" ${suggestion} placeholder="Enter username..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px;border-radius:4px;font-size:.85rem;margin-bottom:12px;outline:none">
+    <button id="usernameBtn" style="width:100%;background:var(--purple);color:#fff;border:none;padding:8px;border-radius:4px;font-size:.85rem;font-weight:500;cursor:pointer">Set Username</button>
   </div>`);
-  window._lbCb=onConfirm||null;
-  setTimeout(()=>{const el=document.getElementById('lb-uname');if(el){el.focus();el.select();}},80);
+
+  setTimeout(() => {
+    const input = document.getElementById('usernameInput');
+    const btn = document.getElementById('usernameBtn');
+
+    if(btn && input) {
+      btn.onclick = async () => {
+        const u = input.value.trim();
+        if(!u) return alert("Please enter a username.");
+        if(u.length < 3 || u.length > 20) return alert("Username must be between 3 and 20 characters.");
+        if(!/^[a-zA-Z0-9_-]+$/.test(u)) return alert("Username can only contain letters, numbers, underscores, or hyphens.");
+        
+        btn.disabled = true;
+        btn.innerText = "Registering...";
+        
+        try {
+          let uk = getUserKey();
+          if(!uk) {
+            uk = 'uk_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+            setUserKey(uk);
+          }
+          
+          const r = await fetch(WORKER_URL + '/leaderboard/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, userKey: uk })
+          });
+          
+          if(r.ok) {
+            setUsername(u);
+            closeModal();
+            if(typeof onConfirm === 'function') onConfirm();
+            lbUpdate();
+            render();
+          } else {
+            const d = await r.json();
+            alert(d.error || "Username taken or invalid.");
+          }
+        } catch(e) {
+          alert("Network error. Try again later.");
+        } finally {
+          btn.disabled = false;
+          btn.innerText = "Set Username";
+        }
+      };
+    }
+  }, 50);
 }
 
 function lbCheckName(v){
@@ -3782,7 +3823,7 @@ async function adminDeleteApproved(idx){
   S.custom.splice(idx,1);save();toast('🗑 Fact deleted');render();
 }
 
-async function loadCloudFacts(){
+async function loadCloudDates(){
   try{
     const resp=await fetch(WORKER_URL+'/dv/quotes');if(!resp.ok)return;
     const data=await resp.json();
