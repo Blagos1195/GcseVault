@@ -331,7 +331,7 @@ function initTheme(){
   const k=localStorage.getItem('vt_theme')||'default';
   applyTheme(k);
   // Load custom themes from server in case we're on a new device
-  const uk=localStorage.getItem('lb_userkey')||localStorage.getItem('qv_userkey');
+  const uk = localStorage.getItem('vault_userKey');
   if(uk){
     fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk))
       .then(r=>r.ok?r.json():null)
