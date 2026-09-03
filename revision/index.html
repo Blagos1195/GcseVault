@@ -143,7 +143,22 @@ select option{background:var(--bg3)}
 //insert main stuff here
 
 
-  
+document.addEventListener('keydown', function(e) {
+  const tag = document.activeElement && document.activeElement.tagName;
+  const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+  const page = S.page;
+
+  // Escape / Backspace = go back (not in inputs)
+  if (e.key === 'Escape' && page !== 'dashboard') {
+    if (page === 'timed' && S.tc && S.tc.active) {
+      e.preventDefault(); if(S.tc.timer)clearInterval(S.tc.timer); S.tc.active=false; render(); return;
+    }
+    if (!inInput) { e.preventDefault(); goBack(); return; }
+  }
+  if (e.key === 'Backspace' && !inInput && page !== 'dashboard') {
+    e.preventDefault(); goBack(); return;
+  }
+
 window.addEventListener('storage',e=>{
   if(e.key==='vt_theme'&&e.newValue){
     applyTheme(e.newValue);
