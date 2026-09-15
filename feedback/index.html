@@ -1,451 +1,154 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GCSE Vault Feedback</title>
+import { 
+  apiRequest, 
+  hasAdminSession, 
+  getAdminToken, 
+  sanitizeText, 
+  formatNumber 
+} from '../shared.js';
 
-<style>
+// ── SYSTEM METADATA HELPER ────────────────────────────────────────────────
+/** Detects basic browser and device info to attach to feedback reports */
+function getSystemMeta() {
+  const ua = navigator.userAgent;
+  let browser = "Unknown";
+  let device = "Desktop";
 
-:root{
-  --bg:#0b0a14;--bg2:#12111f;--bg3:#1a192b;--bg4:#22203a;--bg5:#2a2840;
-  --card:#161526;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--border3:rgba(255,255,255,0.22);
-  --text:#dddaf0;--text2:#9a98b5;--text3:#5a587a;
-  --gold:#e8c547;--gold2:#f5d76e;--gold3:#a88a20;
-  --purple:#7c5cbf;--purple2:#9b7ee0;--purple3:#c4aaff;
-  --teal:#2cb67d;--teal2:#3de09a;
-  --coral:#e85d4a;--coral2:#ff7b6b;
-  --blue:#4a9eff;--pink:#d4549a;
-  --amber:#f5a623;--green:#3ecf8e;--red:#ff4d4d;
-  --accent:#9b7ee0;--muted:#9a98b5;
-}
-body{
-  margin:0;
-  font-family:system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
+  if (ua.includes("Firefox")) browser = "Firefox";
+  else if (ua.includes("Chrome")) browser = "Chrome";
+  else if (ua.includes("Safari")) browser = "Safari";
+  else if (ua.includes("Edge")) browser = "Edge";
 
-header{
-  padding:20px;
-  border-bottom:1px solid var(--border);
+  if (/Mobi|Android|iPhone|iPad/i.test(ua)) device = "Mobile/Tablet";
+
+  return {
+    browser,
+    device,
+    appVersion: "1.0.0",
+    sourceApplication: window.location.pathname
+  };
 }
 
-h1{
-  margin:0;
-  font-size:1.5rem;
+// ── USER SUBMISSION HANDLER ──────────────────────────────────────────────
+/**
+ * Submits user feedback to the backend worker.
+ * @param {Object} formData - { type, title, description }
+ */
+export async function submitUserFeedback({ type, title, description }) {
+  const meta = getSystemMeta();
+  
+  const payload = {
+    type: sanitizeText(type),
+    title: sanitizeText(title),
+    description: sanitizeText(description),
+    ...meta
+  };
+
+  return await apiRequest("/feedback/submit", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
-nav{
-  display:flex;
-  gap:12px;
-  margin-top:10px;
-  flex-wrap:wrap;
-}
+// ── ADMIN FEEDBACK MANAGEMENT ─────────────────────────────────────────────
 
-nav a{
-  color:var(--accent);
-  text-decoration:none;
-}
-
-.container{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
-
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:20px;
-}
-
-label{
-  display:block;
-  margin-top:16px;
-  margin-bottom:6px;
-  font-weight:600;
-}
-
-input,
-select,
-textarea{
-  width:100%;
-  box-sizing:border-box;
-  padding:10px;
-  border-radius:8px;
-  border:1px solid var(--border);
-  background:var(--bg3);
-  color:var(--text);
-}
-
-textarea{
-  min-height:180px;
-  resize:vertical;
-}
-
-button{
-  margin-top:20px;
-  border:none;
-  padding:12px 18px;
-  border-radius:8px;
-  cursor:pointer;
-  background:var(--accent);
-  color:white;
-  font-weight:600;
-}
-
-button:hover{
-  opacity:.9;
-}
-
-.status{
-  margin-top:15px;
-}
-
-.small{
-  color:var(--muted);
-  font-size:.9rem;
-}
-
-.success{
-  color:#52d273;
-}
-
-.error{
-  color:#ff6b6b;
-}
-</style>
-</head>
-<body>
-
-<header>
-  <h1>GCSE Vault Feedback</h1>
-
-  <nav>
-    <a href="/GcseVault/dates/">DateVault</a>
-    <a href="/GcseVault/quotes/">QuoteVault</a>
-    <a href="/GcseVault/feedback/">Feedback & Bugs</a>
-  </nav>
-</header>
-
-<div class="container">
-
-  <div class="card">
-
-    <p class="small">
-      Submit feature requests, bug reports, or general feedback.
-    </p>
-
-    <form id="feedbackForm">
-
-      <label for="type">Type</label>
-
-      <select id="type" required>
-        <option value="Feature Request">Feature Request</option>
-        <option value="Bug Report">Bug Report</option>
-        <option value="General Feedback">General Feedback</option>
-      </select>
-
-      <label for="title">Title</label>
-
-      <input
-        id="title"
-        maxlength="150"
-        required
-      >
-
-      <label for="description">Description</label>
-
-      <textarea
-        id="description"
-        maxlength="5000"
-        required
-      ></textarea>
-
-      <label for="device">
-        Device (optional)
-      </label>
-
-      <input
-        id="device"
-        placeholder="PC, Laptop, Mobile, Tablet..."
-      >
-
-      <label for="version">
-        App Version (optional)
-      </label>
-
-      <input
-        id="version"
-        placeholder="1.0.0"
-      >
-
-      <button type="submit">
-        Submit Feedback
-      </button>
-
-    </form>
-
-    <div
-      id="status"
-      class="status"
-    ></div>
-
-  </div>
-
-</div>
-
-<script>
-
-/* ===========================
-   Theme Sync
-=========================== */
-
-
-/* ===========================
-   Theme Sync
-=========================== */
-
-const THEMES = {
-  'default': {
-    label:'Vault', desc:'The original dark-purple theme',
-    '--bg':'#0b0a14','--bg2':'#12111f','--bg3':'#1a192b','--bg4':'#22203a','--bg5':'#2a2840',
-    '--card':'#161526','--border':'rgba(255,255,255,0.07)','--border2':'rgba(255,255,255,0.13)','--border3':'rgba(255,255,255,0.22)',
-    '--text':'#dddaf0','--text2':'#9a98b5','--text3':'#5a587a',
-    '--gold':'#e8c547','--gold2':'#f5d76e','--gold3':'#a88a20',
-    '--purple':'#7c5cbf','--purple2':'#9b7ee0','--purple3':'#c4aaff',
-    '--teal':'#2cb67d','--teal2':'#3de09a',
-    '--coral':'#e85d4a','--coral2':'#ff7b6b',
-    '--blue':'#4a9eff','--pink':'#d4549a','--amber':'#f5a623','--green':'#3ecf8e','--red':'#ff4d4d',
-  },
-  'midnight': {
-    label:'Midnight', desc:'Deep navy with indigo accents',
-    '--bg':'#080c14','--bg2':'#0e1220','--bg3':'#141a2c','--bg4':'#1c2438','--bg5':'#242e46',
-    '--card':'#0e1220','--border':'rgba(99,132,255,0.09)','--border2':'rgba(99,132,255,0.16)','--border3':'rgba(99,132,255,0.26)',
-    '--text':'#e4eaf8','--text2':'#8899cc','--text3':'#3d4d78',
-    '--gold':'#f0c060','--gold2':'#f8d880','--gold3':'#a07820',
-    '--purple':'#6366f1','--purple2':'#818cf8','--purple3':'#c7d2fe',
-    '--teal':'#06b6d4','--teal2':'#22d3ee',
-    '--coral':'#f43f5e','--coral2':'#fb7185',
-    '--blue':'#60a5fa','--pink':'#e879f9','--amber':'#fbbf24','--green':'#34d399','--red':'#f87171',
-  },
-  'forest': {
-    label:'Forest', desc:'Rich emerald & golden moss',
-    '--bg':'#080f0a','--bg2':'#0e1a10','--bg3':'#142318','--bg4':'#1b2e20','--bg5':'#223929',
-    '--card':'#0e1a10','--border':'rgba(80,200,120,0.09)','--border2':'rgba(80,200,120,0.15)','--border3':'rgba(80,200,120,0.24)',
-    '--text':'#d8f0d0','--text2':'#7ab888','--text3':'#3a6644',
-    '--gold':'#d4a840','--gold2':'#e8c060','--gold3':'#8a6818',
-    '--purple':'#8b7cc8','--purple2':'#a898e0','--purple3':'#ccc4f8',
-    '--teal':'#2ecc80','--teal2':'#48e8a0',
-    '--coral':'#e06040','--coral2':'#f08060',
-    '--blue':'#5ab0e8','--pink':'#d478b8','--amber':'#d4a030','--green':'#40d890','--red':'#e04848',
-  },
-  'paper': {
-    label:'Parchment', desc:'Soft warm cream — easy on the eyes in daylight',
-    '--bg':'#f7f3eb','--bg2':'#ffffff','--bg3':'#eee8dc','--bg4':'#e4ddd0','--bg5':'#d9d0c2',
-    '--card':'#ffffff','--border':'rgba(160,120,60,0.12)','--border2':'rgba(160,120,60,0.22)','--border3':'rgba(160,120,60,0.35)',
-    '--text':'#211c14','--text2':'#7a6a52','--text3':'#b8a888',
-    '--gold':'#b06a00','--gold2':'#d08820','--gold3':'#7a4800',
-    '--purple':'#6040b8','--purple2':'#8060d8','--purple3':'#3a2888',
-    '--teal':'#1a7860','--teal2':'#22a07a',
-    '--coral':'#c82c18','--coral2':'#e04830',
-    '--blue':'#1a58b0','--pink':'#b02878','--amber':'#b86000','--green':'#1e7840','--red':'#b81818',
-  },
-  'slate': {
-    label:'Obsidian', desc:'Pure black with electric teal',
-    '--bg':'#05080d','--bg2':'#0a0e16','--bg3':'#10141f','--bg4':'#171d2e','--bg5':'#1f273d',
-    '--card':'#0a0e16','--border':'rgba(0,220,200,0.08)','--border2':'rgba(0,220,200,0.14)','--border3':'rgba(0,220,200,0.24)',
-    '--text':'#e0f0f4','--text2':'#60a8b8','--text3':'#2a5868',
-    '--gold':'#f0c040','--gold2':'#f8d860','--gold3':'#a07820',
-    '--purple':'#8060e0','--purple2':'#a080ff','--purple3':'#c8b4ff',
-    '--teal':'#00d8c8','--teal2':'#20f0e0',
-    '--coral':'#ff4060','--coral2':'#ff6080',
-    '--blue':'#40b0f8','--pink':'#f060d0','--amber':'#f8a800','--green':'#00e890','--red':'#ff3050',
-  },
-  'rose': {
-    label:'Rose', desc:'Warm rose-noir with blush accents',
-    '--bg':'#100a0c','--bg2':'#180e12','--bg3':'#201419','--bg4':'#2a1c22','--bg5':'#34242c',
-    '--card':'#180e12','--border':'rgba(240,100,130,0.09)','--border2':'rgba(240,100,130,0.16)','--border3':'rgba(240,100,130,0.26)',
-    '--text':'#f4e0e6','--text2':'#c07888','--text3':'#705058',
-    '--gold':'#e8a060','--gold2':'#f0b880','--gold3':'#a06030',
-    '--purple':'#c060b0','--purple2':'#d880c8','--purple3':'#f0b8e8',
-    '--teal':'#60c0a0','--teal2':'#80d8b8',
-    '--coral':'#e84060','--coral2':'#f06080',
-    '--blue':'#80a8f0','--pink':'#e868b0','--amber':'#e8a040','--green':'#60c888','--red':'#e83050',
-  },
-  'amber': {
-    label:'Amber', desc:'Warm amber & coffee — cosy and focused',
-    '--bg':'#0e0a04','--bg2':'#160f06','--bg3':'#1e160a','--bg4':'#281e10','--bg5':'#322618',
-    '--card':'#160f06','--border':'rgba(220,150,40,0.09)','--border2':'rgba(220,150,40,0.16)','--border3':'rgba(220,150,40,0.26)',
-    '--text':'#f4e8cc','--text2':'#c09858','--text3':'#806030',
-    '--gold':'#f0b020','--gold2':'#f8c840','--gold3':'#a07010',
-    '--purple':'#9870d0','--purple2':'#b090e8','--purple3':'#d0c0ff',
-    '--teal':'#50b888','--teal2':'#70d0a0',
-    '--coral':'#e86040','--coral2':'#f07858',
-    '--blue':'#70a8e0','--pink':'#d07098','--amber':'#f09820','--green':'#60c070','--red':'#e85030',
-  },
-  'barker-orange': {
-  label: 'Barker Orange', desc: 'For those who know 💀',
-  '--bg': '#ff9500', '--bg2': '#ff0000', '--bg3': '#ff9f0a', '--bg4': '#ffa712', '--bg5': '#ffaf1a',
-  '--card': '#c800ff', '--border': 'rgba(255,255,255,0.07)', '--border2': 'rgba(255,255,255,0.13)', '--border3': 'rgba(255,255,255,0.22)',
-  '--text': '#000000', '--text2': '#242334', '--text3': '#060516',
-  '--gold': '#00ff11', '--gold2': '#0fff20', '--gold3': '#00eb00',
-  '--purple': '#05ffd5', '--purple2': '#00eeff', '--purple3': '#c4aaff',
-  '--teal': '#2cb67d', '--teal2': '#3ec88f',
-  '--coral': '#e85d4a', '--coral2': '#f76c59',
-  '--blue': '#ff00c8', '--pink': '#d4549a', '--amber': '#f5a623', '--green': '#3ecf8e', '--red': '#ff4d4d',
-},
-  'bricked-device': {
-  label: 'Bricked Device', desc: 'Good luck 💀',
-  '--bg': '#000000', '--bg2': '#000000', '--bg3': '#000000', '--bg4': '#000000', '--bg5': '#000000',
-  '--card': '#000000', '--border': 'rgba(0,0,0,0)', '--border2': 'rgba(0,0,0,0)', '--border3': 'rgba(0,0,0,0)',
-  '--text': '#000000', '--text2': '#000000', '--text3': '#000000',
-  '--gold': '#000000', '--gold2': '#000000', '--gold3': '#000000',
-  '--purple': '#000000', '--purple2': '#000000', '--purple3': '#000000',
-  '--teal': '#000000', '--teal2': '#000000',
-  '--coral': '#000000', '--coral2': '#000000',
-  '--blue': '#000000', '--pink': '#000000', '--amber': '#000000', '--green': '#000000', '--red': '#000000',
-},
-};
-// ════════════════════════════════════════════════
-// COLOUR THEMES (read-only — applies & syncs, no builder)
-// ════════════════════════════════════════════════
-function _getReadOnlyAllThemes(){
-  try{
-    const dvCustom=JSON.parse(localStorage.getItem('dv_custom_themes')||'{}');
-    const qvCustom=JSON.parse(localStorage.getItem('qv_custom_themes')||'{}');
-    return{...THEMES,...dvCustom,...qvCustom};
-  }catch{return THEMES;}
-}
-
-function applyTheme(key){
-  const all=_getReadOnlyAllThemes();
-  const t=all[key]||THEMES['default'];
-  const root=document.documentElement.style;
-  Object.entries(t).forEach(([k,v])=>{if(k.startsWith('--'))root.setProperty(k,v);});
-}
-
-function initTheme(){
-  const k=localStorage.getItem('vt_theme')||'default';
-  applyTheme(k);
-  // Load custom themes from server in case we're on a new device
-  const uk = localStorage.getItem('vault_userKey');
-  if(uk){
-    fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk))
-      .then(r=>r.ok?r.json():null)
-      .then(d=>{
-        if(d&&d.themes&&typeof d.themes==='object'){
-          localStorage.setItem('dv_custom_themes',JSON.stringify(d.themes));
-          applyTheme(k);
-        }
-      }).catch(()=>{});
+/**
+ * Fetches all feedback submissions (Admin only).
+ */
+export async function fetchAllFeedback() {
+  if (!hasAdminSession()) {
+    throw new Error("Admin authorization required to fetch feedback.");
   }
+
+  const res = await apiRequest("/feedback/list", {
+    method: "GET"
+  });
+
+  return res.items || [];
 }
-// Stay in sync when theme changes in another tab/vault
-window.addEventListener('storage',e=>{
-  if(e.key==='vt_theme'&&e.newValue)applyTheme(e.newValue);
-});
-/* ===========================
-   Feedback Submission
-=========================== */
 
-const WORKER_URL =
-  "https://quotevault-api.noah-l-barker.workers.dev";
+/**
+ * Deletes a single feedback record by ID (Admin only).
+ * @param {string} id - The ID of the feedback entry to delete
+ */
+export async function deleteFeedback(id) {
+  if (!hasAdminSession()) {
+    throw new Error("Admin authorization required to delete feedback.");
+  }
 
-const form =
-  document.getElementById(
-    "feedbackForm"
-  );
+  return await apiRequest("/feedback/delete", {
+    method: "POST",
+    body: JSON.stringify({
+      id,
+      token: getAdminToken()
+    })
+  });
+}
 
-const statusBox =
-  document.getElementById(
-    "status"
-  );
+// ── UI CONTROLLER & RENDERING HELPERS ─────────────────────────────────────
 
-form.addEventListener(
-  "submit",
-  async (e)=>{
+/**
+ * Renders the admin feedback table/list into a target container element.
+ * @param {HTMLElement|string} container - DOM element or query selector
+ */
+export async function renderAdminFeedbackPanel(container) {
+  const target = typeof container === "string" ? document.querySelector(container) : container;
+  if (!target) return;
 
-    e.preventDefault();
+  target.innerHTML = `<div class="loading">Loading feedback...</div>`;
 
-    statusBox.textContent =
-      "Submitting...";
+  try {
+    const items = await fetchAllFeedback();
 
-    try{
+    if (items.length === 0) {
+      target.innerHTML = `<div class="empty">No feedback entries found.</div>`;
+      return;
+    }
 
-      const payload = {
+    let html = `
+      <div class="feedback-panel">
+        <h3>User Feedback (${formatNumber(items.length)})</h3>
+        <div class="feedback-list">
+    `;
 
-        type:
-          document.getElementById("type").value,
+    items.forEach(item => {
+      html += `
+        <div class="feedback-card" data-id="${item.id}">
+          <div class="feedback-header">
+            <span class="type-badge ${sanitizeText(item.type).toLowerCase()}">${sanitizeText(item.type)}</span>
+            <strong class="feedback-title">${sanitizeText(item.title)}</strong>
+            <small class="feedback-date">${new Date(item.timestamp).toLocaleString()}</small>
+          </div>
+          <p class="feedback-desc">${sanitizeText(item.description)}</p>
+          <div class="feedback-meta">
+            <span>Device: ${sanitizeText(item.device)}</span> | 
+            <span>Browser: ${sanitizeText(item.browser)}</span> | 
+            <span>Source: ${sanitizeText(item.sourceApplication)}</span>
+          </div>
+          <button class="btn-delete-feedback" data-action="delete" data-id="${item.id}">Delete</button>
+        </div>
+      `;
+    });
 
-        title:
-          document.getElementById("title").value.trim(),
+    html += `</div></div>`;
+    target.innerHTML = html;
 
-        description:
-          document.getElementById("description").value.trim(),
-
-        device:
-          document.getElementById("device").value.trim(),
-
-        browser:
-          navigator.userAgent,
-
-        appVersion:
-          document.getElementById("version").value.trim(),
-
-        sourceApplication:
-          "Feedback"
-
-      };
-
-      const response =
-        await fetch(
-          WORKER_URL +
-          "/feedback/submit",
-          {
-            method:"POST",
-            headers:{
-              "Content-Type":
-              "application/json"
-            },
-            body:
-              JSON.stringify(payload)
+    // Attach event delegation for delete buttons
+    target.addEventListener("click", async (e) => {
+      if (e.target.dataset.action === "delete") {
+        const id = e.target.dataset.id;
+        if (confirm("Are you sure you want to delete this feedback item?")) {
+          try {
+            await deleteFeedback(id);
+            const card = target.querySelector(`.feedback-card[data-id="${id}"]`);
+            if (card) card.remove();
+          } catch (err) {
+            alert(`Failed to delete: ${err.message}`);
           }
-        );
-
-      const data =
-        await response.json();
-
-      if(!response.ok){
-        throw new Error(
-          data.error ||
-          "Submission failed"
-        );
+        }
       }
+    });
 
-      statusBox.innerHTML =
-        `<span class="success">
-          Feedback submitted successfully.
-        </span>`;
-
-      form.reset();
-
-    }
-    catch(err){
-
-      statusBox.innerHTML =
-        `<span class="error">
-          ${err.message}
-        </span>`;
-    }
-
+  } catch (err) {
+    target.innerHTML = `<div class="error-msg">Error loading feedback: ${sanitizeText(err.message)}</div>`;
   }
-);
-initTheme();
-
-</script>
-<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "342ab992b7ac4a8fa52d8111c5e84cd0"}'></script><!-- End Cloudflare Web Analytics -->
-</body>
-</html>
+}

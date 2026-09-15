@@ -1,0 +1,833 @@
+export default {
+  async fetch(request, env) {
+
+    const url = new URL(request.url);
+
+    const cors = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key"
+    };
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: cors });
+    }
+
+    const ADMIN_KEY = env.ADMIN_KEY;
+
+    async function isAuthorized(reqUrl, req) {
+      const pw = reqUrl.searchParams.get("pw");
+      const header = req.headers.get("X-Admin-Key");
+      const token = reqUrl.searchParams.get("token") || req.headers.get("X-Session-Token");
+      if (pw === ADMIN_KEY || header === ADMIN_KEY) return true;
+      if (token) {
+        const val = await env.QUOTEVAULT.get("session:" + token);
+        return val === "1";
+      }
+      return false;
+    }
+
+    // ── AUTH ─────────────────────────────────────────────────────────────────
+    if (url.pathname === "/auth" && request.method === "POST") {
+      const body = await request.json();
+      if (body.pw !== ADMIN_KEY) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+      const token =
+        Date.now().toString(36) + "-" +
+        Math.random().toString(36).slice(2, 14) + "-" +
+        Math.random().toString(36).slice(2, 14);
+      await env.QUOTEVAULT.put("session:" + token, "1", { expirationTtl: 3600 });
+      return new Response(JSON.stringify({ token }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT QUOTES (public) ────────────────────────────────────────────
+    if (url.pathname === "/quotes" && request.method === "GET") {
+      const list = await env.PUBLIC_QUOTES.list();
+      const items = [];
+      for (const key of list.keys) {
+        const value = await env.PUBLIC_QUOTES.get(key.name, "json");
+        if (value) items.push(value);
+      }
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT PENDING ────────────────────────────────────────────────────
+    if (url.pathname === "/pending" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+      const list = await env.QUOTEVAULT.list();
+      const items = [];
+      for (const key of list.keys) {
+        if (key.name.startsWith("session:")) continue;
+        const value = await env.QUOTEVAULT.get(key.name, "json");
+        if (value) items.push(value);
+      }
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT WITHDRAW (user removes their own pending submission) ──────────
+    if (url.pathname === "/withdraw" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, id } = body;
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+
+      // Verify ownership: check the id is in this user's qv_pending_ids in DB
+      if (userKey) {
+        try {
+          const row = await env.DB.prepare(
+            `SELECT qv_pending_ids, qv_pending_data FROM users WHERE user_key = ?`
+          ).bind(userKey).first();
+
+          if (row) {
+            const pendingIds = JSON.parse(row.qv_pending_ids || "[]");
+            if (!pendingIds.map(String).includes(String(id))) {
+              return new Response("Forbidden", { status: 403, headers: cors });
+            }
+            const newPendingIds = pendingIds.filter(i => String(i) !== String(id));
+            const pendingData = JSON.parse(row.qv_pending_data || "[]");
+            const newPendingData = pendingData.filter(p => String(p.id) !== String(id));
+            await env.DB.prepare(
+              `UPDATE users SET qv_pending_ids=?, qv_pending_data=?, updated_at=? WHERE user_key=?`
+            ).bind(
+              JSON.stringify(newPendingIds),
+              JSON.stringify(newPendingData),
+              new Date().toISOString(),
+              userKey
+            ).run();
+          }
+        } catch (e) { /* non-fatal — proceed to KV delete */ }
+      }
+
+      await env.QUOTEVAULT.delete(id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT SUBMIT ─────────────────────────────────────────────────────
+    if (url.pathname === "/submit" && request.method === "POST") {
+      const data = await request.json();
+      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      data.id = id;
+      data.submittedAt = new Date().toISOString();
+      await env.QUOTEVAULT.put(id, JSON.stringify(data));
+      return new Response(JSON.stringify({ success: true, id }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT APPROVE ────────────────────────────────────────────────────
+    if (url.pathname === "/approve" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quote = await env.QUOTEVAULT.get(body.id, "json");
+      if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(quote));
+      await env.QUOTEVAULT.delete(body.id);
+
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT user_key, qv_pending_ids, qv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
+        ).bind(`%${body.id}%`).all();
+        for (const row of results) {
+          const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
+          const rejectedIds = JSON.parse(row.qv_rejected_ids || "[]").filter(i => i !== body.id);
+          await env.DB.prepare(
+            `UPDATE users SET qv_pending_ids=?, qv_rejected_ids=?, updated_at=? WHERE user_key=?`
+          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
+        }
+      } catch (e) { /* non-fatal */ }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT REJECT ─────────────────────────────────────────────────────
+    if (url.pathname === "/reject" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete(body.id);
+
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
+        ).bind(`%${body.id}%`).all();
+        for (const row of results) {
+          const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
+          const rejectedIds = [...new Set([...JSON.parse(row.qv_rejected_ids || "[]"), body.id])];
+          await env.DB.prepare(
+            `UPDATE users SET qv_pending_ids=?, qv_rejected_ids=?, updated_at=? WHERE user_key=?`
+          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
+        }
+      } catch (e) { /* non-fatal */ }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT UPDATE PUBLIC ──────────────────────────────────────────────
+    if (url.pathname === "/update-public" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      if (!existing) return new Response("Not found", { status: 404, headers: cors });
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
+      await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── QUOTEVAULT DELETE PUBLIC ──────────────────────────────────────────────
+    if (url.pathname === "/delete" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.PUBLIC_QUOTES.delete(body.id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── DATEVAULT ROUTES ──────────────────────────────────────────────────────
+
+        if (url.pathname === "/dv/submit" && request.method === "POST") {
+      const data = await request.json();
+      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      data.id = id;
+      data.submittedAt = new Date().toISOString();
+      await env.DV_PENDING.put(id, JSON.stringify(data));
+      return new Response(JSON.stringify({ success: true, id }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/withdraw" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, id } = body;
+
+      if (!userKey || !id) {
+        return new Response("Missing fields", { status: 400, headers: cors });
+      }
+
+      try {
+        const row = await env.DB.prepare(
+          `SELECT dv_pending_ids, dv_pending_data FROM users WHERE user_key = ?`
+        ).bind(userKey).first();
+
+        if (row) {
+          const pendingIds = JSON.parse(row.dv_pending_ids || "[]")
+            .filter(x => String(x) !== String(id));
+          const pendingData = JSON.parse(row.dv_pending_data || "[]")
+            .filter(x => String(x.id) !== String(id));
+
+          await env.DB.prepare(`
+            UPDATE users
+            SET dv_pending_ids=?, dv_pending_data=?, updated_at=?
+            WHERE user_key=?
+          `).bind(
+            JSON.stringify(pendingIds),
+            JSON.stringify(pendingData),
+            new Date().toISOString(),
+            userKey
+          ).run();
+        }
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 500,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+
+      await env.DV_PENDING.delete(id);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/quotes" && request.method === "GET") {
+      const list = await env.DV_PUBLIC.list();
+      const items = [];
+      for (const key of list.keys) {
+        const value = await env.DV_PUBLIC.get(key.name, "json");
+        if (value) items.push(value);
+      }
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/pending" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+      const list = await env.DV_PENDING.list();
+      const items = [];
+      for (const key of list.keys) {
+        if (key.name.startsWith("session:")) continue;
+        const value = await env.DV_PENDING.get(key.name, "json");
+        if (value) items.push(value);
+      }
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/approve" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quote = await env.DV_PENDING.get(body.id, "json");
+      if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await env.DV_PUBLIC.put(body.id, JSON.stringify(quote));
+      await env.DV_PENDING.delete(body.id);
+
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE dv_pending_ids LIKE ?`
+        ).bind(`%${body.id}%`).all();
+        for (const row of results) {
+          const pendingIds = JSON.parse(row.dv_pending_ids || "[]").filter(i => i !== body.id);
+          const rejectedIds = JSON.parse(row.dv_rejected_ids || "[]").filter(i => i !== body.id);
+          await env.DB.prepare(
+            `UPDATE users SET dv_pending_ids=?, dv_rejected_ids=?, updated_at=? WHERE user_key=?`
+          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
+        }
+      } catch (e) { /* non-fatal */ }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/reject" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DV_PENDING.delete(body.id);
+
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE dv_pending_ids LIKE ?`
+        ).bind(`%${body.id}%`).all();
+        for (const row of results) {
+          const pendingIds = JSON.parse(row.dv_pending_ids || "[]").filter(i => i !== body.id);
+          const rejectedIds = [...new Set([...JSON.parse(row.dv_rejected_ids || "[]"), body.id])];
+          await env.DB.prepare(
+            `UPDATE users SET dv_pending_ids=?, dv_rejected_ids=?, updated_at=? WHERE user_key=?`
+          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
+        }
+      } catch (e) { /* non-fatal */ }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/update-pending" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.DV_PENDING.get(body.id, "json");
+      if (!existing) return new Response("Not found", { status: 404, headers: cors });
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
+      await env.DV_PENDING.put(body.id, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/update-public" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      if (!existing) return new Response("Not found", { status: 404, headers: cors });
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
+      await env.DV_PUBLIC.put(body.id, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/dv/delete" && request.method === "POST") {
+      const body = await request.json();
+      const tok = body.token || body.pw;
+      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DV_PUBLIC.delete(body.id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // LEADERBOARD ROUTES — powered by D1 (SQLite)
+    // ════════════════════════════════════════════════════════════════════════
+
+    // GET /lb/list
+    if (url.pathname === "/lb/list" && request.method === "GET") {
+      const { results } = await env.DB.prepare(`
+        SELECT user_key, username, qv_mastered, dv_mastered, qv_xp, dv_xp,
+               streak, max_streak, updated_at
+        FROM users
+        ORDER BY (qv_xp + dv_xp) DESC
+      `).all();
+
+      const users = results.map(r => ({
+        userKey:     r.user_key,
+        username:    r.username,
+        qv_mastered: r.qv_mastered,
+        dv_mastered: r.dv_mastered,
+        qv_xp:       r.qv_xp,
+        dv_xp:       r.dv_xp,
+        streak:      r.streak     || 0,
+        max_streak:  r.max_streak || 0,
+        updatedAt:   r.updated_at,
+      }));
+
+      return new Response(JSON.stringify({ users }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // GET /lb/get?userKey=X  or  /lb/get?username=X
+    if (url.pathname === "/lb/get" && request.method === "GET") {
+      const userKey  = url.searchParams.get("userKey");
+      const username = url.searchParams.get("username");
+
+      let row;
+      if (userKey) {
+        row = await env.DB.prepare(`SELECT * FROM users WHERE user_key = ?`).bind(userKey).first();
+      } else if (username) {
+        row = await env.DB.prepare(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`).bind(username.trim()).first();
+      } else {
+        return new Response("Missing userKey or username", { status: 400, headers: cors });
+      }
+
+      if (!row) {
+        return new Response(JSON.stringify({ found: false }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+
+      const user = {
+        userKey:          row.user_key,
+        username:         row.username,
+        qv_mastered:      row.qv_mastered,
+        dv_mastered:      row.dv_mastered,
+        qv_xp:            row.qv_xp,
+        dv_xp:            row.dv_xp,
+        streak:           row.streak     || 0,
+        max_streak:       row.max_streak || 0,
+        qv_mastered_ids:  JSON.parse(row.qv_mastered_ids  || "[]"),
+        dv_mastered_ids:  JSON.parse(row.dv_mastered_ids  || "[]"),
+        qv_pending_ids:   JSON.parse(row.qv_pending_ids   || "[]"),
+        dv_pending_ids:   JSON.parse(row.dv_pending_ids   || "[]"),
+        qv_rejected_ids:  JSON.parse(row.qv_rejected_ids  || "[]"),
+        dv_rejected_ids:  JSON.parse(row.dv_rejected_ids  || "[]"),
+        qv_pending_data:  JSON.parse(row.qv_pending_data  || "[]"),
+        dv_pending_data:  JSON.parse(row.dv_pending_data  || "[]"),
+        theme:            row.theme || "",
+        updatedAt:        row.updated_at,
+      };
+
+      return new Response(JSON.stringify({ found: true, user }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // POST /lb/register — upsert a user's stats
+    if (url.pathname === "/lb/register" && request.method === "POST") {
+      const body = await request.json();
+      let { userKey, username, site, mastered, xp, mastered_ids,
+            pending_ids, pending_data, theme } = body;
+
+      if (!username || !site || mastered === undefined || xp === undefined) {
+        return new Response("Missing fields", { status: 400, headers: cors });
+      }
+
+      const clean = username.trim();
+      if (clean.length < 3 || clean.length > 20 || !/^[a-zA-Z0-9_-]+$/.test(clean)) {
+        return new Response(
+          JSON.stringify({ error: "Username must be 3–20 characters, letters, numbers, _ or - only." }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
+
+      const incomingIds = Array.isArray(mastered_ids)
+        ? mastered_ids.map(String).slice(0, 2000)
+        : [];
+
+      const incomingPendingIds = Array.isArray(pending_ids)
+        ? pending_ids.map(String).slice(0, 500)
+        : null;
+
+      const incomingPendingData = Array.isArray(pending_data)
+        ? pending_data.slice(0, 500)
+        : null;
+
+      const MAX_XP_JUMP       = 1500;
+      const MAX_MASTERED_JUMP = 1;
+
+      if (userKey) {
+        const existing = await env.DB.prepare(
+          `SELECT * FROM users WHERE user_key = ?`
+        ).bind(userKey).first();
+
+        if (!existing || existing.username.toLowerCase() !== clean.toLowerCase()) {
+          const conflict = await env.DB.prepare(
+            `SELECT user_key FROM users WHERE LOWER(username) = LOWER(?) AND user_key != ?`
+          ).bind(clean, userKey).first();
+          if (conflict) {
+            return new Response(
+              JSON.stringify({ error: "Username already taken" }),
+              { status: 409, headers: { ...cors, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        if (existing) {
+          const prevXP       = existing[`${site}_xp`]      || 0;
+          const prevMastered = existing[`${site}_mastered`] || 0;
+
+          if (xp < prevXP) {
+            return new Response(JSON.stringify({
+              success: false, error: "XP cannot decrease",
+              userKey, user: rowToUser(existing)
+            }), { headers: { ...cors, "Content-Type": "application/json" } });
+          }
+          if (xp - prevXP > MAX_XP_JUMP) {
+            return new Response(JSON.stringify({
+              success: false, error: "XP jump too large, dont edit your files you naughty boy!",
+              userKey, user: rowToUser(existing)
+            }), { headers: { ...cors, "Content-Type": "application/json" } });
+          }
+          if (mastered - prevMastered > MAX_MASTERED_JUMP) {
+            return new Response(JSON.stringify({
+              success: false, error: "Mastered jump too large, dont edit your files you naughty boy!",
+              userKey, user: rowToUser(existing)
+            }), { headers: { ...cors, "Content-Type": "application/json" } });
+          }
+          if (mastered < prevMastered) mastered = prevMastered;
+        }
+
+        const storedIds = JSON.parse(existing?.[`${site}_mastered_ids`] || "[]");
+        const mergedIds = [...new Set([...storedIds, ...incomingIds])].slice(0, 2000);
+
+        const storedPendingIds   = JSON.parse(existing?.[`${site}_pending_ids`]  || "[]");
+        const storedPendingData  = JSON.parse(existing?.[`${site}_pending_data`] || "[]");
+        const storedRejectedIds  = JSON.parse(existing?.[`${site}_rejected_ids`] || "[]");
+
+        const newPendingIds  = incomingPendingIds  !== null ? incomingPendingIds  : storedPendingIds;
+        const newPendingData = incomingPendingData !== null ? incomingPendingData : storedPendingData;
+
+        const newTheme = (theme !== undefined && theme !== null) ? theme : (existing?.theme || "");
+
+        const qv_mastered     = site === "qv" ? mastered     : (existing?.qv_mastered || 0);
+        const dv_mastered     = site === "dv" ? mastered     : (existing?.dv_mastered || 0);
+        const qv_xp           = site === "qv" ? xp           : (existing?.qv_xp || 0);
+        const dv_xp           = site === "dv" ? xp           : (existing?.dv_xp || 0);
+        const qv_mastered_ids = site === "qv" ? JSON.stringify(mergedIds) : (existing?.qv_mastered_ids || "[]");
+        const dv_mastered_ids = site === "dv" ? JSON.stringify(mergedIds) : (existing?.dv_mastered_ids || "[]");
+        const qv_pending_ids  = site === "qv" ? JSON.stringify(newPendingIds)  : (existing?.qv_pending_ids  || "[]");
+        const dv_pending_ids  = site === "dv" ? JSON.stringify(newPendingIds)  : (existing?.dv_pending_ids  || "[]");
+        const qv_pending_data = site === "qv" ? JSON.stringify(newPendingData) : (existing?.qv_pending_data || "[]");
+        const dv_pending_data = site === "dv" ? JSON.stringify(newPendingData) : (existing?.dv_pending_data || "[]");
+        const qv_rejected_ids = existing?.qv_rejected_ids || "[]";
+        const dv_rejected_ids = existing?.dv_rejected_ids || "[]";
+        const updated_at      = new Date().toISOString();
+
+        await env.DB.prepare(`
+          INSERT INTO users (user_key, username, qv_mastered, dv_mastered, qv_xp, dv_xp,
+            qv_mastered_ids, dv_mastered_ids,
+            qv_pending_ids, dv_pending_ids, qv_pending_data, dv_pending_data,
+            qv_rejected_ids, dv_rejected_ids, theme, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_key) DO UPDATE SET
+            username=excluded.username,
+            qv_mastered=excluded.qv_mastered, dv_mastered=excluded.dv_mastered,
+            qv_xp=excluded.qv_xp, dv_xp=excluded.dv_xp,
+            qv_mastered_ids=excluded.qv_mastered_ids, dv_mastered_ids=excluded.dv_mastered_ids,
+            qv_pending_ids=excluded.qv_pending_ids, dv_pending_ids=excluded.dv_pending_ids,
+            qv_pending_data=excluded.qv_pending_data, dv_pending_data=excluded.dv_pending_data,
+            qv_rejected_ids=excluded.qv_rejected_ids, dv_rejected_ids=excluded.dv_rejected_ids,
+            theme=excluded.theme, updated_at=excluded.updated_at
+        `).bind(
+          userKey, clean, qv_mastered, dv_mastered, qv_xp, dv_xp,
+          qv_mastered_ids, dv_mastered_ids,
+          qv_pending_ids, dv_pending_ids, qv_pending_data, dv_pending_data,
+          qv_rejected_ids, dv_rejected_ids, newTheme, updated_at
+        ).run();
+
+        const user = {
+          userKey, username: clean,
+          qv_mastered, dv_mastered, qv_xp, dv_xp,
+          streak:      existing?.streak     || 0,
+          max_streak:  existing?.max_streak || 0,
+          qv_mastered_ids: JSON.parse(qv_mastered_ids),
+          dv_mastered_ids: JSON.parse(dv_mastered_ids),
+          qv_pending_ids:  JSON.parse(qv_pending_ids),
+          dv_pending_ids:  JSON.parse(dv_pending_ids),
+          qv_pending_data: JSON.parse(qv_pending_data),
+          dv_pending_data: JSON.parse(dv_pending_data),
+          qv_rejected_ids: JSON.parse(qv_rejected_ids),
+          dv_rejected_ids: JSON.parse(dv_rejected_ids),
+          theme:           newTheme,
+          updatedAt:       updated_at,
+        };
+        return new Response(JSON.stringify({ success: true, userKey, user }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+
+      } else {
+        const conflict = await env.DB.prepare(
+          `SELECT user_key FROM users WHERE LOWER(username) = LOWER(?)`
+        ).bind(clean).first();
+        if (conflict) {
+          return new Response(
+            JSON.stringify({ error: "Username already taken", existingKey: conflict.user_key }),
+            { status: 409, headers: { ...cors, "Content-Type": "application/json" } }
+          );
+        }
+
+        const kvKey      = "user:" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        const updated_at = new Date().toISOString();
+        const qv_mastered_ids = site === "qv" ? JSON.stringify(incomingIds) : "[]";
+        const dv_mastered_ids = site === "dv" ? JSON.stringify(incomingIds) : "[]";
+        const qv_pending_ids  = site === "qv" && incomingPendingIds ? JSON.stringify(incomingPendingIds) : "[]";
+        const dv_pending_ids  = site === "dv" && incomingPendingIds ? JSON.stringify(incomingPendingIds) : "[]";
+        const qv_pending_data = site === "qv" && incomingPendingData ? JSON.stringify(incomingPendingData) : "[]";
+        const dv_pending_data = site === "dv" && incomingPendingData ? JSON.stringify(incomingPendingData) : "[]";
+        const newTheme = theme || "";
+
+        await env.DB.prepare(`
+          INSERT INTO users (user_key, username, qv_mastered, dv_mastered, qv_xp, dv_xp,
+            qv_mastered_ids, dv_mastered_ids,
+            qv_pending_ids, dv_pending_ids, qv_pending_data, dv_pending_data,
+            qv_rejected_ids, dv_rejected_ids, theme, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', '[]', ?, ?)
+        `).bind(
+          kvKey, clean,
+          site === "qv" ? mastered : 0,
+          site === "dv" ? mastered : 0,
+          site === "qv" ? xp : 0,
+          site === "dv" ? xp : 0,
+          qv_mastered_ids, dv_mastered_ids,
+          qv_pending_ids, dv_pending_ids, qv_pending_data, dv_pending_data,
+          newTheme, updated_at
+        ).run();
+
+        const user = {
+          userKey: kvKey, username: clean,
+          qv_mastered: site === "qv" ? mastered : 0,
+          dv_mastered: site === "dv" ? mastered : 0,
+          qv_xp: site === "qv" ? xp : 0,
+          dv_xp: site === "dv" ? xp : 0,
+          streak:     0,
+          max_streak: 0,
+          qv_mastered_ids: site === "qv" ? incomingIds : [],
+          dv_mastered_ids: site === "dv" ? incomingIds : [],
+          qv_pending_ids:  site === "qv" && incomingPendingIds ? incomingPendingIds : [],
+          dv_pending_ids:  site === "dv" && incomingPendingIds ? incomingPendingIds : [],
+          qv_pending_data: site === "qv" && incomingPendingData ? incomingPendingData : [],
+          dv_pending_data: site === "dv" && incomingPendingData ? incomingPendingData : [],
+          qv_rejected_ids: [],
+          dv_rejected_ids: [],
+          theme:           newTheme,
+          updatedAt:       updated_at,
+        };
+        return new Response(JSON.stringify({ success: true, userKey: kvKey, user }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ── POST /lb/update-theme — lightweight theme-only update ─────────────────
+    if (url.pathname === "/lb/update-theme" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, theme } = body;
+      if (!userKey || theme === undefined) {
+        return new Response("Missing fields", { status: 400, headers: cors });
+      }
+      try {
+        await env.DB.prepare(
+          `UPDATE users SET theme=?, updated_at=? WHERE user_key=?`
+        ).bind(theme, new Date().toISOString(), userKey).run();
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    if (url.pathname === "/lb/streak" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, streak, max_streak } = body;
+      if (!userKey) {
+        return new Response("Missing userKey", { status: 400, headers: cors });
+      }
+      try {
+        await env.DB.prepare(
+          `UPDATE users
+           SET streak = ?,
+               max_streak = CASE WHEN ? > COALESCE(max_streak, 0) THEN ? ELSE COALESCE(max_streak, 0) END,
+               updated_at = ?
+           WHERE user_key = ?`
+        ).bind(streak, max_streak, max_streak, new Date().toISOString(), userKey).run();
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CUSTOM THEMES — stored in THEMES KV, keyed by "theme:{userKey}:{themeKey}"
+    //
+    // Requires a KV namespace bound as env.THEMES in wrangler.toml:
+    //   [[kv_namespaces]]
+    //   binding = "THEMES"
+    //   id = "<your-kv-namespace-id>"
+    // ════════════════════════════════════════════════════════════════════════
+
+    // POST /themes/save — upsert a single custom theme for a user
+    // Body: { userKey, key, theme: { label, desc, '--bg': ..., ... } }
+    if (url.pathname === "/themes/save" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, key, theme } = body;
+      if (!userKey || !key || !theme) {
+        return new Response("Missing fields", { status: 400, headers: cors });
+      }
+      // Validate: key must be safe (alphanumeric + _ only, max 80 chars)
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key).replace(/[^a-zA-Z0-9_]/g, '_'))) {
+        return new Response("Invalid key", { status: 400, headers: cors });
+      }
+      // Strip any non-CSS-var keys to keep the payload small & safe
+      const safeTheme = { label: String(theme.label || '').slice(0, 60), desc: String(theme.desc || '').slice(0, 120) };
+      Object.entries(theme).forEach(([k, v]) => {
+        if (k.startsWith('--')) safeTheme[k] = String(v).slice(0, 80);
+      });
+      const kvKey = `theme:${userKey}:${key}`;
+      await env.THEMES.put(kvKey, JSON.stringify(safeTheme));
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // GET /themes/list?userKey=X — return all custom themes for a user
+    if (url.pathname === "/themes/list" && request.method === "GET") {
+      const userKey = url.searchParams.get("userKey");
+      if (!userKey) {
+        return new Response("Missing userKey", { status: 400, headers: cors });
+      }
+      const prefix = `theme:${userKey}:`;
+      const list = await env.THEMES.list({ prefix });
+      const themes = {};
+      for (const kv of list.keys) {
+        const themeKey = kv.name.slice(prefix.length);
+        const val = await env.THEMES.get(kv.name, "json");
+        if (val) themes[themeKey] = val;
+      }
+      return new Response(JSON.stringify({ themes }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // DELETE /themes/delete — remove a custom theme
+    // Body: { userKey, key }
+    if (url.pathname === "/themes/delete" && request.method === "POST") {
+      const body = await request.json();
+      const { userKey, key } = body;
+      if (!userKey || !key) {
+        return new Response("Missing fields", { status: 400, headers: cors });
+      }
+      await env.THEMES.delete(`theme:${userKey}:${key}`);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
+    if (url.pathname === "/feedback/submit" && request.method === "POST") {
+      const body = await request.json();
+      const sanitize = (str) => String(str || "").replace(/[<>]/g, "").trim();
+      const type = sanitize(body.type);
+      const title = sanitize(body.title);
+      const description = sanitize(body.description);
+      if (!type || !title || !description) {
+        return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
+          status: 400, headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      const id = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+      const record = {
+        id, type, title, description,
+        device: sanitize(body.device),
+        browser: sanitize(body.browser),
+        appVersion: sanitize(body.appVersion),
+        sourceApplication: sanitize(body.sourceApplication),
+        timestamp: new Date().toISOString()
+      };
+      await env.FEEDBACK.put(id, JSON.stringify(record));
+      return new Response(JSON.stringify({ success: true, id }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response("Not found", { status: 404, headers: cors });
+  }
+};
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+function rowToUser(row) {
+  return {
+    userKey:          row.user_key,
+    username:         row.username,
+    qv_mastered:      row.qv_mastered,
+    dv_mastered:      row.dv_mastered,
+    qv_xp:            row.qv_xp,
+    dv_xp:            row.dv_xp,
+    streak:           row.streak     || 0,
+    max_streak:       row.max_streak || 0,
+    qv_mastered_ids:  JSON.parse(row.qv_mastered_ids  || "[]"),
+    dv_mastered_ids:  JSON.parse(row.dv_mastered_ids  || "[]"),
+    qv_pending_ids:   JSON.parse(row.qv_pending_ids   || "[]"),
+    dv_pending_ids:   JSON.parse(row.dv_pending_ids   || "[]"),
+    qv_pending_data:  JSON.parse(row.qv_pending_data  || "[]"),
+    dv_pending_data:  JSON.parse(row.dv_pending_data  || "[]"),
+    qv_rejected_ids:  JSON.parse(row.qv_rejected_ids  || "[]"),
+    dv_rejected_ids:  JSON.parse(row.dv_rejected_ids  || "[]"),
+    theme:            row.theme || "",
+    updatedAt:        row.updated_at,
+  };
+}
