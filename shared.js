@@ -1,5 +1,5 @@
 // ── CONFIGURATION ─────────────────────────────────────────────────────────
-const API_BASE = "https://quotevault-api.noah-l-barker.workers.dev/";
+const API_BASE = "https://quotevault-api.noah-l-barker.workers.dev";
 
 // ── API CLIENT WRAPPER ────────────────────────────────────────────────────
 /**
