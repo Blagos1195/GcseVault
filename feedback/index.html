@@ -1,145 +1,332 @@
-import { 
-  apiRequest, 
-  hasAdminSession, 
-  getAdminToken, 
-  sanitizeText, 
-  formatNumber 
-} from '../shared.js';
-
-// ── SYSTEM METADATA HELPER ────────────────────────────────────────────────
-/** Detects basic browser and device info to attach to feedback reports */
-function getSystemMeta() {
-  const ua = navigator.userAgent;
-  let browser = "Unknown";
-  let device = "Desktop";
-
-  if (ua.includes("Firefox")) browser = "Firefox";
-  else if (ua.includes("Chrome")) browser = "Chrome";
-  else if (ua.includes("Safari")) browser = "Safari";
-  else if (ua.includes("Edge")) browser = "Edge";
-
-  if (/Mobi|Android|iPhone|iPad/i.test(ua)) device = "Mobile/Tablet";
-
-  return {
-    browser,
-    device,
-    appVersion: "1.0.0",
-    sourceApplication: window.location.pathname
-  };
-}
-
-// ── USER SUBMISSION HANDLER ──────────────────────────────────────────────
-/**
- * Submits user feedback to the backend worker.
- * @param {Object} formData - { type, title, description }
- */
-export async function submitUserFeedback({ type, title, description }) {
-  const meta = getSystemMeta();
-  
-  const payload = {
-    type: sanitizeText(type),
-    title: sanitizeText(title),
-    description: sanitizeText(description),
-    ...meta
-  };
-
-  return await apiRequest("/feedback/submit", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-}
-
-// ── ADMIN FEEDBACK MANAGEMENT ─────────────────────────────────────────────
-
-/**
- * Fetches all feedback submissions (Admin only).
- */
-export async function fetchAllFeedback() {
-  if (!hasAdminSession()) {
-    throw new Error("Admin authorization required to fetch feedback.");
-  }
-
-  const res = await apiRequest("/feedback/list", {
-    method: "GET"
-  });
-
-  return res.items || [];
-}
-
-/**
- * Deletes a single feedback record by ID (Admin only).
- * @param {string} id - The ID of the feedback entry to delete
- */
-export async function deleteFeedback(id) {
-  if (!hasAdminSession()) {
-    throw new Error("Admin authorization required to delete feedback.");
-  }
-
-  return await apiRequest("/feedback/delete", {
-    method: "POST",
-    body: JSON.stringify({
-      id,
-      token: getAdminToken()
-    })
-  });
-}
-
-// ── UI CONTROLLER & RENDERING HELPERS ─────────────────────────────────────
-
-/**
- * Renders the admin feedback table/list into a target container element.
- * @param {HTMLElement|string} container - DOM element or query selector
- */
-export async function renderAdminFeedbackPanel(container) {
-  const target = typeof container === "string" ? document.querySelector(container) : container;
-  if (!target) return;
-
-  target.innerHTML = `<div class="loading">Loading feedback...</div>`;
-
-  try {
-    const items = await fetchAllFeedback();
-
-    if (items.length === 0) {
-      target.innerHTML = `<div class="empty">No feedback entries found.</div>`;
-      return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GcseVault - Feedback</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --primary: #3b82f6;
+      --danger: #ef4444;
+      --border: #334155;
     }
 
-    let html = `
-      <div class="feedback-panel">
-        <h3>User Feedback (${formatNumber(items.length)})</h3>
-        <div class="feedback-list">
-    `;
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-    items.forEach(item => {
-      html += `
-        <div class="feedback-card" data-id="${item.id}">
-          <div class="feedback-header">
-            <span class="type-badge ${sanitizeText(item.type).toLowerCase()}">${sanitizeText(item.type)}</span>
-            <strong class="feedback-title">${sanitizeText(item.title)}</strong>
-            <small class="feedback-date">${new Date(item.timestamp).toLocaleString()}</small>
-          </div>
-          <p class="feedback-desc">${sanitizeText(item.description)}</p>
-          <div class="feedback-meta">
-            <span>Device: ${sanitizeText(item.device)}</span> | 
-            <span>Browser: ${sanitizeText(item.browser)}</span> | 
-            <span>Source: ${sanitizeText(item.sourceApplication)}</span>
-          </div>
-          <button class="btn-delete-feedback" data-action="delete" data-id="${item.id}">Delete</button>
+    .container {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .card {
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    h2, h3 {
+      margin-top: 0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    input, select, textarea {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .feedback-card {
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 0;
+    }
+
+    .feedback-card:last-child {
+      border-bottom: none;
+    }
+
+    .feedback-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .type-badge {
+      background-color: var(--primary);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .feedback-meta {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 0.5rem;
+    }
+
+    .btn-delete-feedback {
+      background-color: var(--danger);
+      margin-top: 0.5rem;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+    }
+
+    .status-msg {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- SUBMIT FEEDBACK FORM -->
+    <div class="card">
+      <h2>Submit Feedback</h2>
+      <form id="feedback-form">
+        <div class="form-group">
+          <label for="type">Type</label>
+          <select id="type" required>
+            <option value="Bug">Bug Report</option>
+            <option value="Feature">Feature Request</option>
+            <option value="General">General Feedback</option>
+          </select>
         </div>
-      `;
+
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input type="text" id="title" placeholder="Brief summary..." required />
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" rows="4" placeholder="Provide details..." required></textarea>
+        </div>
+
+        <button type="submit" id="btn-submit">Submit Feedback</button>
+        <div id="form-status" class="status-msg"></div>
+      </form>
+    </div>
+
+    <!-- ADMIN FEEDBACK REVIEW PANEL -->
+    <div class="card" id="admin-panel" style="display: none;">
+      <div id="admin-feedback-container"></div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT MODULE -->
+  <script type="module">
+    import { 
+      apiRequest, 
+      hasAdminSession, 
+      getAdminToken, 
+      sanitizeText, 
+      formatNumber, 
+      applyTheme, 
+      getSavedUserProfile 
+    } from '../shared.js';
+
+    // ── INITIALIZATION ──────────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", () => {
+      const profile = getSavedUserProfile();
+      if (profile && profile.theme) {
+        applyTheme(profile.theme);
+      }
+
+      if (hasAdminSession()) {
+        const adminPanel = document.getElementById("admin-panel");
+        if (adminPanel) {
+          adminPanel.style.display = "block";
+          renderAdminFeedbackPanel("#admin-feedback-container");
+        }
+      }
     });
 
-    html += `</div></div>`;
-    target.innerHTML = html;
+    // ── SYSTEM METADATA HELPER ──────────────────────────────────────────────
+    function getSystemMeta() {
+      const ua = navigator.userAgent;
+      let browser = "Unknown";
+      let device = "Desktop";
 
-    // Attach event delegation for delete buttons
-    target.addEventListener("click", async (e) => {
+      if (ua.includes("Firefox")) browser = "Firefox";
+      else if (ua.includes("Chrome")) browser = "Chrome";
+      else if (ua.includes("Safari")) browser = "Safari";
+      else if (ua.includes("Edge")) browser = "Edge";
+
+      if (/Mobi|Android|iPhone|iPad/i.test(ua)) device = "Mobile/Tablet";
+
+      return {
+        browser,
+        device,
+        appVersion: "1.0.0",
+        sourceApplication: window.location.pathname
+      };
+    }
+
+    // ── USER SUBMISSION HANDLER ────────────────────────────────────────────
+    const feedbackForm = document.getElementById("feedback-form");
+    const statusMsg = document.getElementById("form-status");
+
+    feedbackForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusMsg.style.color = "var(--text)";
+      statusMsg.textContent = "Submitting...";
+
+      const type = document.getElementById("type").value;
+      const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
+
+      try {
+        const meta = getSystemMeta();
+        const payload = {
+          type: sanitizeText(type),
+          title: sanitizeText(title),
+          description: sanitizeText(description),
+          ...meta
+        };
+
+        await apiRequest("/feedback/submit", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        statusMsg.style.color = "#10b981";
+        statusMsg.textContent = "Feedback submitted successfully!";
+        feedbackForm.reset();
+
+        if (hasAdminSession()) {
+          renderAdminFeedbackPanel("#admin-feedback-container");
+        }
+      } catch (err) {
+        statusMsg.style.color = "var(--danger)";
+        statusMsg.textContent = `Error: ${err.message}`;
+      }
+    });
+
+    // ── ADMIN FEEDBACK MANAGEMENT ───────────────────────────────────────────
+    async function fetchAllFeedback() {
+      if (!hasAdminSession()) {
+        throw new Error("Admin authorization required to fetch feedback.");
+      }
+      const res = await apiRequest("/feedback/list", { method: "GET" });
+      return res.items || [];
+    }
+
+    async function deleteFeedback(id) {
+      if (!hasAdminSession()) {
+        throw new Error("Admin authorization required to delete feedback.");
+      }
+      return await apiRequest("/feedback/delete", {
+        method: "POST",
+        body: JSON.stringify({
+          id,
+          token: getAdminToken()
+        })
+      });
+    }
+
+    async function renderAdminFeedbackPanel(containerSelector) {
+      const target = document.querySelector(containerSelector);
+      if (!target) return;
+
+      target.innerHTML = `<div class="loading">Loading feedback entries...</div>`;
+
+      try {
+        const items = await fetchAllFeedback();
+
+        if (items.length === 0) {
+          target.innerHTML = `<h3>User Feedback</h3><p>No feedback entries found.</p>`;
+          return;
+        }
+
+        let html = `
+          <h3>User Feedback (${formatNumber(items.length)})</h3>
+          <div class="feedback-list">
+        `;
+
+        items.forEach(item => {
+          html += `
+            <div class="feedback-card" data-id="${item.id}">
+              <div class="feedback-header">
+                <span class="type-badge">${sanitizeText(item.type)}</span>
+                <strong>${sanitizeText(item.title)}</strong>
+                <small style="margin-left: auto; color: #94a3b8;">
+                  ${new Date(item.timestamp).toLocaleString()}
+                </small>
+              </div>
+              <p style="margin: 0.5rem 0;">${sanitizeText(item.description)}</p>
+              <div class="feedback-meta">
+                Device: ${sanitizeText(item.device)} | 
+                Browser: ${sanitizeText(item.browser)} | 
+                Source: ${sanitizeText(item.sourceApplication)}
+              </div>
+              <button class="btn-delete-feedback" data-action="delete" data-id="${item.id}">Delete</button>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+        target.innerHTML = html;
+
+      } catch (err) {
+        target.innerHTML = `<div style="color: var(--danger);">Error loading feedback: ${sanitizeText(err.message)}</div>`;
+      }
+    }
+
+    // Event delegation for admin delete actions
+    document.getElementById("admin-feedback-container").addEventListener("click", async (e) => {
       if (e.target.dataset.action === "delete") {
         const id = e.target.dataset.id;
         if (confirm("Are you sure you want to delete this feedback item?")) {
           try {
             await deleteFeedback(id);
-            const card = target.querySelector(`.feedback-card[data-id="${id}"]`);
+            const card = document.querySelector(`.feedback-card[data-id="${id}"]`);
             if (card) card.remove();
           } catch (err) {
             alert(`Failed to delete: ${err.message}`);
@@ -147,8 +334,6 @@ export async function renderAdminFeedbackPanel(container) {
         }
       }
     });
-
-  } catch (err) {
-    target.innerHTML = `<div class="error-msg">Error loading feedback: ${sanitizeText(err.message)}</div>`;
-  }
-}
+  </script>
+</body>
+</html>
