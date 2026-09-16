@@ -10,7 +10,7 @@ export default {
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: cors });
+      return new Response(null, { status: 204, headers: cors });
     }
 
     const ADMIN_KEY = env.ADMIN_KEY;
@@ -843,6 +843,58 @@ export default {
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
+    }
+
+    // ── REVISION STUDY GUIDE GENERATOR (admin only) ──────────────────────────
+    if (url.pathname === "/generate" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+      let body;
+      try { body = await request.json(); } catch {
+        return new Response(JSON.stringify({ error: "Missing 'material' field in request body." }), {
+          status: 400, headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      if (typeof body.material !== "string" || !body.material.trim()) {
+        return new Response(JSON.stringify({ error: "Missing 'material' field in request body." }), {
+          status: 400, headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+
+      const schema = {
+        type: "object",
+        properties: {
+          flashcards: { type: "array", items: { type: "object", properties: { front: { type: "string" }, back: { type: "string" } }, required: ["front", "back"] } },
+          practice_questions: { type: "array", items: { type: "object", properties: { question: { type: "string" }, answer: { type: "string" } }, required: ["question", "answer"] } },
+          linked_ideas: { type: "array", items: { type: "object", properties: { concept_a: { type: "string" }, concept_b: { type: "string" }, relationship: { type: "string" } }, required: ["concept_a", "concept_b", "relationship"] } }
+        },
+        required: ["flashcards", "practice_questions", "linked_ideas"]
+      };
+
+      try {
+        const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
+          messages: [
+            { role: "system", content: "Act as a careful study assistant. Generate flashcards, practice questions, and linked ideas only from the supplied study material. Be concise, accurate, and return the requested JSON structure." },
+            { role: "user", content: body.material.slice(0, 120000) }
+          ],
+          response_format: { type: "json_schema", json_schema: { name: "study_guide", schema } }
+        });
+        return new Response(JSON.stringify(result), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      } catch (error) {
+        const message = String(error?.message || error || "");
+        const status = error?.status || error?.statusCode;
+        if (status === 429 || message.includes("3036")) {
+          return new Response(JSON.stringify({ error: "You've used today's free AI allocation. Please try again after midnight UTC." }), {
+            status: 429, headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ error: "Failed to generate study guide. Please try again." }), {
+          status: 500, headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
     }
 
     return new Response("Not found", { status: 404, headers: cors });
