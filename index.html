@@ -266,8 +266,9 @@ html,body{
 
 </div>
 
+<script src="shared.js"></script>
 <script>
-const WORKER_URL = "https://quotevault-api.noah-l-barker.workers.dev";
+const WORKER_URL = ThemeManager.WORKER_URL;
 
 const THEMES = {
   'default':{'--bg':'#0b0a14','--bg2':'#12111f','--bg3':'#1a192b','--bg4':'#22203a','--bg5':'#2a2840','--card':'#161526','--border':'rgba(255,255,255,0.07)','--border2':'rgba(255,255,255,0.13)','--border3':'rgba(255,255,255,0.22)','--text':'#dddaf0','--text2':'#9a98b5','--text3':'#5a587a','--gold':'#e8c547','--gold2':'#f5d76e','--gold3':'#a88a20','--purple':'#7c5cbf','--purple2':'#9b7ee0','--purple3':'#c4aaff','--teal':'#2cb67d','--teal2':'#3de09a','--coral':'#e85d4a','--coral2':'#ff7b6b','--blue':'#4a9eff','--pink':'#d4549a','--amber':'#f5a623','--green':'#3ecf8e','--red':'#ff4d4d'},
@@ -280,41 +281,23 @@ const THEMES = {
 };
 
 function getAllThemes(){
-  try{
-    const custom=JSON.parse(localStorage.getItem('dv_custom_themes')||'{}');
-    return{...THEMES,...custom};
-  }catch{return THEMES;}
+  return ThemeManager.getAllThemes('global');
 }
 
 function applyTheme(key){
-  const all=getAllThemes();
-  const t=all[key]||THEMES['default'];
-  const root=document.documentElement.style;
-  Object.entries(t).forEach(([k,v])=>{if(k.startsWith('--'))root.setProperty(k,v);});
+  ThemeManager.applyTheme(key, 'global');
 }
 
 async function initTheme(){
   const k=localStorage.getItem('vt_theme')||'default';
-  // Load custom themes from server first so custom keys resolve correctly
-  const uk=localStorage.getItem('lb_userKey');
-  if(uk){
-    try{
-      const r=await fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk));
-      if(r.ok){
-        const d=await r.json();
-        if(d.themes&&typeof d.themes==='object'){
-          localStorage.setItem('dv_custom_themes',JSON.stringify(d.themes));
-        }
-      }
-    }catch(e){}
-  }
+  await ThemeManager.loadServerCustomThemes('global');
   applyTheme(k);
 }
 
 // Stay in sync when theme changes in another tab/vault
 window.addEventListener('storage',e=>{
   if(e.key==='vt_theme'&&e.newValue)applyTheme(e.newValue);
-  if(e.key==='dv_custom_themes')applyTheme(localStorage.getItem('vt_theme')||'default');
+  if(e.key==='vt_custom_themes')applyTheme(localStorage.getItem('vt_theme')||'default');
 });
 
 initTheme();

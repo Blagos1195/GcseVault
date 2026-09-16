@@ -804,6 +804,47 @@ export default {
       });
     }
 
+    // ── FEEDBACK LIST (admin only) ───────────────────────────────────────────
+    if (url.pathname === "/feedback/list" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+
+      const items = [];
+      let cursor;
+      do {
+        const page = await env.FEEDBACK.list(cursor ? { cursor } : {});
+        for (const key of page.keys) {
+          const value = await env.FEEDBACK.get(key.name, "json");
+          if (value) items.push(value);
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+
+      items.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+      return new Response(JSON.stringify({ items }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    // ── FEEDBACK DELETE (admin only) ──────────────────────────────────────────
+    if (url.pathname === "/feedback/delete" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) {
+        return new Response("Unauthorized", { status: 401, headers: cors });
+      }
+
+      const body = await request.json();
+      const id = String(body.id || '').trim();
+      if (!id) {
+        return new Response("Missing id", { status: 400, headers: cors });
+      }
+
+      await env.FEEDBACK.delete(id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
     return new Response("Not found", { status: 404, headers: cors });
   }
 };

@@ -223,428 +223,42 @@ select option{background:var(--bg3)}
 </div>
 <div id="toast"></div>
 
+<script src="../shared.js"></script>
 <script>
-const WORKER_URL = "https://quotevault-api.noah-l-barker.workers.dev";
+const WORKER_URL = ThemeManager.WORKER_URL;
+const THEMES = ThemeManager.defaultThemes;
+const THEME_VAR_GROUPS = ThemeManager.THEME_VAR_GROUPS;
 
-// ════════════════════════════════════════════════
-// COLOUR THEMES
-// ════════════════════════════════════════════════
-// ── built-in themes (keep 'default' key — it is referenced elsewhere) ──
-const THEMES = {
-  'default': {
-    label:'Vault', desc:'The original dark-purple theme',
-    '--bg':'#0b0a14','--bg2':'#12111f','--bg3':'#1a192b','--bg4':'#22203a','--bg5':'#2a2840',
-    '--card':'#161526','--border':'rgba(255,255,255,0.07)','--border2':'rgba(255,255,255,0.13)','--border3':'rgba(255,255,255,0.22)',
-    '--text':'#dddaf0','--text2':'#9a98b5','--text3':'#5a587a',
-    '--gold':'#e8c547','--gold2':'#f5d76e','--gold3':'#a88a20',
-    '--purple':'#7c5cbf','--purple2':'#9b7ee0','--purple3':'#c4aaff',
-    '--teal':'#2cb67d','--teal2':'#3de09a',
-    '--coral':'#e85d4a','--coral2':'#ff7b6b',
-    '--blue':'#4a9eff','--pink':'#d4549a','--amber':'#f5a623','--green':'#3ecf8e','--red':'#ff4d4d',
-  },
-  'midnight': {
-    label:'Midnight', desc:'Deep navy with indigo accents',
-    '--bg':'#080c14','--bg2':'#0e1220','--bg3':'#141a2c','--bg4':'#1c2438','--bg5':'#242e46',
-    '--card':'#0e1220','--border':'rgba(99,132,255,0.09)','--border2':'rgba(99,132,255,0.16)','--border3':'rgba(99,132,255,0.26)',
-    '--text':'#e4eaf8','--text2':'#8899cc','--text3':'#3d4d78',
-    '--gold':'#f0c060','--gold2':'#f8d880','--gold3':'#a07820',
-    '--purple':'#6366f1','--purple2':'#818cf8','--purple3':'#c7d2fe',
-    '--teal':'#06b6d4','--teal2':'#22d3ee',
-    '--coral':'#f43f5e','--coral2':'#fb7185',
-    '--blue':'#60a5fa','--pink':'#e879f9','--amber':'#fbbf24','--green':'#34d399','--red':'#f87171',
-  },
-  'forest': {
-    label:'Forest', desc:'Rich emerald & golden moss',
-    '--bg':'#080f0a','--bg2':'#0e1a10','--bg3':'#142318','--bg4':'#1b2e20','--bg5':'#223929',
-    '--card':'#0e1a10','--border':'rgba(80,200,120,0.09)','--border2':'rgba(80,200,120,0.15)','--border3':'rgba(80,200,120,0.24)',
-    '--text':'#d8f0d0','--text2':'#7ab888','--text3':'#3a6644',
-    '--gold':'#d4a840','--gold2':'#e8c060','--gold3':'#8a6818',
-    '--purple':'#8b7cc8','--purple2':'#a898e0','--purple3':'#ccc4f8',
-    '--teal':'#2ecc80','--teal2':'#48e8a0',
-    '--coral':'#e06040','--coral2':'#f08060',
-    '--blue':'#5ab0e8','--pink':'#d478b8','--amber':'#d4a030','--green':'#40d890','--red':'#e04848',
-  },
-  'paper': {
-    label:'Parchment', desc:'Soft warm cream — easy on the eyes in daylight',
-    '--bg':'#f7f3eb','--bg2':'#ffffff','--bg3':'#eee8dc','--bg4':'#e4ddd0','--bg5':'#d9d0c2',
-    '--card':'#ffffff','--border':'rgba(160,120,60,0.12)','--border2':'rgba(160,120,60,0.22)','--border3':'rgba(160,120,60,0.35)',
-    '--text':'#211c14','--text2':'#7a6a52','--text3':'#b8a888',
-    '--gold':'#b06a00','--gold2':'#d08820','--gold3':'#7a4800',
-    '--purple':'#6040b8','--purple2':'#8060d8','--purple3':'#3a2888',
-    '--teal':'#1a7860','--teal2':'#22a07a',
-    '--coral':'#c82c18','--coral2':'#e04830',
-    '--blue':'#1a58b0','--pink':'#b02878','--amber':'#b86000','--green':'#1e7840','--red':'#b81818',
-  },
-  'slate': {
-    label:'Obsidian', desc:'Pure black with electric teal',
-    '--bg':'#05080d','--bg2':'#0a0e16','--bg3':'#10141f','--bg4':'#171d2e','--bg5':'#1f273d',
-    '--card':'#0a0e16','--border':'rgba(0,220,200,0.08)','--border2':'rgba(0,220,200,0.14)','--border3':'rgba(0,220,200,0.24)',
-    '--text':'#e0f0f4','--text2':'#60a8b8','--text3':'#2a5868',
-    '--gold':'#f0c040','--gold2':'#f8d860','--gold3':'#a07820',
-    '--purple':'#8060e0','--purple2':'#a080ff','--purple3':'#c8b4ff',
-    '--teal':'#00d8c8','--teal2':'#20f0e0',
-    '--coral':'#ff4060','--coral2':'#ff6080',
-    '--blue':'#40b0f8','--pink':'#f060d0','--amber':'#f8a800','--green':'#00e890','--red':'#ff3050',
-  },
-  'rose': {
-    label:'Rose', desc:'Warm rose-noir with blush accents',
-    '--bg':'#100a0c','--bg2':'#180e12','--bg3':'#201419','--bg4':'#2a1c22','--bg5':'#34242c',
-    '--card':'#180e12','--border':'rgba(240,100,130,0.09)','--border2':'rgba(240,100,130,0.16)','--border3':'rgba(240,100,130,0.26)',
-    '--text':'#f4e0e6','--text2':'#c07888','--text3':'#705058',
-    '--gold':'#e8a060','--gold2':'#f0b880','--gold3':'#a06030',
-    '--purple':'#c060b0','--purple2':'#d880c8','--purple3':'#f0b8e8',
-    '--teal':'#60c0a0','--teal2':'#80d8b8',
-    '--coral':'#e84060','--coral2':'#f06080',
-    '--blue':'#80a8f0','--pink':'#e868b0','--amber':'#e8a040','--green':'#60c888','--red':'#e83050',
-  },
-  'amber': {
-    label:'Amber', desc:'Warm amber & coffee — cosy and focused',
-    '--bg':'#0e0a04','--bg2':'#160f06','--bg3':'#1e160a','--bg4':'#281e10','--bg5':'#322618',
-    '--card':'#160f06','--border':'rgba(220,150,40,0.09)','--border2':'rgba(220,150,40,0.16)','--border3':'rgba(220,150,40,0.26)',
-    '--text':'#f4e8cc','--text2':'#c09858','--text3':'#806030',
-    '--gold':'#f0b020','--gold2':'#f8c840','--gold3':'#a07010',
-    '--purple':'#9870d0','--purple2':'#b090e8','--purple3':'#d0c0ff',
-    '--teal':'#50b888','--teal2':'#70d0a0',
-    '--coral':'#e86040','--coral2':'#f07858',
-    '--blue':'#70a8e0','--pink':'#d07098','--amber':'#f09820','--green':'#60c070','--red':'#e85030',
-  },
-  'barker-orange': {
-  label: 'Barker Orange', desc: 'For those who know 💀',
-  '--bg': '#ff9500', '--bg2': '#ff0000', '--bg3': '#ff9f0a', '--bg4': '#ffa712', '--bg5': '#ffaf1a',
-  '--card': '#c800ff', '--border': 'rgba(255,255,255,0.07)', '--border2': 'rgba(255,255,255,0.13)', '--border3': 'rgba(255,255,255,0.22)',
-  '--text': '#000000', '--text2': '#242334', '--text3': '#060516',
-  '--gold': '#00ff11', '--gold2': '#0fff20', '--gold3': '#00eb00',
-  '--purple': '#05ffd5', '--purple2': '#00eeff', '--purple3': '#c4aaff',
-  '--teal': '#2cb67d', '--teal2': '#3ec88f',
-  '--coral': '#e85d4a', '--coral2': '#f76c59',
-  '--blue': '#ff00c8', '--pink': '#d4549a', '--amber': '#f5a623', '--green': '#3ecf8e', '--red': '#ff4d4d',
-},
-  'bricked-device': {
-  label: 'Bricked Device', desc: 'Good luck 💀',
-  '--bg': '#000000', '--bg2': '#000000', '--bg3': '#000000', '--bg4': '#000000', '--bg5': '#000000',
-  '--card': '#000000', '--border': 'rgba(0,0,0,0)', '--border2': 'rgba(0,0,0,0)', '--border3': 'rgba(0,0,0,0)',
-  '--text': '#000000', '--text2': '#000000', '--text3': '#000000',
-  '--gold': '#000000', '--gold2': '#000000', '--gold3': '#000000',
-  '--purple': '#000000', '--purple2': '#000000', '--purple3': '#000000',
-  '--teal': '#000000', '--teal2': '#000000',
-  '--coral': '#000000', '--coral2': '#000000',
-  '--blue': '#000000', '--pink': '#000000', '--amber': '#000000', '--green': '#000000', '--red': '#000000',
-},
-
+const getCustomThemes = () => ThemeManager.getCustomThemes('date');
+const saveCustomThemes = (obj) => ThemeManager.saveCustomThemes(obj, 'date');
+const getAllThemes = () => ThemeManager.getAllThemes('date');
+const applyTheme = (key) => ThemeManager.applyTheme(key, 'date');
+const initTheme = () => ThemeManager.initTheme('date');
+const _tcReadAll = () => ThemeManager._tcReadAll();
+const tcLiveUpdate = () => ThemeManager.tcLiveUpdate();
+const tcImportFromCode = () => ThemeManager.tcImportFromCode();
+const tcCopyAsCode = () => ThemeManager.tcCopyAsCode();
+const saveCustomTheme = (editKey) => ThemeManager.saveCustomTheme(editKey, 'date');
+const loadServerCustomThemes = () => ThemeManager.loadServerCustomThemes('date');
+const deleteCustomTheme = (key) => ThemeManager.deleteCustomTheme(key, 'date');
+const openThemeBuilder = (editKey) => ThemeManager.openThemeBuilder(editKey, 'date');
+const tcCancelPreview = (editKey) => ThemeManager.tcCancelPreview();
+const _varToHex = (value) => ThemeManager._varToHex(value);
+const _varToAlpha = (value) => ThemeManager._varToAlpha(value);
+const _buildRgba = (hexVal, alphaVal) => ThemeManager._buildRgba(hexVal, alphaVal);
+const lighten = (hex, amt) => {
+  try {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.max(0, Math.min(255, r + amt));
+    g = Math.max(0, Math.min(255, g + amt));
+    b = Math.max(0, Math.min(255, b + amt));
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  } catch (error) {
+    return hex;
+  }
 };
-
-// ── custom themes: stored in localStorage ──
-function getCustomThemes(){
-  try{return JSON.parse(localStorage.getItem('dv_custom_themes')||'{}');}catch{return {};}
-}
-function saveCustomThemes(obj){
-  localStorage.setItem('dv_custom_themes',JSON.stringify(obj));
-}
-function getAllThemes(){
-  return {...THEMES,...getCustomThemes()};
-}
-
-function applyTheme(key){
-  const all=getAllThemes();
-  const t=all[key]||THEMES['default'];
-  const root=document.documentElement.style;
-  Object.entries(t).forEach(([k,v])=>{if(k.startsWith('--'))root.setProperty(k,v);});
-  // Save to shared cross-app key so both Vault apps stay in sync
-  localStorage.setItem('vt_theme',key);
-  if(S&&S.settings){S.settings.theme=key;save();}
-  // Push theme to worker for cross-device sync (fire and forget)
-  const uk=getUserKey();
-  if(uk){
-    fetch(WORKER_URL+'/lb/update-theme',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userKey:uk,theme:key})}).catch(()=>{});
-  }
-}
-
-function initTheme(){
-  // Prefer shared key, fall back to per-app settings, then default
-  const k=localStorage.getItem('vt_theme')||(S&&S.settings&&S.settings.theme)||'default';
-  const all=getAllThemes();
-  const t=all[k]||THEMES['default'];
-  const root=document.documentElement.style;
-  Object.entries(t).forEach(([k2,v])=>{if(k2.startsWith('--'))root.setProperty(k2,v);});
-  if(S&&S.settings)S.settings.theme=k;
-}
-
-// ── custom theme builder ──
-// All CSS vars, grouped, with human labels
-const THEME_VAR_GROUPS = [
-  { group: 'Backgrounds', vars: [
-    ['Background (deepest)','--bg'],
-    ['Background 2 (sidebar/topbar)','--bg2'],
-    ['Background 3 (surface)','--bg3'],
-    ['Background 4','--bg4'],
-    ['Background 5 (lightest)','--bg5'],
-    ['Card','--card'],
-  ]},
-  { group: 'Borders', vars: [
-    ['Border (subtle)','--border'],
-    ['Border 2 (normal)','--border2'],
-    ['Border 3 (strong)','--border3'],
-  ]},
-  { group: 'Text', vars: [
-    ['Text (primary)','--text'],
-    ['Text 2 (muted)','--text2'],
-    ['Text 3 (faint)','--text3'],
-  ]},
-  { group: 'Gold / Accent', vars: [
-    ['Gold','--gold'],
-    ['Gold 2 (lighter)','--gold2'],
-    ['Gold 3 (darker)','--gold3'],
-  ]},
-  { group: 'Purple / Primary', vars: [
-    ['Purple','--purple'],
-    ['Purple 2 (hover)','--purple2'],
-    ['Purple 3 (light)','--purple3'],
-  ]},
-  { group: 'Teal / Success', vars: [
-    ['Teal','--teal'],
-    ['Teal 2','--teal2'],
-  ]},
-  { group: 'Coral / Danger', vars: [
-    ['Coral','--coral'],
-    ['Coral 2','--coral2'],
-  ]},
-  { group: 'Misc Accents', vars: [
-    ['Blue','--blue'],
-    ['Pink','--pink'],
-    ['Amber','--amber'],
-    ['Green','--green'],
-    ['Red','--red'],
-  ]},
-];
-
-// Border vars need special handling — they can be rgba strings not hex
-function _varToHex(val){
-  if(!val)return'#000000';
-  if(val.startsWith('#'))return val.slice(0,7);
-  // rgba(r,g,b,a) → hex (ignore alpha)
-  const m=val.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if(m)return'#'+[m[1],m[2],m[3]].map(n=>parseInt(n).toString(16).padStart(2,'0')).join('');
-  return'#888888';
-}
-function _varToAlpha(val){
-  if(!val)return 1;
-  const m=val.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/);
-  return m?parseFloat(m[1]):1;
-}
-function _buildRgba(hexVal,alphaVal){
-  const r=parseInt(hexVal.slice(1,3),16),g=parseInt(hexVal.slice(3,5),16),b=parseInt(hexVal.slice(5,7),16);
-  if(alphaVal>=1)return hexVal;
-  return`rgba(${r},${g},${b},${alphaVal})`;
-}
-
-function openThemeBuilder(editKey){
-  const all=getAllThemes();
-  const base=editKey?all[editKey]:THEMES['default'];
-  const isNew=!editKey||!getCustomThemes()[editKey];
-  const title=isNew?'Create Custom Theme':'Edit Theme';
-
-  // Build colour rows per group
-  const groupHtml=THEME_VAR_GROUPS.map(({group,vars})=>{
-    const isBorder=group==='Borders';
-    const rows=vars.map(([lbl,v])=>{
-      const raw=base[v]||'#000000';
-      const hexVal=_varToHex(raw);
-      const alphaVal=_varToAlpha(raw);
-      const alphaRow=isBorder?`<input type="range" min="0" max="1" step="0.01" id="tca-${v.replace(/-/g,'_')}" value="${alphaVal}"
-        oninput="tcLiveUpdate()" style="width:70px;accent-color:var(--purple)">`:'';
-      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);gap:6px">
-        <span style="font-size:.75rem;color:var(--text2);flex:1;min-width:0">${lbl}</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          ${alphaRow}
-          <input type="color" id="tc-${v.replace(/-/g,'_')}" value="${hexVal}"
-            oninput="tcLiveUpdate()"
-            style="width:36px;height:26px;border:none;border-radius:5px;cursor:pointer;background:none;padding:0;flex-shrink:0">
-        </div>
-      </div>`;
-    }).join('');
-    return`<div style="margin-bottom:10px">
-      <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;padding-top:2px">${group}</div>
-      ${rows}
-    </div>`;
-  }).join('');
-
-  openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:10px">🎨 ${title}</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label>Theme name</label>
-        <input type="text" id="tc-name" placeholder="My theme" value="${editKey&&!isNew?all[editKey].label||editKey:''}">
-      </div>
-      <div class="fg" style="flex:2;min-width:180px;margin-bottom:0"><label>Description (optional)</label>
-        <input type="text" id="tc-desc" placeholder="A short description" value="${editKey?all[editKey].desc||'':''}">
-      </div>
-    </div>
-    <!-- Live mini-preview -->
-    <div id="tc-preview" style="border-radius:8px;overflow:hidden;border:1px solid var(--border2);margin-bottom:10px;height:42px;display:flex;align-items:stretch"></div>
-    <!-- Import from code -->
-    <details style="margin-bottom:8px">
-      <summary style="font-size:.72rem;color:var(--text3);cursor:pointer;user-select:none;padding:4px 0">📋 Import from code (paste a theme object)</summary>
-      <div style="margin-top:6px">
-        <textarea id="tc-import-code" rows="4" placeholder="Paste a THEMES object value here e.g. { '--bg':'#0b0a14', ... }" style="font-family:'DM Mono',monospace;font-size:.7rem"></textarea>
-        <button class="btn bsm" style="margin-top:4px" onclick="tcImportFromCode()">⬆ Apply to pickers</button>
-      </div>
-    </details>
-    <div style="font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">All colours
-      <span style="color:var(--text3);font-size:.6rem;text-transform:none;letter-spacing:0;margin-left:4px">(border alpha = slider, colour = swatch)</span>
-    </div>
-    <div style="max-height:340px;overflow-y:auto;padding-right:4px">${groupHtml}</div>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn bp" onclick="saveCustomTheme('${editKey||''}')">💾 Save & Apply</button>
-      <button class="btn" style="color:var(--teal2);border-color:var(--teal)" onclick="tcCopyAsCode()">📋 Copy as code</button>
-      ${editKey&&!isNew?`<button class="btn br" onclick="deleteCustomTheme('${editKey}')">🗑 Delete</button>`:''}
-      <button class="btn" onclick="tcCancelPreview('${editKey||''}')">Cancel</button>
-    </div>
-  </div>`);
-  tcLiveUpdate();
-}
-
-// Read all picker values into a theme object (without label/desc)
-function _tcReadAll(){
-  const t={};
-  THEME_VAR_GROUPS.forEach(({group,vars})=>{
-    const isBorder=group==='Borders';
-    vars.forEach(([,v])=>{
-      const el=document.getElementById('tc-'+v.replace(/-/g,'_'));
-      if(!el)return;
-      if(isBorder){
-        const aEl=document.getElementById('tca-'+v.replace(/-/g,'_'));
-        const alpha=aEl?parseFloat(aEl.value):1;
-        t[v]=_buildRgba(el.value,alpha);
-      } else {
-        t[v]=el.value;
-      }
-    });
-  });
-  return t;
-}
-
-// Live preview strip
-function tcLiveUpdate(){
-  const t=_tcReadAll();
-  // Apply to root instantly
-  const root=document.documentElement.style;
-  Object.entries(t).forEach(([k,v])=>root.setProperty(k,v));
-  // Update mini preview bar
-  const prev=document.getElementById('tc-preview');
-  if(prev){
-    const cols=[t['--bg2'],t['--bg3'],t['--card'],t['--purple'],t['--gold'],t['--teal'],t['--coral'],t['--blue']];
-    prev.innerHTML=cols.map(c=>`<div style="flex:1;background:${c||'#333'}"></div>`).join('');
-  }
-}
-
-function tcCancelPreview(editKey){
-  // Restore previous theme
-  const k=localStorage.getItem('vt_theme')||'default';
-  applyTheme(k);
-  closeModal();
-}
-
-function tcImportFromCode(){
-  const raw=(document.getElementById('tc-import-code')?.value||'').trim();
-  try{
-    // Allow pasting either a full object literal or JSON
-    const jsonStr=raw.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$-]*)\s*:/g,'$1"$2":').replace(/'/g,'"');
-    const obj=JSON.parse(jsonStr);
-    THEME_VAR_GROUPS.forEach(({group,vars})=>{
-      const isBorder=group==='Borders';
-      vars.forEach(([,v])=>{
-        if(obj[v]===undefined)return;
-        const el=document.getElementById('tc-'+v.replace(/-/g,'_'));
-        if(el)el.value=_varToHex(obj[v]);
-        if(isBorder){
-          const aEl=document.getElementById('tca-'+v.replace(/-/g,'_'));
-          if(aEl)aEl.value=_varToAlpha(obj[v]);
-        }
-      });
-    });
-    tcLiveUpdate();
-    toast('✅ Colours imported from code');
-  }catch(e){toast('⚠️ Could not parse theme code');}
-}
-
-function tcCopyAsCode(){
-  const name=(document.getElementById('tc-name')?.value.trim()||'My Theme');
-  const desc=(document.getElementById('tc-desc')?.value.trim()||'');
-  const t=_tcReadAll();
-  const key=name.toLowerCase().replace(/[^a-z0-9]/g,'_');
-  // Format exactly like the THEMES object in source
-  const lines=[`'${key}': {`];
-  lines.push(`  label: '${name.replace(/'/g,"\\'")}', desc: '${desc.replace(/'/g,"\\'")}',`);
-  lines.push(`  '--bg': '${t['--bg']}', '--bg2': '${t['--bg2']}', '--bg3': '${t['--bg3']}', '--bg4': '${t['--bg4']}', '--bg5': '${t['--bg5']}',`);
-  lines.push(`  '--card': '${t['--card']}', '--border': '${t['--border']}', '--border2': '${t['--border2']}', '--border3': '${t['--border3']}',`);
-  lines.push(`  '--text': '${t['--text']}', '--text2': '${t['--text2']}', '--text3': '${t['--text3']}',`);
-  lines.push(`  '--gold': '${t['--gold']}', '--gold2': '${t['--gold2']}', '--gold3': '${t['--gold3']}',`);
-  lines.push(`  '--purple': '${t['--purple']}', '--purple2': '${t['--purple2']}', '--purple3': '${t['--purple3']}',`);
-  lines.push(`  '--teal': '${t['--teal']}', '--teal2': '${t['--teal2']}',`);
-  lines.push(`  '--coral': '${t['--coral']}', '--coral2': '${t['--coral2']}',`);
-  lines.push(`  '--blue': '${t['--blue']}', '--pink': '${t['--pink']}', '--amber': '${t['--amber']}', '--green': '${t['--green']}', '--red': '${t['--red']}',`);
-  lines.push(`},`);
-  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('📋 Copied as code!')).catch(()=>toast('Copy failed'));
-}
-
-function saveCustomTheme(editKey){
-  const name=document.getElementById('tc-name')?.value.trim()||'My Theme';
-  const desc=document.getElementById('tc-desc')?.value.trim()||'';
-  const key=editKey||(name.toLowerCase().replace(/[^a-z0-9]/g,'_')+'_'+Date.now());
-  const base=getAllThemes()[editKey]||THEMES['default'];
-  const t={...base,..._tcReadAll(),label:name,desc};
-  const ct=getCustomThemes();ct[key]=t;saveCustomThemes(ct);
-  // Push to server for cross-device sync
-  _syncCustomThemeToServer(key,t);
-  closeModal();applyTheme(key);render();toast('🎨 Theme saved & applied!');
-}
-
-// ── Server sync for custom themes ──
-async function _syncCustomThemeToServer(key,t){
-  const uk=getUserKey();if(!uk)return;
-  try{
-    await fetch(WORKER_URL+'/themes/save',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userKey:uk,key,theme:t})});
-  }catch(e){}
-}
-async function loadServerCustomThemes(){
-  const uk=getUserKey();if(!uk)return;
-  try{
-    const r=await fetch(WORKER_URL+'/themes/list?userKey='+encodeURIComponent(uk));
-    if(!r.ok)return;
-    const d=await r.json();
-    if(d.themes&&typeof d.themes==='object'){
-      // Server is source of truth — replace local custom themes entirely
-      saveCustomThemes(d.themes);
-      // Re-apply active theme in case it was updated, or fall back if it was deleted
-      const activeKey=localStorage.getItem('vt_theme')||(S&&S.settings&&S.settings.theme)||'default';
-      const allNow=getAllThemes();
-      if(!allNow[activeKey]){applyTheme('default');}
-      else{applyTheme(activeKey);}
-      render();
-    }
-  }catch(e){}
-}
-function deleteCustomTheme(key){
-  if(!confirm('Delete this custom theme?'))return;
-  const ct=getCustomThemes();delete ct[key];saveCustomThemes(ct);
-  if(S.settings?.theme===key){applyTheme('default');}
-  const uk=getUserKey();
-  if(uk){
-    fetch(WORKER_URL+'/themes/delete',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userKey:uk,key})}).catch(()=>{});
-  }
-  closeModal();render();toast('Theme deleted');
-}
-function lighten(hex,amt){
-  try{
-    let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-    r=Math.max(0,Math.min(255,r+amt));g=Math.max(0,Math.min(255,g+amt));b=Math.max(0,Math.min(255,b+amt));
-    return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-  }catch{return hex;}
-}
-
-// ════════════════════════════════════════════════
 // LIBRARY FILTER STATE (extended multi-select)
 // ════════════════════════════════════════════════
 // S.flt holds the multi-select filter state for the library
@@ -1260,18 +874,10 @@ function lbUpdateThrottled(){clearTimeout(_lbThrottleTimer);_lbThrottleTimer=set
 // Stable userKey (random UUID) stored in localStorage — never changes.
 // Username is just a display name inside the KV value, freely editable.
 // ════════════════════════════════════════════════
-function getUsername(){
-  return localStorage.getItem('vault_username') || null;
-}
-function setUsername(u){
-  localStorage.setItem('vault_username', u);
-}
-function getUserKey(){
-  return localStorage.getItem('vault_userKey') || null;
-}
-function setUserKey(k){
-  localStorage.setItem('vault_userKey', k);
-}
+const getUsername = () => VaultUser.getUsername();
+const setUsername = (u) => VaultUser.setUsername(u);
+const getUserKey = () => VaultUser.getKey();
+const setUserKey = (k) => VaultUser.setKey(k);
 
 async function lbUpdate(){
   const u=getUsername();

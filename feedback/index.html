@@ -160,17 +160,9 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT MODULE -->
-  <script type="module">
-    import { 
-      apiRequest, 
-      hasAdminSession, 
-      getAdminToken, 
-      sanitizeText, 
-      formatNumber, 
-      applyTheme, 
-      getSavedUserProfile 
-    } from '../shared.js';
+  <script src="../shared.js"></script>
+  <script>
+    const applyTheme = (key) => ThemeManager.applyTheme(key);
 
     // ── INITIALIZATION ──────────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
