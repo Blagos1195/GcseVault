@@ -3329,6 +3329,8 @@ function exportCSV(){
 let _adminToken=null,_adminAuth=false,_adminPending=[];
 
 function rAdmin(){
+  return AdminManager.render();
+  /*
   if(!_adminAuth){
     return`<div>
     ${backBtn()}
@@ -3346,6 +3348,7 @@ function rAdmin(){
     </div>`;
   }
   return rAdminPanel();
+  */
 }
 async function adminLogin(){
   const pw=(document.getElementById('adm-pw')?.value||'').trim();if(!pw)return;

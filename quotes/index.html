@@ -3317,6 +3317,8 @@ let _adminAuth = false; // session-only, cleared on reload
 let _adminPending = []; // cache loaded from Worker
 
 function rAdmin(){
+  return AdminManager.render();
+  /*
   if(!_adminAuth){
     return`<div>
     ${backBtn()}
@@ -3333,6 +3335,7 @@ function rAdmin(){
     </div>`;
   }
   return rAdminPanel();
+  */
 }
 
 async function adminLogin(){

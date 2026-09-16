@@ -778,6 +778,149 @@ function getSavedUserProfile() {
   return VaultUser.getProfile();
 }
 
+const AdminManager = {
+  token: null,
+  items: [],
+  loading: false,
+  error: '',
+
+  getToken() {
+    return this.token || getAdminToken();
+  },
+
+  async login(password) {
+    try {
+      const response = await fetch(`${WORKER_API}/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pw: password })
+      });
+      if (!response.ok) throw new Error(response.status === 401 ? 'Incorrect password' : `HTTP ${response.status}`);
+      const data = await response.json();
+      this.token = data.token;
+      localStorage.setItem('gcse_vault_admin_token', data.token);
+      this.error = '';
+      await this.refresh();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  logout() {
+    this.token = null;
+    this.items = [];
+    localStorage.removeItem('gcse_vault_admin_token');
+    if (typeof window.render === 'function') window.render();
+  },
+
+  async request(path) {
+    const token = this.getToken();
+    const response = await fetch(`${WORKER_API}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  },
+
+  async refresh() {
+    if (!this.getToken()) return;
+    this.loading = true;
+    this.error = '';
+    if (typeof window.render === 'function') window.render();
+    try {
+      const [quotes, dates, feedback] = await Promise.all([
+        this.request('/pending'),
+        this.request('/dv/pending'),
+        this.request('/feedback/list')
+      ]);
+      this.items = [
+        ...(quotes.items || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote' })),
+        ...(dates.items || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date' })),
+        ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' }))
+      ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
+    } catch (error) {
+      this.error = error.message;
+    } finally {
+      this.loading = false;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  async action(index, action) {
+    const item = this.items[index];
+    if (!item) return;
+    const routes = {
+      quote: { approve: '/approve', reject: '/reject' },
+      date: { approve: '/dv/approve', reject: '/dv/reject' },
+      feedback: { delete: '/feedback/delete' }
+    };
+    const path = routes[item._kind]?.[action];
+    if (!path) return;
+    try {
+      const response = await fetch(`${WORKER_API}${path}?token=${encodeURIComponent(this.getToken())}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, token: this.getToken() })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await this.refresh();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  render() {
+    const token = this.getToken();
+    if (!token) {
+      return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
+        <div class="pt">Admin Panel</div>
+        <div class="ps">One shared review queue for QuoteVault, DateVault, and Feedback</div>
+        <div class="card" style="max-width:360px">
+          <div class="fg"><label>Password</label><input type="password" id="shared-admin-password" placeholder="Enter admin password"></div>
+          <button class="btn bg" onclick="AdminManager.login(document.getElementById('shared-admin-password').value)">🔐 Login</button>
+          ${this.error ? `<div class="qfb qwr" style="margin-top:8px">${UI.escapeHTML(this.error)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    const counts = this.items.reduce((result, item) => {
+      result[item._kind] = (result[item._kind] || 0) + 1;
+      return result;
+    }, {});
+    const cards = this.items.map((item, index) => {
+      const title = item._kind === 'quote' ? item.text : item._kind === 'date' ? item.event : item.title;
+      const detail = item._kind === 'quote'
+        ? `${item.char || ''} · ${item.work || ''} · ${item.loc || ''}`
+        : item._kind === 'date' ? `${item.year || ''} · ${item.topic || ''}` : item.description;
+      const controls = item._kind === 'feedback'
+        ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
+        : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button>
+          <button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`;
+      return `<div class="card" style="margin-bottom:8px;border-left:3px solid var(--amber)">
+        <div class="tag tg">${UI.escapeHTML(item._source)}</div>
+        <div style="font-weight:600;margin-top:5px">${UI.escapeHTML(title || 'Untitled')}</div>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${UI.escapeHTML(detail || '')}</div>
+        <div style="font-size:.62rem;color:var(--text3);margin-top:5px">${UI.escapeHTML(item.submittedAt || item.timestamp || '')}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">${controls}</div>
+      </div>`;
+    }).join('');
+
+    return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div><div class="pt">Admin Panel</div><div class="ps">All sites and feedback in one queue</div></div>
+        <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
+      </div>
+      ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
+      <div class="g3" style="margin:10px 0 12px">
+        <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
+        <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>
+        <div class="scard"><div class="snum">${counts.feedback || 0}</div><div class="slbl">Feedback</div></div>
+      </div>
+      ${this.loading ? '<div class="ps">Loading shared submissions...</div>' : cards || '<div class="ps">No submissions waiting for review.</div>'}
+    </div>`;
+  }
+};
+
 // --- AUTOMATIC INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
   Settings.init();
