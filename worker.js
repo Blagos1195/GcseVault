@@ -860,10 +860,25 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const username = String(body.username || "").trim().slice(0, 20);
       if (!userKey || !username) return new Response("Missing userKey or username", { status: 400, headers: cors });
+      const accountSets = Array.isArray(body.accountSets)
+        ? body.accountSets.slice(0, 25).map((set, index) => ({
+            id: String(set && set.id ? set.id : `set-${index + 1}`),
+            name: String(set && set.name ? set.name : `Set ${index + 1}`).slice(0, 80),
+            cards: Array.isArray(set && set.cards) ? set.cards.slice(0, 2000) : [],
+            progress: set && set.progress && typeof set.progress === "object" ? set.progress : {},
+            xp: Math.max(0, Number(set && set.xp) || 0),
+            streak: Math.max(0, Number(set && set.streak) || 0),
+            lastReview: String(set && set.lastReview ? set.lastReview : ""),
+            published: Boolean(set && set.published)
+          }))
+        : [];
+      const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
       const data = {
         username,
         cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
         progress: body.progress && typeof body.progress === "object" ? body.progress : {},
+        accountSets,
+        activeSetId,
         xp: Math.max(0, Math.min(1000000, Number(body.xp) || 0)),
         streak: Math.max(0, Math.min(10000, Number(body.streak) || 0)),
         updatedAt: new Date().toISOString()
