@@ -873,7 +873,7 @@ export default {
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
-      const data = {
+const data = {
         username,
         cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
         progress: body.progress && typeof body.progress === "object" ? body.progress : {},
@@ -881,6 +881,7 @@ export default {
         activeSetId,
         xp: Math.max(0, Math.min(1000000, Number(body.xp) || 0)),
         streak: Math.max(0, Math.min(10000, Number(body.streak) || 0)),
+        lastReview: String(body.lastReview || ""),
         updatedAt: new Date().toISOString()
       };
       await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
