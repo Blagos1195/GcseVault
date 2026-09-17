@@ -1029,17 +1029,18 @@ export default {
       const schema = {
         type: "object",
         properties: {
-          flashcards: { type: "array", items: { type: "object", properties: { front: { type: "string" }, back: { type: "string" } }, required: ["front", "back"] } },
-          practice_questions: { type: "array", items: { type: "object", properties: { question: { type: "string" }, answer: { type: "string" } }, required: ["question", "answer"] } },
-          linked_ideas: { type: "array", items: { type: "object", properties: { concept_a: { type: "string" }, concept_b: { type: "string" }, relationship: { type: "string" } }, required: ["concept_a", "concept_b", "relationship"] } }
+          flashcards: { type: "array", items: { type: "object", additionalProperties: false, properties: { front: { type: "string" }, back: { type: "string" } }, required: ["front", "back"] } },
+          practice_questions: { type: "array", items: { type: "object", additionalProperties: false, properties: { question: { type: "string" }, answer: { type: "string" } }, required: ["question", "answer"] } },
+          linked_ideas: { type: "array", items: { type: "object", additionalProperties: false, properties: { concept_a: { type: "string" }, concept_b: { type: "string" }, relationship: { type: "string" } }, required: ["concept_a", "concept_b", "relationship"] } }
         },
-        required: ["flashcards", "practice_questions", "linked_ideas"]
+        required: ["flashcards", "practice_questions", "linked_ideas"],
+        additionalProperties: false
       };
 
       try {
         const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
           messages: [
-            { role: "system", content: "Act as a careful study assistant. Generate flashcards, practice questions, and linked ideas only from the supplied study material. Be concise, accurate, and return the requested JSON structure." },
+            { role: "system", content: `You are a study-guide JSON generator. Use only the supplied study material. Your entire response MUST be one valid JSON object and absolutely nothing else. Do not write an introduction, explanation, conclusion, Markdown, code fences, headings, comments, or text outside the JSON object. Do not use additional keys. Return exactly this shape: {"flashcards":[{"front":"string","back":"string"}],"practice_questions":[{"question":"string","answer":"string"}],"linked_ideas":[{"concept_a":"string","concept_b":"string","relationship":"string"}]}. Every array may be empty, but all three keys are mandatory. Every value must be a JSON string. Do not invent information that is not supported by the supplied material.` },
             { role: "user", content: body.material.slice(0, 120000) }
           ],
           response_format: { type: "json_schema", json_schema: { name: "study_guide", schema } }
