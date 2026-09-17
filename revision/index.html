@@ -373,11 +373,51 @@ function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()
 async function syncRevision(){
   if(!revisionUserKey()||!revisionUsername()||state.syncing)return;
   state.syncing=true;
-  try{await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),username:revisionUsername(),cards:state.cards,progress:state.progress,xp:state.xp,streak:state.streak})});}catch(error){}finally{state.syncing=false;}
+  try{
+    const payload = {
+      userKey: revisionUserKey(),
+      username: revisionUsername(),
+      cards: state.cards,
+      progress: state.progress,
+      accountSets: state.accountSets,
+      activeSetId: state.activeSetId,
+      xp: state.xp,
+      streak: state.streak,
+      lastReview: state.lastReview
+    };
+    await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }catch(error){}finally{state.syncing=false;}
 }
 async function loadRevision(){
   if(!revisionUserKey())return;
-  try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);const payload=await response.json();if(payload.found&&payload.data){state.cards=Array.isArray(payload.data.cards)?payload.data.cards:[];state.progress=payload.data.progress||{};state.xp=Math.max(state.xp,Number(payload.data.xp)||0);state.streak=Math.max(state.streak,Number(payload.data.streak)||0);saveRevision();}}catch(error){}
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);
+    const payload=await response.json();
+    if(payload.found&&payload.data){
+      const remoteSets = Array.isArray(payload.data.accountSets) && payload.data.accountSets.length
+        ? payload.data.accountSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID))
+        : initialRevisionSets;
+      state.accountSets = remoteSets;
+      const activeSet = remoteSets.find(set => set.id === payload.data.activeSetId) || remoteSets[0];
+      if (activeSet) state.activeSetId = activeSet.id;
+      state.cards = Array.isArray(payload.data.cards) ? payload.data.cards : (Array.isArray(activeSet?.cards) ? activeSet.cards : []);
+      state.progress = payload.data.progress && typeof payload.data.progress === 'object' ? payload.data.progress : (activeSet && activeSet.progress ? activeSet.progress : {});
+      state.xp = Number(payload.data.xp) || state.xp || 0;
+      state.streak = Number(payload.data.streak) || state.streak || 0;
+      state.lastReview = payload.data.lastReview || (activeSet && activeSet.lastReview ? activeSet.lastReview : state.lastReview) || '';
+      
+      const syncedSet = getActiveRevisionSet();
+      if (syncedSet) {
+        syncedSet.cards = state.cards;
+        syncedSet.progress = state.progress;
+        syncedSet.xp = state.xp;
+        syncedSet.streak = state.streak;
+        syncedSet.lastReview = state.lastReview;
+      }
+      saveRevision();
+      renderRevision();
+    }
+  }catch(error){}
 }
 async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
 function awardRevisionXP(score){
