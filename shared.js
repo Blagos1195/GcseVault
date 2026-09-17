@@ -827,15 +827,17 @@ const AdminManager = {
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
-      const [quotes, dates, feedback] = await Promise.all([
+      const [quotes, dates, feedback, publicRevision] = await Promise.all([
         this.request('/pending'),
         this.request('/dv/pending'),
-        this.request('/feedback/list')
+        this.request('/feedback/list'),
+        this.request('/revision/public/admin-list')
       ]);
       this.items = [
         ...(quotes.items || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote' })),
         ...(dates.items || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date' })),
-        ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' }))
+        ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' })),
+        ...(publicRevision.notes || []).map((item) => ({ ...item, _source: 'Public Revision note', _kind: 'revision-note', _pending: Boolean(item.pending) }))
       ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
     } catch (error) {
       this.error = error.message;
@@ -851,15 +853,23 @@ const AdminManager = {
     const routes = {
       quote: { approve: '/approve', reject: '/reject' },
       date: { approve: '/dv/approve', reject: '/dv/reject' },
-      feedback: { delete: '/feedback/delete' }
+      feedback: { delete: '/feedback/delete' },
+      'revision-note': { approve: '/revision/public/approve', reject: '/revision/public/reject', edit: '/revision/public/update', delete: '/revision/public/admin-delete' }
     };
     const path = routes[item._kind]?.[action];
     if (!path) return;
     try {
+      let body = { id: item.id, token: this.getToken() };
+      if (action === 'edit') {
+        const title = window.prompt('Edit public note title:', item.title || '');
+        if (!title) return;
+        const subject = window.prompt('Edit subject:', item.subject || 'General') || item.subject || 'General';
+        body.note = { title, subject, level: item.level || '', cards: item.cards || [] };
+      }
       const response = await fetch(`${WORKER_API}${path}?token=${encodeURIComponent(this.getToken())}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, token: this.getToken() })
+        body: JSON.stringify(body)
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await this.refresh();
@@ -891,9 +901,11 @@ const AdminManager = {
       const title = item._kind === 'quote' ? item.text : item._kind === 'date' ? item.event : item.title;
       const detail = item._kind === 'quote'
         ? `${item.char || ''} · ${item.work || ''} · ${item.loc || ''}`
-        : item._kind === 'date' ? `${item.year || ''} · ${item.topic || ''}` : item.description;
+        : item._kind === 'date' ? `${item.year || ''} · ${item.topic || ''}` : item._kind === 'revision-note' ? `${item.cards?.length || 0} cards · ${item.subject || ''} · ${item.level || ''}` : item.description;
       const controls = item._kind === 'feedback'
         ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
+        : item._kind === 'revision-note'
+          ? `${item._pending ? `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>` : ''}<button class="btn bsm" onclick="AdminManager.action(${index}, 'edit')">✏ Edit</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
         : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button>
           <button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`;
       return `<div class="card" style="margin-bottom:8px;border-left:3px solid var(--amber)">
@@ -911,10 +923,11 @@ const AdminManager = {
         <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
-      <div class="g3" style="margin:10px 0 12px">
+      <div class="g4" style="margin:10px 0 12px">
         <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
         <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>
         <div class="scard"><div class="snum">${counts.feedback || 0}</div><div class="slbl">Feedback</div></div>
+        <div class="scard"><div class="snum">${counts['revision-note'] || 0}</div><div class="slbl">Revision</div></div>
       </div>
       ${this.loading ? '<div class="ps">Loading shared submissions...</div>' : cards || '<div class="ps">No submissions waiting for review.</div>'}
     </div>`;

@@ -35,6 +35,10 @@ id = "9d8bf04ffa024374bd1c10cb00f19a62"
 binding = "THEMES"
 id = "1531d3968a48441484fafb96c0f588ff"
 
+[[kv_namespaces]]
+binding = "REVISION"
+id = "d58a0199357b4cda8ff9608c691053a0"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "leaderboard"

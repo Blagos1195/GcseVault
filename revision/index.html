@@ -173,9 +173,17 @@ select option{background:var(--bg3)}
     <div class="sb-sec">Workspace</div>
     <div class="ni active" data-view="overview"><span class="ni-icon">◈</span>Overview</div>
     <div class="ni" data-view="cards"><span class="ni-icon">▣</span>Flashcards</div>
+    <div class="ni" data-view="create"><span class="ni-icon">＋</span>New card</div>
     <div class="ni" data-view="graph"><span class="ni-icon">⌘</span>Knowledge graph</div>
+    <div class="ni" data-view="public"><span class="ni-icon">☁</span>Public notes</div>
+    <div class="ni" data-view="leaderboard"><span class="ni-icon">🏆</span>Leaderboard</div>
+    <div class="ni" data-view="settings"><span class="ni-icon">⚙</span>Settings</div>
     <div class="ni" data-view="ai"><span class="ni-icon">✦</span>AI tools</div>
-    <a class="sb-link" href="../">← GCSE Vault</a>
+    <a class="sb-link" href="/GcseVault/">⌂ GCSE Vault</a>
+    <a class="sb-link" href="/GcseVault/quotes/">💬 QuoteVault</a>
+    <a class="sb-link" href="/GcseVault/dates/">🏛 DateVault</a>
+    <a class="sb-link" href="/GcseVault/revision/">🧠 Revision</a>
+    <a class="sb-link" href="/GcseVault/feedback/">📋 Feedback & Bugs</a>
     <div class="sb-foot"><div id="sidebar-stats">0 cards · 0 links</div><div class="sb-xp" id="sidebar-progress">0 reviewed</div></div>
   </aside>
   <main id="main">
@@ -194,15 +202,25 @@ const starterCards = [
   {id:'r3',subject:'History',topic:'Industrial Revolution',title:'What problems did urbanisation cause?',answer:'Overcrowding, poor sanitation, disease, pollution and unsafe housing.',links:['r2'],difficulty:3},
   {id:'r4',subject:'Science',topic:'Cells',title:'What do mitochondria do?',answer:'They release energy through aerobic respiration.',links:[],difficulty:2}
 ];
+const storedCards = JSON.parse(localStorage.getItem(REVISION_KEY) || 'null');
+const onlyDemoCards = Array.isArray(storedCards) && storedCards.length > 0 && storedCards.every(card => ['r1','r2','r3','r4'].includes(card.id));
 const state = {
-  cards: JSON.parse(localStorage.getItem(REVISION_KEY) || 'null') || starterCards,
+  cards: onlyDemoCards ? [] : (storedCards || []),
   progress: JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}'),
-  view: 'overview', selected: null, studyIndex: 0, revealed: false
+  view: 'overview', selected: null, studyIndex: 0, revealed: false,
+  xp: Number(localStorage.getItem('revision_xp') || 0),
+  streak: Number(localStorage.getItem('revision_streak') || 0),
+  lastReview: localStorage.getItem('revision_last_review') || '',
+  publicNotes: [], aiResult: null, syncing: false
 };
 
 function saveRevision(){
   localStorage.setItem(REVISION_KEY,JSON.stringify(state.cards));
   localStorage.setItem(REVISION_PROGRESS_KEY,JSON.stringify(state.progress));
+  localStorage.setItem('revision_xp',String(state.xp));
+  localStorage.setItem('revision_streak',String(state.streak));
+  localStorage.setItem('revision_last_review',state.lastReview);
+  syncRevisionSoon();
 }
 function escapeRevision(value){return UI.escapeHTML(String(value||''));}
 function cardById(id){return state.cards.find(card=>card.id===id);}
@@ -215,6 +233,33 @@ function topicStats(){
 function suggestedTopics(){
   return Object.entries(topicStats()).sort(([,a],[,b])=>b.due-a.due||a.reviewed/a.total-b.reviewed/b.total).slice(0,4);
 }
+function revisionUserKey(){return VaultUser.getKey();}
+function revisionUsername(){return VaultUser.getUsername();}
+let revisionSyncTimer=null;
+function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername())revisionSyncTimer=setTimeout(syncRevision,700);}
+async function syncRevision(){
+  if(!revisionUserKey()||!revisionUsername()||state.syncing)return;
+  state.syncing=true;
+  try{await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),username:revisionUsername(),cards:state.cards,progress:state.progress,xp:state.xp,streak:state.streak})});}catch(error){}finally{state.syncing=false;}
+}
+async function loadRevision(){
+  if(!revisionUserKey())return;
+  try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);const payload=await response.json();if(payload.found&&payload.data){state.cards=Array.isArray(payload.data.cards)?payload.data.cards:[];state.progress=payload.data.progress||{};state.xp=Math.max(state.xp,Number(payload.data.xp)||0);state.streak=Math.max(state.streak,Number(payload.data.streak)||0);saveRevision();}}catch(error){}
+}
+async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
+function awardRevisionXP(score){
+  const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
+  if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
+}
+function setRevisionAccount(){
+  const username=(prompt('Choose a username (3–20 letters, numbers, _ or -):',revisionUsername()||'')||'').trim();if(!username)return;
+  const keyInput=prompt('Paste an existing user key, or leave blank to create an account:',revisionUserKey()||'');
+  if(keyInput?.trim())VaultUser.setKey(keyInput.trim());
+  VaultUser.setUsername(username);
+  if(!revisionUserKey()){fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})}).then(response=>response.json()).then(data=>{if(data.userKey){VaultUser.setKey(data.userKey);syncRevision();renderRevision();}else{alert(data.error||'Could not create account.')}}).catch(()=>alert('Could not connect to the account service.'));}
+  else{syncRevision();renderRevision();}
+}
+function clearRevisionData(){if(!confirm('Delete all local Revision cards and progress?'))return;state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';saveRevision();renderRevision();}
 function renderGraph(){
   const cards=state.cards.slice(0,24), width=600, height=300, center={x:50,y:50};
   const positions=cards.map((card,index)=>{const angle=(Math.PI*2*index/cards.length)-Math.PI/2;const radius=cards.length===1?0:35;return{x:center.x+Math.cos(angle)*radius,y:center.y+Math.sin(angle)*radius,card};});
@@ -230,7 +275,7 @@ function renderSuggestions(){
 }
 function renderOverview(){
   const selected=cardById(state.selected);
-  return `<div><div class="pt">Knowledge workspace</div><div class="ps">Build links between ideas, then revise the connections instead of isolated facts.</div><div class="knowledge-layout"><div class="knowledge-panel"><div class="g3"><div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Cards</div></div><div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Connections</div></div><div class="scard"><div class="snum">${Object.keys(state.progress).length}</div><div class="slbl">Reviewed</div></div></div><div class="sec">Your knowledge graph</div>${renderGraph()}${renderCardList()}</div><div class="knowledge-panel">${renderSuggestions()}${selected?`<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Selected idea</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.76rem;line-height:1.6;color:var(--text2);margin-top:7px">${escapeRevision(selected.answer)}</p><div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn bp" onclick="startStudy('${selected.id}')">Review</button><button class="btn" onclick="linkRevisionCard('${selected.id}')">＋ Link idea</button></div></div>`:''}</div></div></div>`;
+  return `<div><div class="pt">Knowledge workspace</div><div class="ps">Build links between ideas, then revise the connections instead of isolated facts.</div><div class="knowledge-layout"><div class="knowledge-panel"><div class="g3"><div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Cards</div></div><div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Connections</div></div><div class="scard"><div class="snum">${Object.keys(state.progress).length}</div><div class="slbl">Reviewed</div></div></div><div class="sec">Your knowledge graph</div>${renderGraph()}${renderCardList()}</div><div class="knowledge-panel">${renderSuggestions()}${selected?`<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Selected idea</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.76rem;line-height:1.6;color:var(--text2);margin-top:7px">${escapeRevision(selected.answer)}</p><div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn bp" onclick="startStudy('${selected.id}')">Review</button><button class="btn" onclick="linkRevisionCard('${selected.id}')">＋ Link idea</button><button class="btn" onclick="editRevisionCard('${selected.id}')">✏ Edit</button><button class="btn br" onclick="deleteRevisionCard('${selected.id}')">🗑 Delete</button></div></div>`:''}</div></div></div>`;
 }
 function renderCards(){
   const card=state.cards[state.studyIndex%Math.max(state.cards.length,1)];
@@ -238,20 +283,29 @@ function renderCards(){
   return `<div style="max-width:620px;margin:0 auto"><div class="pt">Flashcards</div><div class="ps">Review linked ideas together. Card ${state.studyIndex%state.cards.length+1} of ${state.cards.length}</div><div class="card" style="min-height:230px;display:flex;flex-direction:column;justify-content:center;text-align:center"><div class="tag tp">${escapeRevision(card.topic)}</div><div style="font-size:1.15rem;font-weight:600;margin:18px 0">${escapeRevision(card.title)}</div>${state.revealed?`<p style="font-size:.85rem;color:var(--text2);line-height:1.7">${escapeRevision(card.answer)}</p><div class="knowledge-links" style="justify-content:center;margin-top:14px">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div>`:'<div class="ps">Try to answer, then reveal the explanation.</div>'}<div style="display:flex;justify-content:center;gap:7px;margin-top:20px">${state.revealed?`<button class="btn br" onclick="rateCard('${card.id}',0)">Again</button><button class="btn bg" onclick="rateCard('${card.id}',1)">Got it</button>`:`<button class="btn bp" onclick="state.revealed=true;renderRevision()">Reveal answer</button>`}</div></div></div>`;
 }
 function renderGraphView(){return `<div class="pt">Knowledge graph</div><div class="ps">Select a node to inspect its connected ideas.</div>${renderGraph()}${state.selected?renderCardList([cardById(state.selected)]):''}`;}
+function renderCreateCard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Create a revision card</div><div class="ps">Add an idea to your private workspace, then link it to related cards from the overview.</div><form class="card" onsubmit="event.preventDefault();submitRevisionCard()"><div class="g2"><div class="fg"><label for="new-card-subject">Subject</label><input id="new-card-subject" type="text" placeholder="e.g. Biology" required></div><div class="fg"><label for="new-card-topic">Topic</label><input id="new-card-topic" type="text" placeholder="e.g. Cells" required></div></div><div class="fg"><label for="new-card-title">Front / question</label><input id="new-card-title" type="text" placeholder="What should you remember?" required></div><div class="fg"><label for="new-card-answer">Back / explanation</label><textarea id="new-card-answer" rows="6" placeholder="Write the answer or explanation..." required></textarea></div><div class="fg"><label for="new-card-difficulty">Difficulty</label><select id="new-card-difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" type="submit">＋ Add card</button><button class="btn" type="button" onclick="state.view='overview';renderRevision()">Cancel</button></div></form></div>`;}
+function renderSettings(){return `<div style="max-width:720px;margin:0 auto"><div class="pt">Settings & account</div><div class="ps">Your Revision workspace syncs through the shared GCSE Vault account.</div><div class="card"><div class="sec" style="margin-top:0">Account</div><div class="srow"><div><div class="knowledge-title">${revisionUsername()?escapeRevision(revisionUsername()):'No account linked'}</div><div class="knowledge-meta">${revisionUserKey()?'Linked across devices':'Create or link an account to sync'}</div></div><button class="btn bp" onclick="setRevisionAccount()">${revisionUsername()?'Manage':'Set up account'}</button></div><div class="srow"><div><div class="knowledge-title">Revision XP</div><div class="knowledge-meta">${state.xp} XP · ${state.streak} day streak · +10 XP per successful review</div></div></div></div><div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Notes</div><div class="srow"><div><div class="knowledge-title">${state.cards.length} private cards</div><div class="knowledge-meta">Edit, link, publish, or remove your own cards.</div></div><button class="btn br" onclick="clearRevisionData()">Clear local data</button></div></div></div>`;}
+function renderPublicNotes(){return `<div style="max-width:850px;margin:0 auto"><div class="pt">Public notes</div><div class="ps">Browse shared study notes. Public notes are copied into your workspace only when you choose to import them.</div><div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap"><button class="btn bp" onclick="publishRevisionNotes()">☁ Publish my notes</button><button class="btn" onclick="loadPublicNotes()">🔄 Refresh</button></div><div class="knowledge-list">${state.publicNotes.length?state.publicNotes.map(note=>`<div class="card"><div class="tag tg">${escapeRevision(note.subject)}${note.level?' · '+escapeRevision(note.level):''}</div><div class="knowledge-title" style="margin-top:6px">${escapeRevision(note.title)}</div><div class="knowledge-meta">${note.cards?.length||0} cards · ${escapeRevision(note.updatedAt||'')}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn bsm" onclick="importPublicNote('${note.id}')">＋ Import copy</button>${note.owned?`<button class="btn bsm br" onclick="deletePublicNote('${note.id}')">🗑 Delete</button>`:''}</div></div>`).join(''):'<div class="ps">No public notes have been published yet.</div>'}</div></div>`;}
+function renderLeaderboard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Revision leaderboard</div><div class="ps">Earn 10 XP each time you successfully review a card.</div><div class="card"><div id="revision-leaderboard-list" class="knowledge-list"><div class="ps">Loading leaderboard...</div></div></div></div>`;}
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
   return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate flashcards, practice questions, and linked ideas from your notes. AI use is restricted to an authenticated administrator account.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Subject</label><input type="text" id="ai-subject" placeholder="e.g. Biology"></div><div class="fg"><label>Level</label><input type="text" id="ai-level" placeholder="e.g. GCSE, A-Level"></div></div><div class="fg"><label>Paste notes or source material</label><textarea id="ai-notes" rows="9" placeholder="Paste your notes here..."></textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate study guide</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`<div class="sec">Generated result</div><div class="ai-output">${escapeRevision(JSON.stringify(state.aiResult,null,2))}</div><button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Add flashcards to workspace</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
-  document.getElementById('page').innerHTML=state.view==='cards'?renderCards():state.view==='graph'?renderGraphView():state.view==='ai'?renderAI():renderOverview();
+  document.getElementById('page').innerHTML=state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='graph'?renderGraphView():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   document.getElementById('sidebar-stats').textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
-  document.getElementById('sidebar-progress').textContent=`${Object.keys(state.progress).length} reviewed`;
+  document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${Object.keys(state.progress).length} reviewed`;
+  if(state.view==='leaderboard')loadRevisionLeaderboard();
 }
 function selectRevisionCard(id){state.selected=id;state.view=state.view==='cards'?'cards':state.view;renderRevision();}
 function startTopic(topic){const decoded=decodeURIComponent(topic);const index=state.cards.findIndex(card=>card.topic===decoded);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
 function startStudy(id){const index=state.cards.findIndex(card=>card.id===id);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
-function rateCard(id,score){state.progress[id]={score,due:Date.now()+(score?86400000*3:0)};state.studyIndex=(state.studyIndex+1)%state.cards.length;state.revealed=false;saveRevision();renderRevision();}
+function rateCard(id,score){state.progress[id]={score,due:Date.now()+(score?86400000*3:0)};awardRevisionXP(score);state.studyIndex=(state.studyIndex+1)%Math.max(state.cards.length,1);state.revealed=false;saveRevision();renderRevision();}
+async function loadRevisionLeaderboard(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/leaderboard`);const payload=await response.json();const target=document.getElementById('revision-leaderboard-list');if(!target)return;target.innerHTML=(payload.users||[]).map((user,index)=>`<div class="knowledge-item"><span class="knowledge-dot"></span><div><div class="knowledge-title">${index+1}. ${escapeRevision(user.username)}</div><div class="knowledge-meta">${user.xp||0} XP · ${user.streak||0} day streak</div></div></div>`).join('')||'<div class="ps">No revision accounts yet.</div>';}catch(error){const target=document.getElementById('revision-leaderboard-list');if(target)target.innerHTML='<div class="ps">Leaderboard unavailable.</div>';}}
+async function publishRevisionNotes(){if(!revisionUserKey()||!revisionUsername()){alert('Set up an account before publishing notes.');state.view='settings';renderRevision();return;}const title=(prompt('Name this public note set:','My revision notes')||'').trim();if(!title)return;try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),note:{title,subject:'General',level:'',cards:state.cards}})});if(!response.ok)throw new Error();alert('Submitted for admin approval. It will appear publicly after review.');}catch(error){alert('Could not submit notes.');}}
+async function importPublicNote(id){const note=state.publicNotes.find(item=>item.id===id);if(!note)return;const existing=new Set(state.cards.map(card=>String(card.title).toLowerCase()));const imported=(note.cards||[]).filter(card=>!existing.has(String(card.title||'').toLowerCase())).map(card=>({...card,id:'import'+Date.now()+Math.random().toString(36).slice(2,6),links:[]}));state.cards.push(...imported);saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();}
+async function deletePublicNote(id){if(!confirm('Delete this public note set?'))return;try{await fetch(`${ThemeManager.WORKER_URL}/revision/public/delete`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),id})});await loadPublicNotes();}catch(error){alert('Could not delete public notes.');}}
 async function loginRevisionAI(){const password=document.getElementById('revision-ai-password')?.value||'';if(!password)return;await AdminManager.login(password);renderRevision();}
 async function requestRevisionAI(){
   const notes=document.getElementById('ai-notes')?.value||'';if(!notes.trim())return;
@@ -278,12 +332,15 @@ function createRevisionCard(){
   const answer=prompt('What is the answer or explanation?')||'';const topic=prompt('Which topic is it part of?','My topic')||'My topic';
   const card={id:'r'+Date.now(),subject:'Custom',topic:topic.trim(),title:title.trim(),answer:answer.trim(),links:[],difficulty:2};state.cards.push(card);saveRevision();state.selected=card.id;renderRevision();
 }
-document.querySelectorAll('.ni').forEach(item=>item.addEventListener('click',()=>{state.view=item.dataset.view;renderRevision();}));
-document.getElementById('new-card').addEventListener('click',createRevisionCard);
+function submitRevisionCard(){const subject=document.getElementById('new-card-subject').value.trim();const topic=document.getElementById('new-card-topic').value.trim();const title=document.getElementById('new-card-title').value.trim();const answer=document.getElementById('new-card-answer').value.trim();const difficulty=Number(document.getElementById('new-card-difficulty').value)||2;if(!subject||!topic||!title||!answer)return;const card={id:'r'+Date.now(),subject,topic,title,answer,links:[],difficulty};state.cards.push(card);state.selected=card.id;saveRevision();state.view='overview';renderRevision();}
+function editRevisionCard(id){const card=cardById(id);if(!card)return;const title=prompt('Edit idea:',card.title);if(!title?.trim())return;const answer=prompt('Edit explanation:',card.answer);const topic=prompt('Edit topic:',card.topic);card.title=title.trim();card.answer=(answer||'').trim();card.topic=(topic||card.topic).trim();saveRevision();renderRevision();}
+function deleteRevisionCard(id){const card=cardById(id);if(!card||!confirm(`Delete "${card.title}"?`))return;state.cards=state.cards.filter(item=>item.id!==id);state.cards.forEach(item=>item.links=(item.links||[]).filter(linkId=>linkId!==id));delete state.progress[id];state.selected=null;saveRevision();renderRevision();}
+document.querySelectorAll('.ni').forEach(item=>item.addEventListener('click',()=>{state.view=item.dataset.view;if(state.view==='public')loadPublicNotes();renderRevision();}));
+document.getElementById('new-card').addEventListener('click',()=>{state.view='create';renderRevision();});
 document.getElementById('hbg').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
 window.addEventListener('storage',event=>{if(event.key==='vt_theme'&&event.newValue)ThemeManager.applyTheme(event.newValue);});
 ThemeManager.initTheme('global');
-renderRevision();
+loadRevision().finally(()=>renderRevision());
 </script>
 <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "342ab992b7ac4a8fa52d8111c5e84cd0"}'></script><!-- End Cloudflare Web Analytics -->
 </body>

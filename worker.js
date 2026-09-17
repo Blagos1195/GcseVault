@@ -845,6 +845,170 @@ export default {
       });
     }
 
+    // ── REVISION DATA ────────────────────────────────────────────────────────
+    if (url.pathname === "/revision/sync" && request.method === "GET") {
+      const userKey = url.searchParams.get("userKey");
+      if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
+      const data = await env.REVISION.get(`user:${userKey}`, "json");
+      return new Response(JSON.stringify({ found: Boolean(data), data: data || null }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/revision/sync" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const username = String(body.username || "").trim().slice(0, 20);
+      if (!userKey || !username) return new Response("Missing userKey or username", { status: 400, headers: cors });
+      const data = {
+        username,
+        cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
+        progress: body.progress && typeof body.progress === "object" ? body.progress : {},
+        xp: Math.max(0, Math.min(1000000, Number(body.xp) || 0)),
+        streak: Math.max(0, Math.min(10000, Number(body.streak) || 0)),
+        updatedAt: new Date().toISOString()
+      };
+      await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
+      await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
+      return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
+      const users = [];
+      let cursor;
+      do {
+        const page = await env.REVISION.list({ prefix: "leaderboard:", ...(cursor ? { cursor } : {}) });
+        for (const key of page.keys) {
+          const value = await env.REVISION.get(key.name, "json");
+          if (value) users.push(value);
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      users.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+      return new Response(JSON.stringify({ users: users.slice(0, 100) }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public" && request.method === "GET") {
+      const requesterKey = url.searchParams.get("userKey") || "";
+      const notes = [];
+      let cursor;
+      do {
+        const page = await env.REVISION.list({ prefix: "public:", ...(cursor ? { cursor } : {}) });
+        for (const key of page.keys) {
+          const value = await env.REVISION.get(key.name, "json");
+          if (value) {
+            const { ownerKey, ...publicValue } = value;
+            notes.push({ ...publicValue, owned: Boolean(requesterKey && ownerKey === requesterKey) });
+          }
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      notes.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+      return new Response(JSON.stringify({ notes: notes.slice(0, 100) }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const note = body.note && typeof body.note === "object" ? body.note : null;
+      if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
+      const id = `rn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const publicNote = { id, ownerKey: userKey, title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
+      await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
+      return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/pending" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const notes = [];
+      let cursor;
+      do {
+        const page = await env.REVISION.list({ prefix: "public-pending:", ...(cursor ? { cursor } : {}) });
+        for (const key of page.keys) {
+          const value = await env.REVISION.get(key.name, "json");
+          if (value) notes.push(value);
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      return new Response(JSON.stringify({ notes }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/admin-list" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const notes = [];
+      for (const prefix of ["public:", "public-pending:"]) {
+        let cursor;
+        do {
+          const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
+          for (const key of page.keys) {
+            const value = await env.REVISION.get(key.name, "json");
+            if (value) notes.push({ ...value, pending: prefix === "public-pending:" });
+          }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+      }
+      return new Response(JSON.stringify({ notes }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/approve" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "").trim();
+      const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
+      if (!note) return new Response("Note not found", { status: 404, headers: cors });
+      await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await env.REVISION.delete(`public-pending:${id}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/reject" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      await env.REVISION.delete(`public-pending:${id}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/update" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "").trim();
+      const note = body.note && typeof body.note === "object" ? body.note : null;
+      if (!id || !note) return new Response("Missing id or note", { status: 400, headers: cors });
+      const publicKey = `public:${id}`;
+      const pendingKey = `public-pending:${id}`;
+      const existing = await env.REVISION.get(publicKey, "json");
+      const existingPending = existing ? null : await env.REVISION.get(pendingKey, "json");
+      const current = existing || existingPending;
+      if (!current) return new Response("Note not found", { status: 404, headers: cors });
+      const updated = { ...current, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
+      await env.REVISION.put(existing ? publicKey : pendingKey, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true, note: updated }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/admin-delete" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      await env.REVISION.delete(`public:${id}`);
+      await env.REVISION.delete(`public-pending:${id}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/revision/public/delete" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const id = String(body.id || "").trim();
+      const note = id ? await env.REVISION.get(`public:${id}`, "json") : null;
+      if (!userKey || !id) return new Response("Missing fields", { status: 400, headers: cors });
+      if (!note) return new Response("Note not found", { status: 404, headers: cors });
+      if (note.ownerKey !== userKey) return new Response("Forbidden", { status: 403, headers: cors });
+      await env.REVISION.delete(`public:${id}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     // ── REVISION STUDY GUIDE GENERATOR (admin only) ──────────────────────────
     if (url.pathname === "/generate" && request.method === "POST") {
       if (!await isAuthorized(url, request)) {
