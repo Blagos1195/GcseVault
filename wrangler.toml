@@ -1,6 +1,41 @@
 name = "quotevault-api"
-main = "worker"
-compatibility_date = "2024-09-23"
+main = "worker.js"
+compatibility_date = "2026-05-11"
+
+[observability.logs]
+enabled = true
+
+[observability.traces]
+enabled = true
 
 [ai]
 binding = "AI"
+
+[[kv_namespaces]]
+binding = "DV_PENDING"
+id = "fc3ecee85b1546c88669259c7f75a810"
+
+[[kv_namespaces]]
+binding = "DV_PUBLIC"
+id = "163adbbf60f24d83b2e2628b3b04f838"
+
+[[kv_namespaces]]
+binding = "FEEDBACK"
+id = "da7e4aada6b246ddaca48dace4084d1b"
+
+[[kv_namespaces]]
+binding = "PUBLIC_QUOTES"
+id = "44dfb59a13014d128df3a0220cbad36b"
+
+[[kv_namespaces]]
+binding = "QUOTEVAULT"
+id = "9d8bf04ffa024374bd1c10cb00f19a62"
+
+[[kv_namespaces]]
+binding = "THEMES"
+id = "1531d3968a48441484fafb96c0f588ff"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "leaderboard"
+database_id = "5670b9d5-b36e-48bf-aeb2-1a7e1490095c"
