@@ -581,3 +581,42 @@ function submitRevisionCard(){const subject=document.getElementById('new-card-su
 function editRevisionCard(id){const card=cardById(id);if(!card)return;const title=prompt('Edit idea:',card.title);if(!title?.trim())return;const answer=prompt('Edit explanation:',card.answer);const topic=prompt('Edit topic:',card.topic);card.title=title.trim();card.answer=(answer||'').trim();card.topic=(topic||card.topic).trim();saveRevision();renderRevision();}
 function deleteRevisionCard(id){const card=cardById(id);if(!card)return;state.cards=state.cards.filter(item=>item.id!==id);state.cards.forEach(item=>item.links=(item.links||[]).filter(linkId=>linkId!==id));delete state.progress[id];state.selected=null;saveRevision();renderRevision();}
 
+const revisionSidebar = document.getElementById('sidebar');
+const revisionHbg = document.getElementById('hbg');
+const revisionOverlay = document.getElementById('overlay');
+
+document.querySelectorAll('.ni').forEach(item => {
+  item.addEventListener('click', () => {
+    const nextView = item.dataset.view || 'overview';
+    state.view = nextView;
+    renderRevision();
+    if (revisionSidebar) revisionSidebar.classList.remove('open');
+    if (revisionOverlay) revisionOverlay.style.display = 'none';
+  });
+});
+if (revisionHbg) {
+  revisionHbg.addEventListener('click', () => {
+    if (!revisionSidebar) return;
+    const isOpen = revisionSidebar.classList.toggle('open');
+    if (revisionOverlay) revisionOverlay.style.display = isOpen ? 'block' : 'none';
+  });
+}
+if (revisionOverlay) {
+  revisionOverlay.addEventListener('click', () => {
+    if (revisionSidebar) revisionSidebar.classList.remove('open');
+    revisionOverlay.style.display = 'none';
+  });
+}
+const revisionQuickCreate = document.getElementById('new-card');
+if (revisionQuickCreate) {
+  revisionQuickCreate.addEventListener('click', () => {
+    state.view = 'create';
+    renderRevision();
+  });
+}
+
+renderRevision();
+loadRevision();
+loadPublicNotes();
+</script>
+
