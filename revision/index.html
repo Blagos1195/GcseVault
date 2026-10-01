@@ -591,22 +591,47 @@ async function importPublicNote(id){const note=state.publicNotes.find(item=>item
 async function deletePublicNote(id){if(!confirm('Delete this public note set?'))return;try{await fetch(`${ThemeManager.WORKER_URL}/revision/public/delete`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),id})});await loadPublicNotes();}catch(error){alert('Could not delete public notes.');}}
 async function loginRevisionAI(){const password=document.getElementById('revision-ai-password')?.value||'';if(!password)return;await AdminManager.login(password);renderRevision();}
 async function requestRevisionAI(){
-  const notes=document.getElementById('ai-notes')?.value||'';if(!notes.trim())return;
+  const notes=document.getElementById('ai-notes')?.value||'';
+  if(!notes.trim())return;
   const button=document.querySelector('#page .bp');
+  const showStatus=(message,isError=false)=>{
+    let status=document.getElementById('revision-ai-status');
+    if(!status){
+      status=document.createElement('div');
+      status.id='revision-ai-status';
+      status.className=`qfb ${isError?'qwr':'ai-warning'}`;
+      status.setAttribute('role','status');
+      status.setAttribute('aria-live','polite');
+      button?.parentElement?.insertAdjacentElement('afterend',status);
+    }
+    status.className=`qfb ${isError?'qwr':'ai-warning'}`;
+    status.textContent=message;
+  };
+  const controller=new AbortController();
+  const startedAt=Date.now();
+  let timer;
+  const timeout=setTimeout(()=>controller.abort(),120000);
   if(button){button.disabled=true;button.textContent='Generating...';}
+  showStatus('Sending your notes to the worker...');
+  timer=setInterval(()=>showStatus(`Waiting for the AI response (${Math.floor((Date.now()-startedAt)/1000)}s). The model does not provide live progress.`),1000);
   try{
     const token=AdminManager.getToken();
     if(!token) throw new Error('Admin login expired. Please sign in again.');
-    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes}`})});
+    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes}`}),signal:controller.signal});
+    showStatus('Response received. Reading the study guide...');
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
     state.aiResult=normalizeAIResult(data);
     AdminManager.error='';
     renderRevision();
   }catch(error){
-    AdminManager.error=error.message;
+    const message=error.name==='AbortError'?'No response after 2 minutes. The browser stopped waiting; the worker may still have completed the request. Check worker logs before retrying.':error.message||'Study guide generation failed.';
+    AdminManager.error=message;
     renderRevision();
+    showStatus(message,true);
   } finally {
+    clearTimeout(timeout);
+    clearInterval(timer);
     const readyButton=document.querySelector('#page .bp');
     if(readyButton){readyButton.disabled=false;readyButton.textContent='✦ Generate study guide';}
   }
