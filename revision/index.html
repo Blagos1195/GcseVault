@@ -829,8 +829,12 @@ async function requestRevisionAI(){
     const mode=requestedMode;
     state.aiDraft.mode=mode;
     state.aiDraft.count=String(count);
+    const subject=document.getElementById('ai-subject')?.value.trim()||'';
+    const level=document.getElementById('ai-level')?.value.trim()||'';
+    const source=document.getElementById('ai-source')?.value.trim()||'';
     const existingCards=mode==='new'?[]:state.cards.map(card=>({id:card.id,front:card.title,back:card.answer}));
-    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,mode,existingCards,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes||'Find useful connections among the existing cards.'}`}),signal:controller.signal});
+    const material=[subject?`Subject: ${subject}`:'',level?`Level: ${level}`:'',source?`Source reference: ${source}`:'',notes.trim()||'Find useful connections among the existing cards.'].filter(Boolean).join('\n\n');
+    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,mode,existingCards,material}),signal:controller.signal});
     showStatus('Response received. Reading the study guide...');
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
