@@ -458,12 +458,13 @@ function importRevisionFile(input){
       }
       sourceCards=sourceCards.filter(card=>(card.title||card.front)&&(card.answer||card.back));
       if(!sourceCards.length)throw new Error('No valid front/back flashcards were found.');
-      const idMap=new Map(sourceCards.map(card=>[String(card.id||''),`imp${Date.now()}${Math.random().toString(36).slice(2,7)}`]));
-      const clean=sourceCards.map(card=>({id:idMap.get(String(card.id||''))||`imp${Date.now()}${Math.random().toString(36).slice(2,7)}`,subject:String(card.subject||'Imported'),topic:String(card.topic||'Imported'),title:String(card.title||card.front),answer:String(card.answer||card.back),source:String(card.source||''),links:[],difficulty:2}));
+      const sourceId=(card,index)=>String(card.id||`import-row-${index}`);
+      const idMap=new Map(sourceCards.map((card,index)=>[sourceId(card,index),`imp${Date.now()}${Math.random().toString(36).slice(2,7)}`]));
+      const clean=sourceCards.map((card,index)=>({id:idMap.get(sourceId(card,index)),subject:String(card.subject||'Imported'),topic:String(card.topic||'Imported'),title:String(card.title||card.front),answer:String(card.answer||card.back),source:String(card.source||''),links:[],difficulty:2}));
       const byTitle=new Map(clean.map(card=>[card.title.toLowerCase(),card]));
       sourceCards.forEach((source,index)=>{const card=clean[index];const ids=csvMode?(source.linkedTitles||[]).map(title=>byTitle.get(String(title).toLowerCase())?.id).filter(Boolean):(Array.isArray(source.links)?source.links.map(id=>idMap.get(String(id))).filter(Boolean):[]);card.links=ids.filter(id=>id!==card.id);});
       const importedProgress={};
-      if(jsonData?.progress&&typeof jsonData.progress==='object')sourceCards.forEach(source=>{const oldId=String(source.id||'');const newId=idMap.get(oldId);if(newId&&jsonData.progress[oldId])importedProgress[newId]=jsonData.progress[oldId];});
+      if(jsonData?.progress&&typeof jsonData.progress==='object')sourceCards.forEach((source,index)=>{const oldId=sourceId(source,index);const newId=idMap.get(oldId);if(newId&&jsonData.progress[oldId])importedProgress[newId]=jsonData.progress[oldId];});
       const reviewLog=Array.isArray(jsonData?.reviewLog)?jsonData.reviewLog.map(entry=>({...entry,cardId:idMap.get(String(entry.cardId||''))||entry.cardId})).slice(-5000):[];
       const name=String(jsonData?.name||file.name.replace(/\.(json|csv)$/i,''));const imported=normalizeRevisionSet({id:`set-${Date.now()}`,name,cards:clean,progress:importedProgress,xp:Number(jsonData?.xp)||0,streak:Number(jsonData?.streak)||0,lastReview:jsonData?.lastReview||'',syllabus:jsonData?.syllabus||[],syllabusDone:jsonData?.syllabusDone||{},reviewLog});
       state.accountSets.push(imported);state.activeSetId=imported.id;state.cards=clean;state.progress=imported.progress;state.xp=imported.xp;state.streak=imported.streak;state.lastReview=imported.lastReview;state.view='overview';state.setMessage=`Imported ${clean.length} cards from ${file.name}, preserving connections and progress.`;saveRevision();renderRevision();
