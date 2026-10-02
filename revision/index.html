@@ -818,7 +818,7 @@ async function requestRevisionAI(){
   const controller=new AbortController();
   const startedAt=Date.now();
   let timer;
-  const timeout=setTimeout(()=>controller.abort(),120000);
+  const timeout=setTimeout(()=>controller.abort(),300000);
   if(button){button.disabled=true;button.textContent=requestedMode==='add'?'Finding missing cards...':requestedMode==='links'?'Finding links...':'Generating flashcards...';}
   showStatus('Sending your notes to the worker...');
   timer=setInterval(()=>showStatus(`Waiting for the AI response (${Math.floor((Date.now()-startedAt)/1000)}s). The model does not provide live progress.`),1000);
@@ -839,7 +839,7 @@ async function requestRevisionAI(){
     AdminManager.error='';
     renderRevision();
   }catch(error){
-    const message=error.name==='AbortError'?'No response after 2 minutes. The browser stopped waiting; the worker may still have completed the request. Check worker logs before retrying.':error.message||'Study guide generation failed.';
+    const message=error.name==='AbortError'?'No response after 5 minutes. The browser stopped waiting; the worker may still have completed the request. Check worker logs before retrying.':error.message||'Study guide generation failed.';
     AdminManager.error=message;
     renderRevision();
     showStatus(message,true);
