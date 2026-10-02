@@ -1062,12 +1062,26 @@ const data = {
       try {
         const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
           messages: [
-            { role: "system", content: `Create comprehensive GCSE revision content from the supplied material, using only its facts. Return only valid JSON matching the supplied schema. Do not include practice questions, commentary, summaries, or extra keys. Flashcard fronts must be terms or concise concepts, not questions; backs must define or explain them. Cover distinct sections, subtopics, key terms, processes, causes, effects and comparisons. ${modeInstructions} Links must connect genuinely related cards, use only provided or returned IDs, never link a card to itself, and include useful connections throughout. Do not invent information.` },
+            { role: "system", content: `Create comprehensive GCSE revision flashcards from the supplied material. Return only valid JSON matching the supplied schema. Do not include practice questions, commentary, summaries, self-corrections, caveats, repeated text, or extra keys. Fronts must be a term or concise concept (maximum 8 words), never a question. Backs must be a direct definition or explanation in at most 25 words. State each fact once. Cover distinct sections, subtopics, key terms, processes, causes, effects and comparisons. ${modeInstructions} Links must connect genuinely related cards, use only provided or returned IDs, never link a card to itself, and include useful connections without duplicating edges. Do not invent information.` },
             { role: "user", content: `${body.material.slice(0, 120000)}\n\nExisting cards for comparison/linking: ${JSON.stringify(existingCards).slice(0, 50000)}` }
           ],
           max_tokens: 8192,
           response_format: { type: "json_schema", json_schema: { name: "study_guide", schema } }
         });
+        const choice = result?.choices?.[0];
+        const content = choice?.message?.content;
+        if (choice?.finish_reason === "length") {
+          return new Response(JSON.stringify({ error: "The AI response reached its output limit before finishing the cards. Try a smaller card count or split the topic notes into sections." }), {
+            status: 502, headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
+        if (typeof content === "string") {
+          try { JSON.parse(content); } catch {
+            return new Response(JSON.stringify({ error: "The AI returned incomplete card data. Try a smaller card count or split the topic notes into sections." }), {
+              status: 502, headers: { ...cors, "Content-Type": "application/json" }
+            });
+          }
+        }
         return new Response(JSON.stringify(result), {
           headers: { ...cors, "Content-Type": "application/json" }
         });
