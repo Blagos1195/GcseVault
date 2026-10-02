@@ -174,6 +174,8 @@ select option{background:var(--bg3)}
     <div class="sb-sec">Workspace</div>
     <div class="ni active" data-view="overview"><span class="ni-icon">◈</span>Overview</div>
     <div class="ni" data-view="cards"><span class="ni-icon">▣</span>Flashcards</div>
+    <div class="ni" data-view="library"><span class="ni-icon">⌕</span>Library</div>
+    <div class="ni" data-view="analytics"><span class="ni-icon">▤</span>Progress</div>
     <div class="ni" data-view="create"><span class="ni-icon">＋</span>New card</div>
     <div class="ni" data-view="graph"><span class="ni-icon">⌘</span>Knowledge graph</div>
     <div class="ni" data-view="public"><span class="ni-icon">☁</span>Public notes</div>
@@ -218,7 +220,10 @@ function normalizeRevisionSet(set, fallbackId){
     xp: Number(set && set.xp) || 0,
     streak: Number(set && set.streak) || 0,
     lastReview: set && set.lastReview ? String(set.lastReview) : '',
-    published: Boolean(set && set.published)
+    published: Boolean(set && set.published),
+    syllabus: Array.isArray(set && set.syllabus) ? set.syllabus : [],
+    syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === 'object' ? set.syllabusDone : {},
+    reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog : []
   };
 }
 const existingRevisionSets = JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null');
@@ -244,7 +249,8 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? Number(localStorage.getItem('revision_xp') || 0)),
   streak: Number(selectedRevisionSet?.streak ?? Number(localStorage.getItem('revision_streak') || 0)),
   lastReview: selectedRevisionSet?.lastReview || localStorage.getItem('revision_last_review') || '',
-  publicNotes: [], aiResult: null, syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', accountDraft:{username:'',userKey:''}, confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:''}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null
+  publicNotes: [], aiResult: null, syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', accountDraft:{username:'',userKey:''}, confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
+  studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
 function getActiveRevisionSet(){
@@ -258,6 +264,9 @@ function syncActiveRevisionSet(){
   activeSet.xp = state.xp;
   activeSet.streak = state.streak;
   activeSet.lastReview = state.lastReview;
+  activeSet.syllabus = activeSet.syllabus || [];
+  activeSet.syllabusDone = activeSet.syllabusDone || {};
+  activeSet.reviewLog = activeSet.reviewLog || [];
   localStorage.setItem(revisionAccountSetsKey, JSON.stringify(state.accountSets));
   localStorage.setItem(revisionActiveSetKey, state.activeSetId);
 }
@@ -385,6 +394,84 @@ function topicStats(){
 function suggestedTopics(){
   return Object.entries(topicStats()).sort(([,a],[,b])=>b.due-a.due||a.reviewed/a.total-b.reviewed/b.total).slice(0,4);
 }
+function cardIsDue(card){return !state.progress[card.id]?.due||Number(state.progress[card.id].due)<=Date.now();}
+function dueCards(cards=state.cards){return cards.filter(cardIsDue);}
+function formatDue(value){if(!value)return 'New';const remaining=Number(value)-Date.now();if(remaining<=0)return 'Due now';if(remaining<3600000)return `Due in ${Math.max(1,Math.ceil(remaining/60000))}m`;if(remaining<86400000)return `Due in ${Math.ceil(remaining/3600000)}h`;return `Due ${new Date(Number(value)).toLocaleDateString()}`;}
+function cardReviewStats(card){const progress=state.progress[card.id]||{};return{due:cardIsDue(card),reviews:Number(progress.reviews)||0,correct:Number(progress.correct)||0,accuracy:progress.reviews?Math.round((Number(progress.correct)||0)/progress.reviews*100):null};}
+function startStudySession(mode='due',limit=20,topic=''){
+  const pool=topic?state.cards.filter(card=>card.topic===topic):state.cards;
+  const candidates=mode==='all'?pool:mode==='weak'?pool.filter(card=>state.progress[card.id]?.reviews).sort((a,b)=>(state.progress[a.id]?.ease||2.5)-(state.progress[b.id]?.ease||2.5)):dueCards(pool);
+  state.studyQueue=candidates.slice().sort((a,b)=>Number(state.progress[a.id]?.due||0)-Number(state.progress[b.id]?.due||0)).slice(0,Math.max(1,Number(limit)||20)).map(card=>card.id);
+  state.studySessionActive=true;state.sessionReviewed=0;state.studyIndex=0;state.revealed=false;state.view='cards';renderRevision();
+}
+function currentStudyCard(){
+  const queue=state.studySessionActive?state.studyQueue:state.cards.map(card=>card.id);
+  if(!queue.length)return null;
+  const id=queue[Math.min(state.studyIndex,queue.length-1)];
+  return cardById(id)||null;
+}
+function rateCard(id,rating){
+  const previous=state.progress[id]||{};const reviews=(Number(previous.reviews)||0)+1;const ease=Number(previous.ease)||2.5;
+  const grade=Math.max(0,Math.min(3,Number(rating)||0));
+  const nextEase=Math.max(1.3,ease+(grade===3?0.15:grade===2?0:grade===1?-0.2:-0.35));
+  const repetitions=grade===0?0:(Number(previous.repetitions)||0)+1;
+  let interval=grade===0?10*60*1000:grade===1?24*60*60*1000:repetitions===1?24*60*60*1000:repetitions===2?3*24*60*60*1000:Math.round((Number(previous.intervalDays)||3)*nextEase*86400000);
+  if(grade===3&&grade>0)interval=Math.round(interval*1.4);
+  state.progress[id]={score:grade,due:Date.now()+interval,ease:nextEase,repetitions,intervalDays:interval/86400000,reviews,correct:(Number(previous.correct)||0)+(grade>=2?1:0),lastReviewed:Date.now()};
+  const set=getActiveRevisionSet();set.reviewLog=Array.isArray(set.reviewLog)?set.reviewLog:[];set.reviewLog.push({cardId:id,rating:grade,at:Date.now(),topic:cardById(id)?.topic||''});set.reviewLog=set.reviewLog.slice(-5000);
+  awardRevisionXP(grade>=2);
+  if(state.studySessionActive){state.sessionReviewed++;state.studyQueue=state.studyQueue.filter(cardId=>cardId!==id);if(state.studyQueue.length)state.studyIndex=Math.min(state.studyIndex,state.studyQueue.length-1);else{state.studySessionActive=false;state.view='overview';state.setMessage=`Session complete: ${state.sessionReviewed} card${state.sessionReviewed===1?'':'s'} reviewed.`;}}
+  else state.studyIndex=(state.studyIndex+1)%Math.max(state.cards.length,1);
+  state.revealed=false;saveRevision();renderRevision();
+}
+function dueSummary(){const due=dueCards();return{due:due.length,total:state.cards.length,reviewed:state.cards.length-due.length};}
+function normalizeTopic(value){return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function syllabusCoverage(item){const target=normalizeTopic(typeof item==='string'?item:item.text);const ignored=new Set(['and','the','for','with','from','into','that','this']);const words=target.split(' ').filter(word=>word.length>2&&!ignored.has(word));if(!words.length)return 0;return state.cards.filter(card=>{const haystack=normalizeTopic(`${card.topic} ${card.title} ${card.answer}`);const hits=words.filter(word=>haystack.includes(word)).length;return haystack.includes(target)||hits/words.length>=0.6;}).length;}
+function toggleSyllabusDone(index){const set=getActiveRevisionSet();set.syllabusDone=set.syllabusDone||{};set.syllabusDone[index]=!set.syllabusDone[index];saveRevision();renderRevision();}
+function saveSyllabus(){const set=getActiveRevisionSet();set.syllabus=(document.getElementById('syllabus-items')?.value||'').split(/\r?\n/).map(text=>text.trim()).filter(Boolean).slice(0,200);set.syllabusDone={};state.syllabusDraft='';saveRevision();renderRevision();}
+function beginConnectionReview(cardId){const card=cardById(cardId);const other=card&&linkedCards(card)[0];if(!card||!other)return;state.connectionCardId=card.id;state.connectionTargetId=other.id;state.connectionRevealed=false;state.view='connection';renderRevision();}
+function rateConnection(rating){const card=cardById(state.connectionCardId),other=cardById(state.connectionTargetId);if(!card||!other)return;const key=`link:${[card.id,other.id].sort().join(':')}`;const prior=state.progress[key]||{};const grade=Number(rating)||0;const now=Date.now();state.progress[key]={score:grade,reviews:(prior.reviews||0)+1,correct:(prior.correct||0)+(grade>=2?1:0),ease:Math.max(1.3,(prior.ease||2.5)+(grade>=2?0:-0.2)),due:now+(grade===0?600000:grade===1?86400000:grade===2?259200000:345600000),lastReviewed:now};const set=getActiveRevisionSet();set.reviewLog=Array.isArray(set.reviewLog)?set.reviewLog:[];set.reviewLog.push({link:key,rating:grade,at:now,topic:card.topic||''});set.reviewLog=set.reviewLog.slice(-5000);state.connectionRevealed=false;saveRevision();state.view='overview';renderRevision();}
+function downloadBlob(filename,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const link=document.createElement('a');link.href=url;link.download=filename;link.click();URL.revokeObjectURL(url);}
+function exportRevisionSet(format='json'){
+  const set=getActiveRevisionSet();
+  if(format==='csv'){
+    const quote=value=>`"${String(value??'').replace(/"/g,'""')}"`;
+    const rows=[['front','back','subject','topic','source','links'],...state.cards.map(card=>[card.title,card.answer,card.subject,card.topic,card.source||'',(card.links||[]).map(id=>cardById(id)?.title||'').join('|')])];
+    downloadBlob(`${set.name.replace(/[^a-z0-9_-]+/gi,'-')}.csv`,rows.map(row=>row.map(quote).join(',')).join('\r\n'),'text/csv');
+  }else downloadBlob(`${set.name.replace(/[^a-z0-9_-]+/gi,'-')}.json`,JSON.stringify({...set,cards:state.cards,progress:state.progress},null,2),'application/json');
+}
+function parseCSV(text){const rows=[];let row=[],cell='',quoted=false;for(let index=0;index<text.length;index++){const char=text[index];if(char==='"'&&quoted&&text[index+1]==='"'){cell+='"';index++;}else if(char==='"')quoted=!quoted;else if(char===','&&!quoted){row.push(cell);cell='';}else if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&text[index+1]==='\n')index++;row.push(cell);if(row.some(value=>value.trim()))rows.push(row);row=[];cell='';}else cell+=char;}row.push(cell);if(row.some(value=>value.trim()))rows.push(row);return rows;}
+async function loadExternalScript(src,globalName){if(window[globalName])return;await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=()=>reject(new Error('Could not load the document reader library.'));document.head.appendChild(script);});if(!window[globalName])throw new Error('Document reader failed to initialize.');}
+async function extractRevisionFile(file){const extension=file.name.split('.').pop().toLowerCase();if(['txt','md','csv'].includes(extension))return await file.text();if(extension==='pdf'){await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;const pages=[];for(let index=1;index<=pdf.numPages;index++){const page=await pdf.getPage(index);const content=await page.getTextContent();pages.push(content.items.map(item=>item.str).join(' '));}return pages.join('\n');}if(extension==='docx'){await loadExternalScript('https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js','mammoth');return(await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value;}throw new Error('Choose a .txt, .md, .csv, .pdf, or .docx file.');}
+async function handleRevisionFile(inputId,targetId){const file=document.getElementById(inputId)?.files?.[0];if(!file)return;try{const text=await extractRevisionFile(file);const target=document.getElementById(targetId);if(target){target.value=[target.value.trim(),text].filter(Boolean).join('\n\n');target.dispatchEvent(new Event('input',{bubbles:true}));}state.uploadMessage=`Imported text from ${file.name}.`;if(state.view==='ai')state.aiDraft.source=file.name;renderRevision();}catch(error){state.uploadMessage=error.message||'Could not read that file.';renderRevision();}}
+function importRevisionFile(input){
+  const file=input.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const text=String(reader.result||'');let sourceCards=[];let csvMode=false;let jsonData=null;
+      if(file.name.toLowerCase().endsWith('.json')){const data=JSON.parse(text);jsonData=Array.isArray(data)?null:data;sourceCards=Array.isArray(data)?data:Array.isArray(data.cards)?data.cards:[];}
+      else{
+        csvMode=true;const rows=parseCSV(text);const headings=rows[0].map(value=>value.trim().toLowerCase());
+        const frontIndex=headings.indexOf('front'),backIndex=headings.indexOf('back');
+        sourceCards=rows.slice(frontIndex>=0&&backIndex>=0?1:0).map(row=>({title:row[frontIndex>=0?frontIndex:0]||'',answer:row[backIndex>=0?backIndex:1]||'',subject:row[headings.indexOf('subject')]||'Imported',topic:row[headings.indexOf('topic')]||'Imported',source:row[headings.indexOf('source')]||'',linkedTitles:(row[headings.indexOf('links')]||'').split('|').filter(Boolean)}));
+      }
+      sourceCards=sourceCards.filter(card=>(card.title||card.front)&&(card.answer||card.back));
+      if(!sourceCards.length)throw new Error('No valid front/back flashcards were found.');
+      const idMap=new Map(sourceCards.map(card=>[String(card.id||''),`imp${Date.now()}${Math.random().toString(36).slice(2,7)}`]));
+      const clean=sourceCards.map(card=>({id:idMap.get(String(card.id||''))||`imp${Date.now()}${Math.random().toString(36).slice(2,7)}`,subject:String(card.subject||'Imported'),topic:String(card.topic||'Imported'),title:String(card.title||card.front),answer:String(card.answer||card.back),source:String(card.source||''),links:[],difficulty:2}));
+      const byTitle=new Map(clean.map(card=>[card.title.toLowerCase(),card]));
+      sourceCards.forEach((source,index)=>{const card=clean[index];const ids=csvMode?(source.linkedTitles||[]).map(title=>byTitle.get(String(title).toLowerCase())?.id).filter(Boolean):(Array.isArray(source.links)?source.links.map(id=>idMap.get(String(id))).filter(Boolean):[]);card.links=ids.filter(id=>id!==card.id);});
+      const importedProgress={};
+      if(jsonData?.progress&&typeof jsonData.progress==='object')sourceCards.forEach(source=>{const oldId=String(source.id||'');const newId=idMap.get(oldId);if(newId&&jsonData.progress[oldId])importedProgress[newId]=jsonData.progress[oldId];});
+      const reviewLog=Array.isArray(jsonData?.reviewLog)?jsonData.reviewLog.map(entry=>({...entry,cardId:idMap.get(String(entry.cardId||''))||entry.cardId})).slice(-5000):[];
+      const name=String(jsonData?.name||file.name.replace(/\.(json|csv)$/i,''));const imported=normalizeRevisionSet({id:`set-${Date.now()}`,name,cards:clean,progress:importedProgress,xp:Number(jsonData?.xp)||0,streak:Number(jsonData?.streak)||0,lastReview:jsonData?.lastReview||'',syllabus:jsonData?.syllabus||[],syllabusDone:jsonData?.syllabusDone||{},reviewLog});
+      state.accountSets.push(imported);state.activeSetId=imported.id;state.cards=clean;state.progress=imported.progress;state.xp=imported.xp;state.streak=imported.streak;state.lastReview=imported.lastReview;state.view='overview';state.setMessage=`Imported ${clean.length} cards from ${file.name}, preserving connections and progress.`;saveRevision();renderRevision();
+    }catch(error){state.setMessage=error.message||'Could not import this file.';renderRevision();}
+  };
+  reader.readAsText(file);
+}
+function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topic=card.topic||'Untopiced';const stats=cardReviewStats(card);grouped[topic]??={total:0,reviewed:0,due:0,correct:0,reviews:0,links:0};grouped[topic].total++;grouped[topic].reviewed+=stats.reviews>0?1:0;grouped[topic].due+=stats.due?1:0;grouped[topic].correct+=Number(state.progress[card.id]?.correct)||0;grouped[topic].reviews+=stats.reviews;grouped[topic].links+=(card.links||[]).length;});return grouped;}
 function revisionUserKey(){return VaultUser.getKey();}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
@@ -508,23 +595,58 @@ function renderGraph(){
   return `<div class="graph"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${lines}</svg>${positions.map(node=>`<button class="graph-node${state.selected===node.card.id?' active':''}" style="left:${node.x}%;top:${node.y}%" onclick="selectRevisionCard('${node.card.id}')">${escapeRevision(node.card.title)}</button>`).join('')}</div>`;
 }
 function renderCardList(cards=state.cards){
-  return `<div class="knowledge-list">${cards.map(card=>`<div class="knowledge-item${state.selected===card.id?' active':''}" onclick="selectRevisionCard('${card.id}')"><span class="knowledge-dot"></span><div><div class="knowledge-title">${escapeRevision(card.title)}</div><div class="knowledge-meta">${escapeRevision(card.subject)} · ${escapeRevision(card.topic)} · ${linkedCards(card).length} linked idea${linkedCards(card).length===1?'':'s'}</div><div class="knowledge-links">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="event.stopPropagation();selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div></div></div>`).join('')}</div>`;
+  return `<div class="knowledge-list">${cards.map(card=>`<div class="knowledge-item${state.selected===card.id?' active':''}" onclick="selectRevisionCard('${card.id}')"><span class="knowledge-dot"></span><div><div class="knowledge-title">${escapeRevision(card.title)}</div><div class="knowledge-meta">${escapeRevision(card.subject)} · ${escapeRevision(card.topic)} · ${linkedCards(card).length} linked idea${linkedCards(card).length===1?'':'s'} · ${formatDue(state.progress[card.id]?.due)}</div>${card.source?`<div class="knowledge-meta">Source: ${escapeRevision(card.source)}</div>`:''}<div class="knowledge-links">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="event.stopPropagation();selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div></div></div>`).join('')}</div>`;
 }
 function renderSuggestions(){
   const suggestions=suggestedTopics();
   return `<div class="card"><div class="sec" style="margin-top:0">Suggested next topics</div>${suggestions.length?suggestions.map(([topic,stats])=>`<div class="suggestion"><div><div class="suggestion-name">${escapeRevision(topic)}</div><div class="suggestion-reason">${stats.due} card${stats.due===1?'':'s'} due · ${stats.reviewed}/${stats.total} reviewed</div></div><button class="btn bsm" onclick="startTopic('${encodeURIComponent(topic)}')">Study</button></div>`).join(''):'<div class="ps">Add cards to receive recommendations.</div>'}</div>`;
 }
+function renderLibrary(){
+  const subjects=[...new Set(state.cards.map(card=>card.subject||'General'))].sort();
+  const topics=[...new Set(state.cards.map(card=>card.topic||'Untopiced'))].sort();
+  const query=state.libraryQuery.toLowerCase();
+  let cards=state.cards.filter(card=>(state.librarySubject==='all'||(card.subject||'General')===state.librarySubject)&&(state.libraryTopic==='all'||(card.topic||'Untopiced')===state.libraryTopic)&&(state.libraryDue==='all'||(state.libraryDue==='due'?cardIsDue(card):!cardIsDue(card)))&&(!query||`${card.title} ${card.answer} ${card.source||''}`.toLowerCase().includes(query)));
+  cards.sort((a,b)=>state.librarySort==='alpha'?a.title.localeCompare(b.title):state.librarySort==='topic'?a.topic.localeCompare(b.topic)||a.title.localeCompare(b.title):Number(state.progress[a.id]?.due||0)-Number(state.progress[b.id]?.due||0));
+  return `<div><div class="pt">Card library</div><div class="ps">Find, filter and sort cards in this set.</div><div class="card"><div class="g2"><div class="fg"><label for="library-search">Search cards</label><input id="library-search" type="text" value="${escapeRevision(state.libraryQuery)}" placeholder="Search term, definition, source"></div><div class="fg"><label for="library-subject">Subject</label><select id="library-subject"><option value="all">All subjects</option>${subjects.map(subject=>`<option${state.librarySubject===subject?' selected':''}>${escapeRevision(subject)}</option>`).join('')}</select></div><div class="fg"><label for="library-topic">Topic</label><select id="library-topic"><option value="all">All topics</option>${topics.map(topic=>`<option${state.libraryTopic===topic?' selected':''}>${escapeRevision(topic)}</option>`).join('')}</select></div><div class="fg"><label for="library-due">Review status</label><select id="library-due"><option value="all"${state.libraryDue==='all'?' selected':''}>All cards</option><option value="due"${state.libraryDue==='due'?' selected':''}>Due now</option><option value="scheduled"${state.libraryDue==='scheduled'?' selected':''}>Scheduled later</option></select></div><div class="fg"><label for="library-sort">Sort by</label><select id="library-sort"><option value="due"${state.librarySort==='due'?' selected':''}>Due date</option><option value="alpha"${state.librarySort==='alpha'?' selected':''}>Front A–Z</option><option value="topic"${state.librarySort==='topic'?' selected':''}>Topic</option></select></div></div><div class="knowledge-meta">${cards.length} matching cards</div>${renderCardList(cards)}</div></div>`;
+}
+function bindLibraryEvents(){
+  const query=document.getElementById('library-search'),subject=document.getElementById('library-subject'),topic=document.getElementById('library-topic'),due=document.getElementById('library-due'),sort=document.getElementById('library-sort');
+  if(query)query.oninput=()=>{state.libraryQuery=query.value;const cursor=query.selectionStart;renderRevision();const next=document.getElementById('library-search');next?.focus();next?.setSelectionRange(cursor,cursor);};
+  if(subject)subject.onchange=()=>{state.librarySubject=subject.value;renderRevision();};
+  if(topic)topic.onchange=()=>{state.libraryTopic=topic.value;renderRevision();};
+  if(due)due.onchange=()=>{state.libraryDue=due.value;renderRevision();};
+  if(sort)sort.onchange=()=>{state.librarySort=sort.value;renderRevision();};
+}
+function renderAnalytics(){
+  const topics=topicAnalytics();const due=dueSummary();const set=getActiveRevisionSet();
+  const totalReviews=state.cards.reduce((sum,card)=>sum+(Number(state.progress[card.id]?.reviews)||0),0);
+  const totalCorrect=state.cards.reduce((sum,card)=>sum+(Number(state.progress[card.id]?.correct)||0),0);
+  const syllabus=Array.isArray(set.syllabus)?set.syllabus:[];
+  const activity=Array.from({length:7},(_,index)=>{const date=new Date();date.setHours(0,0,0,0);date.setDate(date.getDate()-(6-index));const next=date.getTime()+86400000;return{label:date.toLocaleDateString(undefined,{weekday:'short'}),count:(set.reviewLog||[]).filter(entry=>Number(entry.at)>=date.getTime()&&Number(entry.at)<next).length};});
+  const maxActivity=Math.max(1,...activity.map(day=>day.count));
+  const topicEntries=Object.entries(topics).sort(([,a],[,b])=>b.due-a.due||(a.reviews?a.correct/a.reviews:0)-(b.reviews?b.correct/b.reviews:0));
+  return `<div style="max-width:900px;margin:0 auto"><div class="pt">Progress and coverage</div><div class="ps">Review history, due cards and syllabus coverage for ${escapeRevision(set.name)}.</div><div class="g3"><div class="scard"><div class="snum">${due.due}</div><div class="slbl">Due now</div></div><div class="scard"><div class="snum">${totalReviews}</div><div class="slbl">Reviews</div></div><div class="scard"><div class="snum">${totalReviews?Math.round(totalCorrect/totalReviews*100):0}%</div><div class="slbl">Recall accuracy</div></div></div><div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Recent study activity</div><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;height:84px">${activity.map(day=>`<div style="display:flex;flex-direction:column;justify-content:end;align-items:center;gap:4px;height:100%"><span class="knowledge-meta">${day.count||''}</span><div title="${day.count} reviews" style="width:100%;max-width:38px;height:${Math.max(4,day.count/maxActivity*48)}px;background:var(--teal);border-radius:3px 3px 0 0"></div><span class="knowledge-meta">${day.label}</span></div>`).join('')}</div></div><div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Topic performance · weakest first</div>${topicEntries.length?`<div class="knowledge-list">${topicEntries.map(([topic,stats])=>`<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">${escapeRevision(topic)}</div><div class="knowledge-meta">${stats.total} cards · ${stats.due} due · ${stats.reviewed} reviewed · ${stats.reviews?Math.round(stats.correct/stats.reviews*100):0}% recall accuracy · ${stats.links/2|0} connections</div></div><button class="btn bsm" onclick="startStudySession('due',50,'${escapeRevision(topic)}')">Study due</button></div>`).join('')}</div>`:'<div class="ps">Add cards to see topic analytics.</div>'}</div><div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Syllabus coverage</div><div class="fg"><label for="syllabus-items">Paste syllabus points, one per line</label><textarea id="syllabus-items" rows="5" placeholder="Cell structure\nDiffusion and osmosis\nActive transport">${escapeRevision(state.syllabusDraft||syllabus.join('\n'))}</textarea></div><button class="btn bp" type="button" onclick="saveSyllabus()">Save syllabus checklist</button>${syllabus.length?`<div class="knowledge-list">${syllabus.map((item,index)=>{const count=syllabusCoverage(item);const checked=Boolean(set.syllabusDone?.[index]);return`<label class="knowledge-item"><input type="checkbox" ${checked?'checked':''} onchange="toggleSyllabusDone(${index})"><span style="flex:1"><span class="knowledge-title">${escapeRevision(item)}</span><span class="knowledge-meta">${count} matching card${count===1?'':'s'}${checked?' · Marked complete':''}</span></span></label>`;}).join('')}</div>`:''}</div></div>`;
+}
+function renderConnectionReview(){
+  const card=cardById(state.connectionCardId);if(!card)return '<div class="pt">Connection review</div><div class="ps">Choose a linked card to review its connection.</div>';
+  const other=cardById(state.connectionTargetId);if(!other)return '<div class="pt">Connection review</div><div class="ps">This idea has no linked cards yet.</div>';
+  return `<div style="max-width:680px;margin:0 auto"><div class="pt">Review the connection</div><div class="ps">Explain how these two ideas are related before revealing the link.</div><div class="card" style="text-align:center;padding:24px"><div class="g2"><div class="scard"><div class="knowledge-title">${escapeRevision(card.title)}</div></div><div class="scard"><div class="knowledge-title">${escapeRevision(other.title)}</div></div></div>${state.connectionRevealed?`<div class="qfb qok">${escapeRevision(card.answer)} ${escapeRevision(other.answer)}</div>`:'<div class="ps" style="margin-top:16px">Think through the relationship between these ideas.</div>'}<div style="display:flex;gap:7px;justify-content:center;margin-top:14px;flex-wrap:wrap">${state.connectionRevealed?`<button class="btn br" onclick="rateConnection(0)">Again</button><button class="btn" onclick="rateConnection(1)">Hard</button><button class="btn bp" onclick="rateConnection(2)">Good</button><button class="btn bg" onclick="rateConnection(3)">Easy</button>`:`<button class="btn bp" onclick="state.connectionRevealed=true;renderRevision()">Reveal connection</button>`}<button class="btn" onclick="state.view='overview';renderRevision()">Back</button></div></div></div>`;
+}
+function renderSessionSummary(){return `<div class="card" style="margin-top:10px"><div class="knowledge-title">Study session</div><div class="knowledge-meta">${state.studyQueue.length} cards remaining · ${state.sessionReviewed} reviewed this session</div></div>`;}
 function renderOverview(){
   const selected=cardById(state.selected);
-  return `<div><div class="pt">Knowledge workspace</div><div class="ps">Build links between ideas, then revise the connections instead of isolated facts.</div><div class="knowledge-layout"><div class="knowledge-panel"><div class="g3"><div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Cards</div></div><div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Connections</div></div><div class="scard"><div class="snum">${Object.keys(state.progress).length}</div><div class="slbl">Reviewed</div></div></div><div class="sec">Your knowledge graph</div>${renderGraph()}${renderCardList()}</div><div class="knowledge-panel">${renderSuggestions()}${selected?`<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Selected idea</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.76rem;line-height:1.6;color:var(--text2);margin-top:7px">${escapeRevision(selected.answer)}</p><div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn bp" onclick="startStudy('${selected.id}')">Review</button><button class="btn" onclick="linkRevisionCard('${selected.id}')">＋ Link idea</button><button class="btn" onclick="editRevisionCard('${selected.id}')">✏ Edit</button><button class="btn br" onclick="deleteRevisionCard('${selected.id}')">🗑 Delete</button></div></div>`:''}</div></div></div>`;
+  const due=dueSummary();
+  return `<div><div class="pt">Knowledge workspace</div><div class="ps">${escapeRevision(getActiveRevisionSet().name)} · ${due.due} cards due for review.</div><div class="card" style="margin-bottom:10px"><div class="sec" style="margin-top:0">Start a study session</div><div style="display:flex;gap:7px;align-items:end;flex-wrap:wrap"><div class="fg" style="margin:0;min-width:130px"><label for="session-length">Card limit</label><select id="session-length"><option value="10">10 cards</option><option value="20" selected>20 cards</option><option value="50">50 cards</option><option value="100">100 cards</option></select></div><button class="btn bp" onclick="startStudySession('due',document.getElementById('session-length').value)">Study due (${due.due})</button><button class="btn" onclick="startStudySession('all',document.getElementById('session-length').value)">Study all</button><button class="btn" onclick="startStudySession('weak',document.getElementById('session-length').value)">Review weak</button><button class="btn" onclick="state.view='analytics';renderRevision()">Progress & syllabus</button></div></div><div class="knowledge-layout"><div class="knowledge-panel"><div class="g3"><div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Cards</div></div><div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Connections</div></div><div class="scard"><div class="snum">${due.total-due.due}</div><div class="slbl">Scheduled</div></div></div><div class="sec">Your knowledge graph</div>${renderGraph()}${renderCardList()}</div><div class="knowledge-panel">${renderSuggestions()}${selected?`<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Selected idea</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.76rem;line-height:1.6;color:var(--text2);margin-top:7px">${escapeRevision(selected.answer)}</p>${selected.source?`<div class="knowledge-meta">Source: ${escapeRevision(selected.source)}</div>`:''}<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn bp" onclick="startStudy('${selected.id}')">Review</button>${linkedCards(selected).length?`<button class="btn" onclick="beginConnectionReview('${selected.id}')">Review links</button>`:''}<button class="btn" onclick="linkRevisionCard('${selected.id}')">＋ Link idea</button><button class="btn" onclick="editRevisionCard('${selected.id}')">✏ Edit</button><button class="btn br" onclick="deleteRevisionCard('${selected.id}')">🗑 Delete</button></div></div>`:''}</div></div></div>`;
 }
 function renderCards(){
-  const card=state.cards[state.studyIndex%Math.max(state.cards.length,1)];
-  if(!card)return `<div class="pt">Flashcards</div><div class="ps">No cards yet.</div>`;
-  return `<div style="max-width:620px;margin:0 auto"><div class="pt">Flashcards</div><div class="ps">Review linked ideas together. Card ${state.studyIndex%state.cards.length+1} of ${state.cards.length}</div><div class="card" style="min-height:230px;display:flex;flex-direction:column;justify-content:center;text-align:center"><div class="tag tp">${escapeRevision(card.topic)}</div><div style="font-size:1.15rem;font-weight:600;margin:18px 0">${escapeRevision(card.title)}</div>${state.revealed?`<p style="font-size:.85rem;color:var(--text2);line-height:1.7">${escapeRevision(card.answer)}</p><div class="knowledge-links" style="justify-content:center;margin-top:14px">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div>`:'<div class="ps">Try to answer, then reveal the explanation.</div>'}<div style="display:flex;justify-content:center;gap:7px;margin-top:20px">${state.revealed?`<button class="btn br" onclick="rateCard('${card.id}',0)">Again</button><button class="btn bg" onclick="rateCard('${card.id}',1)">Got it</button>`:`<button class="btn bp" onclick="state.revealed=true;renderRevision()">Reveal answer</button>`}</div></div></div>`;
+  const card=currentStudyCard();
+  if(!card)return `<div class="pt">${state.studySessionActive?'Session complete':'Flashcards'}</div><div class="ps">${state.studySessionActive?'Nice work. No cards remain in this session.':'No cards yet.'}</div>${renderSessionSummary()}<button class="btn" onclick="state.studySessionActive=false;state.view='overview';renderRevision()">Back to overview</button>`;
+  const queueLength=state.studySessionActive?state.studyQueue.length:state.cards.length;
+  const progress=cardReviewStats(card);
+  return `<div style="max-width:620px;margin:0 auto"><div class="pt">${state.studySessionActive?'Study session':'Flashcards'}</div><div class="ps">${state.studySessionActive?`${state.studyQueue.length} remaining · ${state.sessionReviewed} reviewed`:`${state.studyIndex%Math.max(queueLength,1)+1} of ${queueLength}`} · ${escapeRevision(card.topic)} · ${formatDue(state.progress[card.id]?.due)}</div><div class="card" style="min-height:230px;display:flex;flex-direction:column;justify-content:center;text-align:center"><div class="tag tp">${escapeRevision(card.topic)}</div><div style="font-size:1.15rem;font-weight:600;margin:18px 0">${escapeRevision(card.title)}</div>${state.revealed?`<p style="font-size:.85rem;color:var(--text2);line-height:1.7">${escapeRevision(card.answer)}</p>${card.source?`<div class="knowledge-meta" style="margin-top:7px">Source: ${escapeRevision(card.source)}</div>`:''}<div class="knowledge-links" style="justify-content:center;margin-top:14px">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div>`:'<div class="ps">Try to answer, then reveal the explanation.</div>'}<div style="display:flex;justify-content:center;gap:7px;margin-top:20px;flex-wrap:wrap">${state.revealed?`<button class="btn br" onclick="rateCard('${card.id}',0)">Again · 10m</button><button class="btn" onclick="rateCard('${card.id}',1)">Hard · 1d</button><button class="btn bp" onclick="rateCard('${card.id}',2)">Good · ${progress.reviews?'adaptive':'1d'}</button><button class="btn bg" onclick="rateCard('${card.id}',3)">Easy · longer</button>`:`<button class="btn bp" onclick="state.revealed=true;renderRevision()">Reveal answer</button>`}</div></div>${state.studySessionActive?renderSessionSummary():''}<div style="display:flex;gap:7px;margin-top:9px;justify-content:center"><button class="btn" onclick="state.studySessionActive=false;state.view='overview';renderRevision()">End session</button>${linkedCards(card).length?`<button class="btn" onclick="beginConnectionReview('${card.id}')">Review a connection</button>`:''}</div></div>`;
 }
 function renderGraphView(){return `<div class="pt">Knowledge graph</div><div class="ps">Select a node to inspect its connected ideas.</div>${renderGraph()}${state.selected?renderCardList([cardById(state.selected)]):''}`;}
-function renderCreateCard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Create a revision card</div><div class="ps">Add an idea to your private workspace, then link it to related cards from the overview.</div><form class="card" onsubmit="event.preventDefault();submitRevisionCard()"><div class="g2"><div class="fg"><label for="new-card-subject">Subject</label><input id="new-card-subject" type="text" placeholder="e.g. Biology" required></div><div class="fg"><label for="new-card-topic">Topic</label><input id="new-card-topic" type="text" placeholder="e.g. Cells" required></div></div><div class="fg"><label for="new-card-title">Front / question</label><input id="new-card-title" type="text" placeholder="What should you remember?" required></div><div class="fg"><label for="new-card-answer">Back / explanation</label><textarea id="new-card-answer" rows="6" placeholder="Write the answer or explanation..." required></textarea></div><div class="fg"><label for="new-card-difficulty">Difficulty</label><select id="new-card-difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" type="submit">＋ Add card</button><button class="btn" type="button" onclick="state.view='overview';renderRevision()">Cancel</button></div></form></div>`;}
+function renderCreateCard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Create a revision card</div><div class="ps">Add a source reference so you can check the original material later.</div><form class="card" onsubmit="event.preventDefault();submitRevisionCard()"><div class="g2"><div class="fg"><label for="new-card-subject">Subject</label><input id="new-card-subject" type="text" placeholder="e.g. Biology" required></div><div class="fg"><label for="new-card-topic">Topic</label><input id="new-card-topic" type="text" placeholder="e.g. Cells" required></div></div><div class="fg"><label for="new-card-title">Front / term</label><input id="new-card-title" type="text" placeholder="What should you remember?" required></div><div class="fg"><label for="new-card-answer">Back / definition</label><textarea id="new-card-answer" rows="6" placeholder="Write the definition or explanation..." required></textarea></div><div class="fg"><label for="new-card-source">Source reference (optional)</label><input id="new-card-source" type="text" placeholder="Book, page, URL, or document"></div><div class="fg"><label for="new-card-difficulty">Difficulty</label><select id="new-card-difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" type="submit">＋ Add card</button><button class="btn" type="button" onclick="state.view='overview';renderRevision()">Cancel</button></div></form></div>`;}
 function renderSettings(){
   const activeSet = getActiveRevisionSet();
   const themes = ThemeManager.getAllThemes('global');
@@ -576,6 +698,9 @@ function renderSettings(){
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
         <button class="btn bp" type="button" onclick="addRevisionSet()">＋ New set</button>
+        <button class="btn" type="button" onclick="exportRevisionSet('json')">Export JSON</button>
+        <button class="btn" type="button" onclick="exportRevisionSet('csv')">Export CSV</button>
+        <label class="btn" for="revision-import-file">Import JSON / CSV</label><input id="revision-import-file" type="file" accept=".json,.csv,text/csv,application/json" hidden onchange="importRevisionFile(this)">
       </div>
     </div>
     <div class="card" style="margin-top:10px">
@@ -592,7 +717,7 @@ function renderSettings(){
 }
 function renderPublicNotes(){return `<div style="max-width:850px;margin:0 auto"><div class="pt">Public notes</div><div class="ps">Browse shared study notes. Public notes are copied into your workspace only when you choose to import them.</div><div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap"><button class="btn bp" onclick="publishRevisionNotes()">☁ Publish my notes</button><button class="btn" onclick="loadPublicNotes()">🔄 Refresh</button></div><div class="knowledge-list">${state.publicNotes.length?state.publicNotes.map(note=>`<div class="card"><div class="tag tg">${escapeRevision(note.subject)}${note.level?' · '+escapeRevision(note.level):''}</div><div class="knowledge-title" style="margin-top:6px">${escapeRevision(note.title)}</div><div class="knowledge-meta">${note.cards?.length||0} cards · ${escapeRevision(note.updatedAt||'')}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn bsm" onclick="importPublicNote('${note.id}')">＋ Import copy</button>${note.owned?`<button class="btn bsm br" onclick="deletePublicNote('${note.id}')">🗑 Delete</button>`:''}</div></div>`).join(''):'<div class="ps">No public notes have been published yet.</div>'}</div></div>`;}
 function renderLeaderboard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Revision leaderboard</div><div class="ps">Earn 10 XP each time you successfully review a card.</div><div class="card"><div id="revision-leaderboard-list" class="knowledge-list"><div class="ps">Loading leaderboard...</div></div></div></div>`;}
-function normalizeAIResult(raw){
+function normalizeAIResult(raw, additionalIds=[]){
   let payload = raw;
   if (typeof raw === 'string') {
     try { payload = JSON.parse(raw); } catch (error) { payload = {}; }
@@ -613,7 +738,7 @@ function normalizeAIResult(raw){
     front: String(item?.front || '').trim(),
     back: String(item?.back || '').trim()
   })).filter(item => item.front || item.back) : [];
-  const cardIds = new Set(flashcards.map(card => card.id));
+  const cardIds = new Set([...flashcards.map(card => card.id),...additionalIds]);
   const links = Array.isArray(payload?.links) ? payload.links.map(item => ({
     from_id: String(item?.from_id || '').trim(),
     to_id: String(item?.to_id || '').trim()
@@ -621,9 +746,9 @@ function normalizeAIResult(raw){
   return { flashcards, links };
 }
 function renderAIResult(result){
-  const normalized = normalizeAIResult(result || {});
-  const titles = new Map(normalized.flashcards.map(card => [card.id, card.front]));
-  return `<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">${normalized.flashcards.length} flashcards · ${normalized.links.length} links</div>${normalized.flashcards.length?`<div class="g2" style="margin-top:8px">${normalized.flashcards.map(card=>`<div class="dr dr-ok"><div class="tag tp">${escapeRevision(card.front)}</div><div style="margin-top:5px;color:var(--text2)">${escapeRevision(card.back)}</div></div>`).join('')}</div>`:'<div class="ps">No flashcards generated.</div>'}${normalized.links.length?`<div style="margin-top:10px"><div class="sec" style="margin-top:0">Connections</div>${normalized.links.map(link=>`<div class="dr dr-near">${escapeRevision(titles.get(link.from_id)||link.from_id)} ↔ ${escapeRevision(titles.get(link.to_id)||link.to_id)}</div>`).join('')}</div>`:''}</div>`;
+  const normalized = normalizeAIResult(result || {},state.cards.map(card=>card.id));
+  const titles = new Map([...state.cards.map(card=>[card.id,card.title]),...normalized.flashcards.map(card => [card.id, card.front])]);
+  return `<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">${normalized.flashcards.length} flashcards · ${normalized.links.length} links</div>${normalized.flashcards.length?`<div class="g2" style="margin-top:8px">${normalized.flashcards.map(card=>`<div class="dr dr-ok"><div class="tag tp">${escapeRevision(card.front)}</div><div style="margin-top:5px;color:var(--text2)">${escapeRevision(card.back)}</div></div>`).join('')}</div>`:'<div class="ps">No new flashcards generated.</div>'}${normalized.links.length?`<div style="margin-top:10px"><div class="sec" style="margin-top:0">Connections</div>${normalized.links.map(link=>`<div class="dr dr-near">${escapeRevision(titles.get(link.from_id)||link.from_id)} ↔ ${escapeRevision(titles.get(link.to_id)||link.to_id)}</div>`).join('')}</div>`:''}</div>`;
 }
 function bindAIFormEvents(){
   const page = document.getElementById('page');
@@ -643,21 +768,21 @@ function bindAIFormEvents(){
 }
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
-  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate only flashcards and connections between them. Set the card count to cover a whole topic.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">Flashcards for the full topic</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div></div><div class="fg"><label>Paste the topic notes or syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate flashcards and links</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Save as revision set</button>`:''}</div>`}</div>`;
+  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate, extend, or reconnect flashcards. Use complete topic notes for broader coverage.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label for="ai-mode">Action</label><select data-ai-field="mode" id="ai-mode"><option value="new"${state.aiDraft.mode==='new'?' selected':''}>Create a new set</option><option value="add"${state.aiDraft.mode==='add'?' selected':''}>Add missing cards to active set</option><option value="links"${state.aiDraft.mode==='links'?' selected':''}>Repair links in active set</option></select></div><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">New flashcards</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div><div class="fg"><label for="ai-source">Source reference (optional)</label><input data-ai-field="source" type="text" id="ai-source" placeholder="Textbook, page, URL" value="${escapeRevision(state.aiDraft.source || '')}"></div></div><div class="fg"><label>Topic notes / syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div class="fg"><label for="ai-file">Attach notes file (.txt, .md, .csv, .pdf, .docx)</label><input id="ai-file" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleRevisionFile('ai-file','ai-notes')"></div>${state.uploadMessage?`<div class="knowledge-meta" role="status">${escapeRevision(state.uploadMessage)}</div>`:''}<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Run AI update</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Apply to revision set</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
-  document.getElementById('page').innerHTML=state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
+  document.getElementById('page').innerHTML=state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   document.getElementById('sidebar-stats').textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
-  document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${Object.keys(state.progress).length} reviewed`;
+  document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${state.cards.filter(card=>Number(state.progress[card.id]?.reviews)>0).length} reviewed`;
   if(state.view==='leaderboard')loadRevisionLeaderboard();
   if(state.view==='ai')bindAIFormEvents();
   if(state.view==='settings')bindSettingsEvents();
+  if(state.view==='library')bindLibraryEvents();
 }
 function selectRevisionCard(id){state.selected=id;state.view=state.view==='cards'?'cards':state.view;renderRevision();}
 function startTopic(topic){const decoded=decodeURIComponent(topic);const index=state.cards.findIndex(card=>card.topic===decoded);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
 function startStudy(id){const index=state.cards.findIndex(card=>card.id===id);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
-function rateCard(id,score){state.progress[id]={score,due:Date.now()+(score?86400000*3:0)};awardRevisionXP(score);state.studyIndex=(state.studyIndex+1)%Math.max(state.cards.length,1);state.revealed=false;saveRevision();renderRevision();}
 async function loadRevisionLeaderboard(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/leaderboard`);const payload=await response.json();const target=document.getElementById('revision-leaderboard-list');if(!target)return;target.innerHTML=(payload.users||[]).map((user,index)=>`<div class="knowledge-item"><span class="knowledge-dot"></span><div><div class="knowledge-title">${index+1}. ${escapeRevision(user.username)}</div><div class="knowledge-meta">${user.xp||0} XP · ${user.streak||0} day streak</div></div></div>`).join('')||'<div class="ps">No revision accounts yet.</div>';}catch(error){const target=document.getElementById('revision-leaderboard-list');if(target)target.innerHTML='<div class="ps">Leaderboard unavailable.</div>';}}
 async function publishRevisionNotes(){if(!revisionUserKey()||!revisionUsername()){alert('Set up an account before publishing notes.');state.view='settings';renderRevision();return;}const title=(prompt('Name this public note set:','My revision notes')||'').trim();if(!title)return;try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),note:{title,subject:'General',level:'',cards:state.cards}})});if(!response.ok)throw new Error();alert('Submitted for admin approval. It will appear publicly after review.');}catch(error){alert('Could not submit notes.');}}
 async function importPublicNote(id){const note=state.publicNotes.find(item=>item.id===id);if(!note)return;const existing=new Set(state.cards.map(card=>String(card.title).toLowerCase()));const imported=(note.cards||[]).filter(card=>!existing.has(String(card.title||'').toLowerCase())).map(card=>({...card,id:'import'+Date.now()+Math.random().toString(36).slice(2,6),links:[]}));state.cards.push(...imported);saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();}
@@ -665,7 +790,8 @@ async function deletePublicNote(id){if(!confirm('Delete this public note set?'))
 async function loginRevisionAI(){const password=document.getElementById('revision-ai-password')?.value||'';if(!password)return;await AdminManager.login(password);renderRevision();}
 async function requestRevisionAI(){
   const notes=document.getElementById('ai-notes')?.value||'';
-  if(!notes.trim())return;
+  const requestedMode=document.getElementById('ai-mode')?.value||'new';
+  if(!notes.trim()&&requestedMode!=='links')return;
   const button=document.querySelector('#page .bp');
   const showStatus=(message,isError=false)=>{
     let status=document.getElementById('revision-ai-status');
@@ -691,12 +817,15 @@ async function requestRevisionAI(){
     const token=AdminManager.getToken();
     if(!token) throw new Error('Admin login expired. Please sign in again.');
     const count=Math.max(5,Math.min(100,Number(document.getElementById('ai-count')?.value)||30));
+    const mode=requestedMode;
+    state.aiDraft.mode=mode;
     state.aiDraft.count=String(count);
-    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes}`}),signal:controller.signal});
+    const existingCards=mode==='new'?[]:state.cards.map(card=>({id:card.id,front:card.title,back:card.answer}));
+    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,mode,existingCards,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes||'Find useful connections among the existing cards.'}`}),signal:controller.signal});
     showStatus('Response received. Reading the study guide...');
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
-    state.aiResult=normalizeAIResult(data);
+    state.aiResult=normalizeAIResult(data,existingCards.map(card=>card.id));
     AdminManager.error='';
     renderRevision();
   }catch(error){
@@ -708,34 +837,46 @@ async function requestRevisionAI(){
     clearTimeout(timeout);
     clearInterval(timer);
     const readyButton=document.querySelector('#page .bp');
-    if(readyButton){readyButton.disabled=false;readyButton.textContent='✦ Generate study guide';}
+    if(readyButton){readyButton.disabled=false;readyButton.textContent='✦ Run AI update';}
   }
 }
 function importAIResult(){
-  const result=normalizeAIResult(state.aiResult||{});
+  const mode=state.aiDraft.mode||'new';
+  const result=normalizeAIResult(state.aiResult||{},mode==='new'?[]:state.cards.map(card=>card.id));
   const subject=document.getElementById('ai-subject')?.value.trim()||'General';
   const level=document.getElementById('ai-level')?.value.trim()||'';
   const requestedName=document.getElementById('ai-set-name')?.value.trim()||'';
   const baseName=requestedName||`${subject}${level?` ${level}`:''} study guide`;
   let name=baseName;let suffix=2;
-  while(state.accountSets.some(set=>set.name.toLowerCase()===name.toLowerCase()))name=`${baseName} (${suffix++})`;
+  if(mode==='new')while(state.accountSets.some(set=>set.name.toLowerCase()===name.toLowerCase()))name=`${baseName} (${suffix++})`;
   const makeId=()=>`ai${Date.now()}${Math.random().toString(36).slice(2,7)}`;
   const idMap=new Map();
+  if(mode!=='new')state.cards.forEach(card=>idMap.set(card.id,card.id));
   const cards=result.flashcards.filter(item=>item.front||item.back).map(item=>{
-    const id=makeId();idMap.set(item.id,id);
-    return {id,subject,topic:name,title:item.front,answer:item.back,links:[],difficulty:2};
+    const id=mode==='links'&&cardById(item.id)?item.id:makeId();idMap.set(item.id,id);
+    return {id,subject,topic:mode==='new'?name:(item.topic||getActiveRevisionSet().name),title:item.front,answer:item.back,source:document.getElementById('ai-source')?.value.trim()||state.aiDraft.source||'',links:[],difficulty:2};
   });
+  const targetCards=mode==='new'?cards:[...state.cards,...cards];
   result.links.forEach(link=>{
     const from=idMap.get(link.from_id),to=idMap.get(link.to_id);
     if(!from||!to||from===to)return;
-    const first=cards.find(card=>card.id===from),second=cards.find(card=>card.id===to);
+    const first=targetCards.find(card=>card.id===from),second=targetCards.find(card=>card.id===to);
     if(first&&!first.links.includes(to))first.links.push(to);
     if(second&&!second.links.includes(from))second.links.push(from);
   });
-  if(!cards.length){state.setMessage='The study guide did not contain any cards to save.';renderRevision();return;}
-  const newSet=normalizeRevisionSet({id:`set-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name,cards,progress:{},xp:0,streak:0,lastReview:'',published:false});
-  state.accountSets.push(newSet);state.activeSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
-  state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} flashcards with ${result.links.length} connections in “${name}”.`;state.view='overview';
+  if(mode==='links'){
+    if(!result.links.length){state.setMessage='No valid links were returned for this set.';renderRevision();return;}
+    state.aiResult=null;state.setMessage=`Repaired ${result.links.length} connections in “${getActiveRevisionSet().name}”.`;state.view='overview';saveRevision();renderRevision();return;
+  }
+  if(!cards.length){state.setMessage='The AI did not return any flashcards to apply.';renderRevision();return;}
+  if(mode==='add'){
+    state.cards.push(...cards);state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Added ${cards.length} flashcards and ${result.links.length} connections to “${getActiveRevisionSet().name}”.`;
+  }else{
+    const newSet=normalizeRevisionSet({id:`set-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name,cards,progress:{},xp:0,streak:0,lastReview:'',published:false});
+    state.accountSets.push(newSet);state.activeSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
+    state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} flashcards with ${result.links.length} connections in “${name}”.`;
+  }
+  state.view='overview';
   saveRevision();renderRevision();
 }
 function linkRevisionCard(id){
@@ -748,7 +889,7 @@ function createRevisionCard(){
   const answer=prompt('What is the answer or explanation?')||'';const topic=prompt('Which topic is it part of?','My topic')||'My topic';
   const card={id:'r'+Date.now(),subject:'Custom',topic:topic.trim(),title:title.trim(),answer:answer.trim(),links:[],difficulty:2};state.cards.push(card);saveRevision();state.selected=card.id;renderRevision();
 }
-function submitRevisionCard(){const subject=document.getElementById('new-card-subject').value.trim();const topic=document.getElementById('new-card-topic').value.trim();const title=document.getElementById('new-card-title').value.trim();const answer=document.getElementById('new-card-answer').value.trim();const difficulty=Number(document.getElementById('new-card-difficulty').value)||2;if(!subject||!topic||!title||!answer)return;const card={id:'r'+Date.now(),subject,topic,title,answer,links:[],difficulty};state.cards.push(card);state.selected=card.id;saveRevision();state.view='overview';renderRevision();}
+function submitRevisionCard(){const subject=document.getElementById('new-card-subject').value.trim();const topic=document.getElementById('new-card-topic').value.trim();const title=document.getElementById('new-card-title').value.trim();const answer=document.getElementById('new-card-answer').value.trim();const source=document.getElementById('new-card-source').value.trim();const difficulty=Number(document.getElementById('new-card-difficulty').value)||2;if(!subject||!topic||!title||!answer)return;const card={id:'r'+Date.now(),subject,topic,title,answer,source,links:[],difficulty};state.cards.push(card);state.selected=card.id;saveRevision();state.view='overview';renderRevision();}
 function editRevisionCard(id){const card=cardById(id);if(!card)return;const title=prompt('Edit idea:',card.title);if(!title?.trim())return;const answer=prompt('Edit explanation:',card.answer);const topic=prompt('Edit topic:',card.topic);card.title=title.trim();card.answer=(answer||'').trim();card.topic=(topic||card.topic).trim();saveRevision();renderRevision();}
 function deleteRevisionCard(id){const card=cardById(id);if(!card)return;state.cards=state.cards.filter(item=>item.id!==id);state.cards.forEach(item=>item.links=(item.links||[]).filter(linkId=>linkId!==id));delete state.progress[id];state.selected=null;saveRevision();renderRevision();}
 

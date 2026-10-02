@@ -869,7 +869,10 @@ export default {
             xp: Math.max(0, Number(set && set.xp) || 0),
             streak: Math.max(0, Number(set && set.streak) || 0),
             lastReview: String(set && set.lastReview ? set.lastReview : ""),
-            published: Boolean(set && set.published)
+            published: Boolean(set && set.published),
+            syllabus: Array.isArray(set && set.syllabus) ? set.syllabus.slice(0, 200) : [],
+            syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === "object" ? set.syllabusDone : {},
+            reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog.slice(-5000) : []
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
@@ -1043,21 +1046,24 @@ const data = {
       }
 
       const requestedCount = Math.max(5, Math.min(100, Math.floor(Number(body.count) || 30)));
-      const schema = {
-        type: "object",
-        properties: {
-          flashcards: { type: "array", items: { type: "object", additionalProperties: false, properties: { id: { type: "string" }, front: { type: "string" }, back: { type: "string" } }, required: ["id", "front", "back"] } },
-          links: { type: "array", items: { type: "object", additionalProperties: false, properties: { from_id: { type: "string" }, to_id: { type: "string" } }, required: ["from_id", "to_id"] } }
-        },
-        required: ["flashcards", "links"],
-        additionalProperties: false
-      };
+      const mode = ["new", "add", "links"].includes(body.mode) ? body.mode : "new";
+      const flashcardSchema = { type: "array", items: { type: "object", additionalProperties: false, properties: { id: { type: "string" }, front: { type: "string" }, back: { type: "string" } }, required: ["id", "front", "back"] } };
+      const linksSchema = { type: "array", items: { type: "object", additionalProperties: false, properties: { from_id: { type: "string" }, to_id: { type: "string" } }, required: ["from_id", "to_id"] } };
+      const schema = mode === "links"
+        ? { type: "object", properties: { links: linksSchema }, required: ["links"], additionalProperties: false }
+        : { type: "object", properties: { flashcards: flashcardSchema, links: linksSchema }, required: ["flashcards", "links"], additionalProperties: false };
+      const existingCards = Array.isArray(body.existingCards) ? body.existingCards.slice(0, 200) : [];
+      const modeInstructions = mode === "links"
+        ? `Return only a links array. Use the exact existing card IDs supplied by the user. Find useful, genuine relationships between different cards, including missing links; do not return flashcards.`
+        : mode === "add"
+          ? `Create up to ${requestedCount} additional flashcards that are not duplicates of the existing cards included in the context. Use new unique IDs beginning with n1, n2, and so on. Links may connect new cards to each other or to existing card IDs given in the context.`
+          : `Aim for ${requestedCount} useful, non-repetitive flashcards; do not stop after only a few when the material supports more. Give every card a unique sequential ID (c1, c2, c3...).`;
 
       try {
         const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
           messages: [
-            { role: "system", content: `Create a comprehensive set of revision flashcards for the complete supplied topic, using only facts in the material. Return only one valid JSON object with exactly this shape: {"flashcards":[{"id":"c1","front":"term or concise concept","back":"definition or explanation"}],"links":[{"from_id":"c1","to_id":"c2"}]}. Do not include practice questions, commentary, summaries, extra keys, or any content outside flashcards and links. Flashcard fronts must be terms or concise concepts, not questions; backs must define or explain them. Cover all distinct sections, subtopics, key terms, processes, causes, effects, comparisons and relationships in the supplied material. Aim for ${requestedCount} useful, non-repetitive flashcards; do not stop after only a few when the material supports more. Give every card a unique sequential ID (c1, c2, c3...). Links must refer only to IDs of cards in the returned flashcards, must connect genuinely related cards, must not link a card to itself, and should include useful connections throughout the set. Do not invent information.` },
-            { role: "user", content: body.material.slice(0, 120000) }
+            { role: "system", content: `Create comprehensive GCSE revision content from the supplied material, using only its facts. Return only valid JSON matching the supplied schema. Do not include practice questions, commentary, summaries, or extra keys. Flashcard fronts must be terms or concise concepts, not questions; backs must define or explain them. Cover distinct sections, subtopics, key terms, processes, causes, effects and comparisons. ${modeInstructions} Links must connect genuinely related cards, use only provided or returned IDs, never link a card to itself, and include useful connections throughout. Do not invent information.` },
+            { role: "user", content: `${body.material.slice(0, 120000)}\n\nExisting cards for comparison/linking: ${JSON.stringify(existingCards).slice(0, 50000)}` }
           ],
           max_tokens: 8192,
           response_format: { type: "json_schema", json_schema: { name: "study_guide", schema } }
