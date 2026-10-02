@@ -1042,23 +1042,24 @@ const data = {
         });
       }
 
+      const requestedCount = Math.max(5, Math.min(100, Math.floor(Number(body.count) || 30)));
       const schema = {
         type: "object",
         properties: {
-          flashcards: { type: "array", items: { type: "object", additionalProperties: false, properties: { front: { type: "string" }, back: { type: "string" } }, required: ["front", "back"] } },
-          practice_questions: { type: "array", items: { type: "object", additionalProperties: false, properties: { question: { type: "string" }, answer: { type: "string" } }, required: ["question", "answer"] } },
-          linked_ideas: { type: "array", items: { type: "object", additionalProperties: false, properties: { concept_a: { type: "string" }, concept_b: { type: "string" }, relationship: { type: "string" } }, required: ["concept_a", "concept_b", "relationship"] } }
+          flashcards: { type: "array", items: { type: "object", additionalProperties: false, properties: { id: { type: "string" }, front: { type: "string" }, back: { type: "string" } }, required: ["id", "front", "back"] } },
+          links: { type: "array", items: { type: "object", additionalProperties: false, properties: { from_id: { type: "string" }, to_id: { type: "string" } }, required: ["from_id", "to_id"] } }
         },
-        required: ["flashcards", "practice_questions", "linked_ideas"],
+        required: ["flashcards", "links"],
         additionalProperties: false
       };
 
       try {
         const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
           messages: [
-            { role: "system", content: `You are a study-guide JSON generator. Use only the supplied study material. Your entire response MUST be one valid JSON object and absolutely nothing else. Do not write an introduction, explanation, conclusion, Markdown, code fences, headings, comments, or text outside the JSON object. Do not use additional keys. Return exactly this shape: {"flashcards":[{"front":"string","back":"string"}],"practice_questions":[{"question":"string","answer":"string"}],"linked_ideas":[{"concept_a":"string","concept_b":"string","relationship":"string"}]}. Every array may be empty, but all three keys are mandatory. Every value must be a JSON string. Flashcard fronts must be concise key terms or concepts, never questions; their backs must define or explain that term using the supplied material. Keep practice_questions in question-and-answer format. Do not invent information that is not supported by the supplied material.` },
+            { role: "system", content: `Create a comprehensive set of revision flashcards for the complete supplied topic, using only facts in the material. Return only one valid JSON object with exactly this shape: {"flashcards":[{"id":"c1","front":"term or concise concept","back":"definition or explanation"}],"links":[{"from_id":"c1","to_id":"c2"}]}. Do not include practice questions, commentary, summaries, extra keys, or any content outside flashcards and links. Flashcard fronts must be terms or concise concepts, not questions; backs must define or explain them. Cover all distinct sections, subtopics, key terms, processes, causes, effects, comparisons and relationships in the supplied material. Aim for ${requestedCount} useful, non-repetitive flashcards; do not stop after only a few when the material supports more. Give every card a unique sequential ID (c1, c2, c3...). Links must refer only to IDs of cards in the returned flashcards, must connect genuinely related cards, must not link a card to itself, and should include useful connections throughout the set. Do not invent information.` },
             { role: "user", content: body.material.slice(0, 120000) }
           ],
+          max_tokens: 8192,
           response_format: { type: "json_schema", json_schema: { name: "study_guide", schema } }
         });
         return new Response(JSON.stringify(result), {

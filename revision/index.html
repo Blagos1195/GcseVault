@@ -608,27 +608,22 @@ function normalizeAIResult(raw){
       }
     }
   }
-  const flashcards = Array.isArray(payload?.flashcards) ? payload.flashcards.map(item => ({
+  const flashcards = Array.isArray(payload?.flashcards) ? payload.flashcards.map((item, index) => ({
+    id: String(item?.id || `c${index + 1}`).trim(),
     front: String(item?.front || '').trim(),
     back: String(item?.back || '').trim()
   })).filter(item => item.front || item.back) : [];
-  const questions = Array.isArray(payload?.practice_questions) ? payload.practice_questions.map(item => ({
-    question: String(item?.question || '').trim(),
-    answer: String(item?.answer || '').trim()
-  })).filter(item => item.question || item.answer) : [];
-  const links = Array.isArray(payload?.linked_ideas) ? payload.linked_ideas.map(item => ({
-    concept_a: String(item?.concept_a || '').trim(),
-    concept_b: String(item?.concept_b || '').trim(),
-    relationship: String(item?.relationship || '').trim()
-  })).filter(item => item.concept_a || item.concept_b || item.relationship) : [];
-  return { flashcards, practice_questions: questions, linked_ideas: links };
+  const cardIds = new Set(flashcards.map(card => card.id));
+  const links = Array.isArray(payload?.links) ? payload.links.map(item => ({
+    from_id: String(item?.from_id || '').trim(),
+    to_id: String(item?.to_id || '').trim()
+  })).filter(item => item.from_id !== item.to_id && cardIds.has(item.from_id) && cardIds.has(item.to_id)) : [];
+  return { flashcards, links };
 }
 function renderAIResult(result){
   const normalized = normalizeAIResult(result || {});
-  const cards = normalized.flashcards.slice(0, 5);
-  const questions = normalized.practice_questions.slice(0, 4);
-  const links = normalized.linked_ideas.slice(0, 6);
-  return `<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Study guide preview</div>${cards.length?`<div class="g2" style="margin-top:8px">${cards.map(card=>`<div class="dr dr-ok"><div class="tag tp">Flashcard</div><div style="font-weight:600;margin-top:6px">${escapeRevision(card.front)}</div><div style="margin-top:5px;color:var(--text2)">${escapeRevision(card.back)}</div></div>`).join('')}</div>`:'<div class="ps">No flashcards generated.</div>'}${questions.length?`<div style="margin-top:10px"><div class="sec" style="margin-top:0">Practice questions</div>${questions.map(question=>`<div class="dr dr-near"><div style="font-weight:600">${escapeRevision(question.question)}</div><div style="margin-top:5px;color:var(--text2)">${escapeRevision(question.answer)}</div></div>`).join('')}</div>`:''}${links.length?`<div style="margin-top:10px"><div class="sec" style="margin-top:0">Linked ideas</div>${links.map(link=>`<div class="dr dr-ok"><span class="tag tb">${escapeRevision(link.concept_a || 'Idea')}</span> ↔ <span class="tag tk">${escapeRevision(link.concept_b || 'Idea')}</span><div style="margin-top:6px;color:var(--text2)">${escapeRevision(link.relationship)}</div></div>`).join('')}</div>`:''}</div>`;
+  const titles = new Map(normalized.flashcards.map(card => [card.id, card.front]));
+  return `<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">${normalized.flashcards.length} flashcards · ${normalized.links.length} links</div>${normalized.flashcards.length?`<div class="g2" style="margin-top:8px">${normalized.flashcards.map(card=>`<div class="dr dr-ok"><div class="tag tp">${escapeRevision(card.front)}</div><div style="margin-top:5px;color:var(--text2)">${escapeRevision(card.back)}</div></div>`).join('')}</div>`:'<div class="ps">No flashcards generated.</div>'}${normalized.links.length?`<div style="margin-top:10px"><div class="sec" style="margin-top:0">Connections</div>${normalized.links.map(link=>`<div class="dr dr-near">${escapeRevision(titles.get(link.from_id)||link.from_id)} ↔ ${escapeRevision(titles.get(link.to_id)||link.to_id)}</div>`).join('')}</div>`:''}</div>`;
 }
 function bindAIFormEvents(){
   const page = document.getElementById('page');
@@ -648,7 +643,7 @@ function bindAIFormEvents(){
 }
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
-  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate a named revision set from your notes. Key cards use term-to-definition format; practice questions are added as question-and-answer cards.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div></div><div class="fg"><label>Paste notes or source material</label><textarea data-ai-field="notes" id="ai-notes" rows="9" placeholder="Paste your notes here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate study guide</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Save as revision set</button>`:''}</div>`}</div>`;
+  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate only flashcards and connections between them. Set the card count to cover a whole topic.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">Flashcards for the full topic</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div></div><div class="fg"><label>Paste the topic notes or syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate flashcards and links</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Save as revision set</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
@@ -695,7 +690,9 @@ async function requestRevisionAI(){
   try{
     const token=AdminManager.getToken();
     if(!token) throw new Error('Admin login expired. Please sign in again.');
-    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes}`}),signal:controller.signal});
+    const count=Math.max(5,Math.min(100,Number(document.getElementById('ai-count')?.value)||30));
+    state.aiDraft.count=String(count);
+    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,material:`Subject: ${document.getElementById('ai-subject')?.value || ''}\nLevel: ${document.getElementById('ai-level')?.value || ''}\n\n${notes}`}),signal:controller.signal});
     showStatus('Response received. Reading the study guide...');
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
@@ -723,14 +720,22 @@ function importAIResult(){
   let name=baseName;let suffix=2;
   while(state.accountSets.some(set=>set.name.toLowerCase()===name.toLowerCase()))name=`${baseName} (${suffix++})`;
   const makeId=()=>`ai${Date.now()}${Math.random().toString(36).slice(2,7)}`;
-  const cards=[
-    ...result.flashcards.filter(item=>item.front||item.back).map(item=>({id:makeId(),subject,topic:'Key terms',title:item.front,answer:item.back,links:[],difficulty:2})),
-    ...result.practice_questions.filter(item=>item.question||item.answer).map(item=>({id:makeId(),subject,topic:'Practice questions',title:item.question,answer:item.answer,links:[],difficulty:2}))
-  ];
+  const idMap=new Map();
+  const cards=result.flashcards.filter(item=>item.front||item.back).map(item=>{
+    const id=makeId();idMap.set(item.id,id);
+    return {id,subject,topic:name,title:item.front,answer:item.back,links:[],difficulty:2};
+  });
+  result.links.forEach(link=>{
+    const from=idMap.get(link.from_id),to=idMap.get(link.to_id);
+    if(!from||!to||from===to)return;
+    const first=cards.find(card=>card.id===from),second=cards.find(card=>card.id===to);
+    if(first&&!first.links.includes(to))first.links.push(to);
+    if(second&&!second.links.includes(from))second.links.push(from);
+  });
   if(!cards.length){state.setMessage='The study guide did not contain any cards to save.';renderRevision();return;}
   const newSet=normalizeRevisionSet({id:`set-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name,cards,progress:{},xp:0,streak:0,lastReview:'',published:false});
   state.accountSets.push(newSet);state.activeSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
-  state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} cards in “${name}”.`;state.view='overview';
+  state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} flashcards with ${result.links.length} connections in “${name}”.`;state.view='overview';
   saveRevision();renderRevision();
 }
 function linkRevisionCard(id){
