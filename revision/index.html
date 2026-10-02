@@ -249,7 +249,7 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? Number(localStorage.getItem('revision_xp') || 0)),
   streak: Number(selectedRevisionSet?.streak ?? Number(localStorage.getItem('revision_streak') || 0)),
   lastReview: selectedRevisionSet?.lastReview || localStorage.getItem('revision_last_review') || '',
-  publicNotes: [], aiResult: null, syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', accountDraft:{username:'',userKey:''}, confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
+  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', accountDraft:{username:'',userKey:''}, confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
@@ -766,10 +766,15 @@ function bindAIFormEvents(){
       state.aiDraft[key] = event.target.value;
     };
   });
+  const modeField=page.querySelector('#ai-mode');
+  if(modeField)modeField.onchange=()=>{state.aiDraft.mode=modeField.value;state.aiResult=null;state.aiNotice='';AdminManager.error='';renderRevision();};
+}
+function aiActionLabel(mode=state.aiDraft.mode||'new'){
+  return mode==='add'?'Find missing cards':mode==='links'?'Find links':'Generate flashcards';
 }
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
-  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate, extend, or reconnect flashcards. Use complete topic notes for broader coverage.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label for="ai-mode">Action</label><select data-ai-field="mode" id="ai-mode"><option value="new"${state.aiDraft.mode==='new'?' selected':''}>Create a new set</option><option value="add"${state.aiDraft.mode==='add'?' selected':''}>Add missing cards to active set</option><option value="links"${state.aiDraft.mode==='links'?' selected':''}>Repair links in active set</option></select></div><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">New flashcards</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div><div class="fg"><label for="ai-source">Source reference (optional)</label><input data-ai-field="source" type="text" id="ai-source" placeholder="Textbook, page, URL" value="${escapeRevision(state.aiDraft.source || '')}"></div></div><div class="fg"><label>Topic notes / syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div class="fg"><label for="ai-file">Attach notes file (.txt, .md, .csv, .pdf, .docx)</label><input id="ai-file" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleRevisionFile('ai-file','ai-notes')"></div>${state.uploadMessage?`<div class="knowledge-meta" role="status">${escapeRevision(state.uploadMessage)}</div>`:''}<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Run AI update</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Apply to revision set</button>`:''}</div>`}</div>`;
+  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate, extend, or reconnect flashcards. Results are previewed first; they are not saved until you apply them.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label for="ai-mode">Action</label><select data-ai-field="mode" id="ai-mode"><option value="new"${state.aiDraft.mode==='new'?' selected':''}>Create a new set</option><option value="add"${state.aiDraft.mode==='add'?' selected':''}>Add missing cards to active set</option><option value="links"${state.aiDraft.mode==='links'?' selected':''}>Repair links in active set</option></select></div><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">New flashcards</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div><div class="fg"><label for="ai-source">Source reference (optional)</label><input data-ai-field="source" type="text" id="ai-source" placeholder="Textbook, page, URL" value="${escapeRevision(state.aiDraft.source || '')}"></div></div><div class="fg"><label>Topic notes / syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div class="fg"><label for="ai-file">Attach notes file (.txt, .md, .csv, .pdf, .docx)</label><input id="ai-file" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleRevisionFile('ai-file','ai-notes')"></div>${state.uploadMessage?`<div class="knowledge-meta" role="status">${escapeRevision(state.uploadMessage)}</div>`:''}${state.aiNotice?`<div class="qfb ${state.aiNotice.startsWith('No flashcards')?'qwr':'qok'}" role="status">${escapeRevision(state.aiNotice)}</div>`:''}<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ ${aiActionLabel()}</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">${state.aiDraft.mode==='links'?'＋ Apply connections':state.aiDraft.mode==='add'?'＋ Add cards to active set':'＋ Create new set'}</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
@@ -792,7 +797,10 @@ async function loginRevisionAI(){const password=document.getElementById('revisio
 async function requestRevisionAI(){
   const notes=document.getElementById('ai-notes')?.value||'';
   const requestedMode=document.getElementById('ai-mode')?.value||'new';
-  if(!notes.trim()&&requestedMode!=='links')return;
+  if(!notes.trim()&&requestedMode!=='links'){state.aiNotice='Add topic notes or attach a notes file before generating flashcards.';renderRevision();return;}
+  state.aiDraft.mode=requestedMode;
+  state.aiResult=null;
+  state.aiNotice='';
   const button=document.querySelector('#page .bp');
   const showStatus=(message,isError=false)=>{
     let status=document.getElementById('revision-ai-status');
@@ -811,7 +819,7 @@ async function requestRevisionAI(){
   const startedAt=Date.now();
   let timer;
   const timeout=setTimeout(()=>controller.abort(),120000);
-  if(button){button.disabled=true;button.textContent='Generating...';}
+  if(button){button.disabled=true;button.textContent=requestedMode==='add'?'Finding missing cards...':requestedMode==='links'?'Finding links...':'Generating flashcards...';}
   showStatus('Sending your notes to the worker...');
   timer=setInterval(()=>showStatus(`Waiting for the AI response (${Math.floor((Date.now()-startedAt)/1000)}s). The model does not provide live progress.`),1000);
   try{
@@ -827,6 +835,7 @@ async function requestRevisionAI(){
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
     state.aiResult=normalizeAIResult(data,existingCards.map(card=>card.id));
+    state.aiNotice=mode==='links'?`Preview ready: ${state.aiResult.links.length} connections. Nothing has been changed yet.`:state.aiResult.flashcards.length?`Preview ready: ${state.aiResult.flashcards.length} flashcards and ${state.aiResult.links.length} links. Nothing has been saved yet.`:'No flashcards were returned. Add more topic notes or check that the requested action matches the content.';
     AdminManager.error='';
     renderRevision();
   }catch(error){
@@ -838,7 +847,7 @@ async function requestRevisionAI(){
     clearTimeout(timeout);
     clearInterval(timer);
     const readyButton=document.querySelector('#page .bp');
-    if(readyButton){readyButton.disabled=false;readyButton.textContent='✦ Run AI update';}
+    if(readyButton){readyButton.disabled=false;readyButton.textContent=`✦ ${aiActionLabel()}`;}
   }
 }
 function importAIResult(){
