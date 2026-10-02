@@ -244,7 +244,7 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? Number(localStorage.getItem('revision_xp') || 0)),
   streak: Number(selectedRevisionSet?.streak ?? Number(localStorage.getItem('revision_streak') || 0)),
   lastReview: selectedRevisionSet?.lastReview || localStorage.getItem('revision_last_review') || '',
-  publicNotes: [], aiResult: null, syncing: false, accountMessage: '', accountMessageType: 'success', publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:''}, editingSetId: null, linkSource: null, editingCard: null
+  publicNotes: [], aiResult: null, syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', accountDraft:{username:'',userKey:''}, confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:''}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null
 };
 
 function getActiveRevisionSet(){
@@ -325,26 +325,38 @@ function deleteRevisionSet(setId){
   return removed;
 }
 function renameRevisionSet(setId){
+  if (!state.accountSets.some(set => set.id === setId)) return;
+  state.editingSetId = setId;
+  renderRevision();
+}
+function saveRevisionSetName(setId){
   const target = state.accountSets.find(set => set.id === setId);
-  if (!target) return;
-  const nextName = prompt('Rename this set:', target.name || 'Revision set');
-  if (!nextName || !nextName.trim()) return;
-  target.name = nextName.trim();
+  const input = document.getElementById(`revision-set-name-${setId}`);
+  if (!target || !input || !input.value.trim()) return;
+  target.name = input.value.trim().slice(0, 80);
+  state.editingSetId = null;
   saveRevision();
   renderRevision();
 }
 function publishRevisionSet(setId){
   const target = state.accountSets.find(set => set.id === setId) || getActiveRevisionSet();
   if (!target) return;
-  const name = prompt('Publish this set as:', target.name || 'My revision set');
-  if (!name || !name.trim()) return;
-  target.name = name.trim();
+  if (!revisionUserKey() || !revisionUsername()) {
+    state.accountMessage = 'Link your shared account before publishing a set.';
+    state.accountMessageType = 'error';
+    state.view = 'settings';
+    renderRevision();
+    return;
+  }
   const payload = { userKey: revisionUserKey(), note: { title: target.name, subject: 'General', level: '', cards: Array.isArray(target.cards) ? target.cards : [] } };
   fetch(`${ThemeManager.WORKER_URL}/revision/public`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
-    .then(response => response.ok ? response.json() : Promise.reject(new Error('Could not publish set.')))
-    .then(() => { target.published = true; saveRevision(); alert('Set published for review.'); })
-    .catch(() => alert('Could not publish this set.'));
+    .then(response => response.ok ? response.json() : response.json().then(data => Promise.reject(new Error(data.error || 'Could not publish set.'))))
+    .then(() => { target.published = true; state.setMessage = `“${target.name}” submitted for review.`; saveRevision(); renderRevision(); })
+    .catch(error => { state.setMessage = error.message || 'Could not publish this set.'; renderRevision(); });
 }
+function requestDeleteRevisionSet(setId){state.confirmDeleteSetId=setId;renderRevision();}
+function cancelDeleteRevisionSet(){state.confirmDeleteSetId=null;renderRevision();}
+function confirmDeleteRevisionSet(setId){state.confirmDeleteSetId=null;deleteRevisionSet(setId);}
 function bindAIFormEvents(){
   const page = document.getElementById('page');
   if (!page) return;
@@ -354,6 +366,13 @@ function bindAIFormEvents(){
       state.aiDraft[field.dataset.aiField] = event.target.value;
     };
   });
+}
+function bindSettingsEvents(){
+  document.querySelectorAll('[data-revision-theme]').forEach(button=>button.onclick=()=>applyRevisionTheme(button.dataset.revisionTheme));
+  const username=document.getElementById('revision-account-username');
+  const userKey=document.getElementById('revision-account-key');
+  if(username)username.oninput=()=>state.accountDraft.username=username.value;
+  if(userKey)userKey.oninput=()=>state.accountDraft.userKey=userKey.value;
 }
 function escapeRevision(value){return UI.escapeHTML(String(value||''));}
 function cardById(id){return state.cards.find(card=>card.id===id);}
@@ -424,15 +443,64 @@ function awardRevisionXP(score){
   const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
   if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
 }
-function setRevisionAccount(){
-  const username=(prompt('Choose a username (3–20 letters, numbers, _ or -):',revisionUsername()||'')||'').trim();if(!username)return;
-  const keyInput=prompt('Paste an existing user key, or leave blank to create an account:',revisionUserKey()||'');
-  if(keyInput?.trim())VaultUser.setKey(keyInput.trim());
-  VaultUser.setUsername(username);
-  if(!revisionUserKey()){fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})}).then(response=>response.json()).then(data=>{if(data.userKey){VaultUser.setKey(data.userKey);syncRevision();renderRevision();}else{alert(data.error||'Could not create account.')}}).catch(()=>alert('Could not connect to the account service.'));}
-  else{syncRevision();renderRevision();}
+async function createRevisionAccount(){
+  const username=document.getElementById('revision-account-username')?.value.trim()||'';
+  if(username.length<3||username.length>20||!/^[a-zA-Z0-9_-]+$/.test(username)){
+    state.accountMessage='Use 3–20 letters, numbers, underscores, or hyphens for the username.';
+    state.accountMessageType='error';renderRevision();return;
+  }
+  state.accountMessage='Creating your shared account…';state.accountMessageType='success';renderRevision();
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})});
+    const data=await response.json();
+    if(!response.ok||!data.userKey)throw new Error(data.error||'Could not create account.');
+    VaultUser.setUsername(data.user?.username||username);VaultUser.setKey(data.userKey);
+    state.accountMessage='Account created. Your revision sets are syncing.';state.accountMessageType='success';
+    await syncRevision();renderRevision();
+  }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
 }
-function clearRevisionData(){if(!confirm('Delete all local Revision cards and progress?'))return;state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';saveRevision();renderRevision();}
+async function linkRevisionAccount(){
+  const userKey=document.getElementById('revision-account-key')?.value.trim()||'';
+  if(userKey.length<10){state.accountMessage='Enter the user key from your other device.';state.accountMessageType='error';renderRevision();return;}
+  state.accountMessage='Checking the user key…';state.accountMessageType='success';renderRevision();
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(userKey)}`);
+    const data=await response.json();
+    if(!response.ok||!data.found||!data.user)throw new Error('That user key was not found. Check it and try again.');
+    VaultUser.setKey(userKey);VaultUser.setUsername(data.user.username);
+    if(data.user.theme){await ThemeManager.loadServerCustomThemes('global');if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');}
+    state.accountMessage=`Linked to ${data.user.username}. Loading your saved revision sets…`;state.accountMessageType='success';
+    await loadRevision();state.accountMessage=`Linked to ${data.user.username}.`;renderRevision();
+  }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
+}
+async function copyRevisionUserKey(){
+  if(!revisionUserKey())return;
+  try{await navigator.clipboard.writeText(revisionUserKey());state.accountMessage='User key copied. Keep it private and paste it into Settings on your other device.';state.accountMessageType='success';}
+  catch(error){state.accountMessage='Clipboard access was blocked. Select and copy the user key shown below.';state.accountMessageType='error';}
+  renderRevision();
+}
+async function syncRevisionTheme(){
+  if(!revisionUserKey())return;
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(revisionUserKey())}`);
+    const data=await response.json();
+    if(data.found&&data.user?.theme){
+      await ThemeManager.loadServerCustomThemes('global');
+      if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');
+    }
+  }catch(error){console.warn('Revision theme sync failed:',error);}
+}
+async function syncRevisionThemes(){
+  state.themeMessage='Syncing themes…';renderRevision();
+  await ThemeManager.loadServerCustomThemes('global');
+  state.themeMessage='Saved themes synced from your shared account.';renderRevision();
+}
+function applyRevisionTheme(key){
+  ThemeManager.applyTheme(key,'global');
+  state.themeMessage=`${ThemeManager.getAllThemes('global')[key]?.label||key} theme saved to your shared account.`;
+  renderRevision();
+}
+function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}
 function renderGraph(){
   const cards=state.cards.slice(0,24), width=600, height=300, center={x:50,y:50};
   const positions=cards.map((card,index)=>{const angle=(Math.PI*2*index/cards.length)-Math.PI/2;const radius=cards.length===1?0:35;return{x:center.x+Math.cos(angle)*radius,y:center.y+Math.sin(angle)*radius,card};});
@@ -459,18 +527,17 @@ function renderGraphView(){return `<div class="pt">Knowledge graph</div><div cla
 function renderCreateCard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Create a revision card</div><div class="ps">Add an idea to your private workspace, then link it to related cards from the overview.</div><form class="card" onsubmit="event.preventDefault();submitRevisionCard()"><div class="g2"><div class="fg"><label for="new-card-subject">Subject</label><input id="new-card-subject" type="text" placeholder="e.g. Biology" required></div><div class="fg"><label for="new-card-topic">Topic</label><input id="new-card-topic" type="text" placeholder="e.g. Cells" required></div></div><div class="fg"><label for="new-card-title">Front / question</label><input id="new-card-title" type="text" placeholder="What should you remember?" required></div><div class="fg"><label for="new-card-answer">Back / explanation</label><textarea id="new-card-answer" rows="6" placeholder="Write the answer or explanation..." required></textarea></div><div class="fg"><label for="new-card-difficulty">Difficulty</label><select id="new-card-difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" type="submit">＋ Add card</button><button class="btn" type="button" onclick="state.view='overview';renderRevision()">Cancel</button></div></form></div>`;}
 function renderSettings(){
   const activeSet = getActiveRevisionSet();
+  const themes = ThemeManager.getAllThemes('global');
+  const selectedTheme = localStorage.getItem('vt_theme') || 'default';
+  const accountStatus = state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '';
+  const themeStatus = state.themeMessage ? `<div class="knowledge-meta" role="status" style="margin-top:8px">${escapeRevision(state.themeMessage)}</div>` : '';
   return `<div style="max-width:820px;margin:0 auto">
     <div class="pt">Settings & account</div>
     <div class="ps">Your Revision workspace syncs through the shared GCSE Vault account.</div>
     <div class="card">
       <div class="sec" style="margin-top:0">Shared account</div>
-      <div class="srow">
-        <div>
-          <div class="knowledge-title">${revisionUsername()?escapeRevision(revisionUsername()):'No account linked'}</div>
-          <div class="knowledge-meta">${revisionUserKey()?'Linked across devices':'Create or link an account to sync'}</div>
-        </div>
-        <button class="btn bp" onclick="setRevisionAccount()">${revisionUsername()?'Manage':'Set up account'}</button>
-      </div>
+      ${revisionUserKey()?`<div class="srow"><div><div class="knowledge-title">${escapeRevision(revisionUsername()||'Account linked')}</div><div class="knowledge-meta">Revision sets sync across devices</div></div><button class="btn bsm" type="button" onclick="syncRevision()">Sync now</button></div><div class="fg" style="margin-top:8px"><label for="revision-account-current-key">Your user key</label><div style="display:flex;gap:7px;align-items:flex-start"><input id="revision-account-current-key" type="text" readonly value="${escapeRevision(revisionUserKey())}" style="font-family:'DM Mono',monospace;font-size:.72rem"><button class="btn bsm" type="button" onclick="copyRevisionUserKey()" title="Copy user key" aria-label="Copy user key">Copy</button></div></div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--text2);font-size:.75rem">Link a different account</summary><div class="fg" style="margin-top:9px"><label for="revision-account-key">User key from your other device</label><input id="revision-account-key" type="text" autocomplete="off" placeholder="Paste user key" value="${escapeRevision(state.accountDraft.userKey)}"></div><button class="btn" type="button" onclick="linkRevisionAccount()">Link account</button></details>`:`<div class="g2"><div><div class="knowledge-title">Create a shared account</div><div class="knowledge-meta">A username and generated user key connect your sets across devices.</div><div class="fg" style="margin-top:9px"><label for="revision-account-username">Username</label><input id="revision-account-username" type="text" maxlength="20" autocomplete="username" placeholder="3–20 letters, numbers, _ or -" value="${escapeRevision(state.accountDraft.username||revisionUsername()||'')}"></div><button class="btn bp" type="button" onclick="createRevisionAccount()">Create account</button></div><div><div class="knowledge-title">Link an existing account</div><div class="knowledge-meta">Paste the user key shown in Settings on your other device.</div><div class="fg" style="margin-top:9px"><label for="revision-account-key">User key</label><input id="revision-account-key" type="text" autocomplete="off" placeholder="Paste user key" value="${escapeRevision(state.accountDraft.userKey)}"></div><button class="btn" type="button" onclick="linkRevisionAccount()">Link account</button></div></div>`}
+      ${accountStatus}
       <div class="srow">
         <div>
           <div class="knowledge-title">Revision XP</div>
@@ -479,20 +546,30 @@ function renderSettings(){
       </div>
     </div>
     <div class="card" style="margin-top:10px">
+      <div class="sec" style="margin-top:0">Appearance</div>
+      <div class="knowledge-meta" style="margin-bottom:8px">Theme selection syncs with your shared account.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:7px">
+        ${Object.entries(themes).map(([key,theme])=>`<button class="revision-theme-choice" type="button" data-revision-theme="${escapeRevision(key)}" aria-pressed="${key===selectedTheme}" style="text-align:left;padding:8px;border:1px solid ${key===selectedTheme?'var(--purple)':'var(--border2)'};border-radius:7px;background:${escapeRevision(theme['--bg2']||'var(--bg2)')};color:${escapeRevision(theme['--text']||'var(--text)')};cursor:pointer"><span style="display:flex;gap:4px;margin-bottom:6px"><i style="width:15px;height:7px;background:${escapeRevision(theme['--gold']||'var(--gold)')};border-radius:4px"></i><i style="width:15px;height:7px;background:${escapeRevision(theme['--purple']||'var(--purple)')};border-radius:4px"></i><i style="width:15px;height:7px;background:${escapeRevision(theme['--teal']||'var(--teal)')};border-radius:4px"></i></span><span style="font-size:.72rem;font-weight:600">${escapeRevision(theme.label||key)}${key===selectedTheme?' · Active':''}</span></button>`).join('')}
+      </div>
+      ${revisionUserKey()?`<button class="btn bsm" type="button" style="margin-top:9px" onclick="syncRevisionThemes()">Sync saved themes</button>`:''}
+      ${themeStatus}
+    </div>
+    <div class="card" style="margin-top:10px">
       <div class="sec" style="margin-top:0">Saved sets</div>
+      ${state.setMessage?`<div class="qfb qok" role="status">${escapeRevision(state.setMessage)}</div>`:''}
       <div class="knowledge-list">
         ${state.accountSets.map(set => `
           <div class="knowledge-item${set.id===state.activeSetId ? ' active' : ''}">
             <span class="knowledge-dot"></span>
             <div style="flex:1;min-width:0;">
-              <div class="knowledge-title">${escapeRevision(set.name || 'Revision set')}</div>
+              ${state.editingSetId===set.id?`<input id="revision-set-name-${escapeRevision(set.id)}" type="text" maxlength="80" value="${escapeRevision(set.name||'Revision set')}" aria-label="Set name" style="max-width:320px">`:`<div class="knowledge-title">${escapeRevision(set.name || 'Revision set')}</div>`}
               <div class="knowledge-meta">${Array.isArray(set.cards) ? set.cards.length : 0} cards · ${set.published ? 'Published' : 'Private'} · ${set.id === activeSet.id ? 'Active set' : 'Stored set'}</div>
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
               <button class="btn bsm" type="button" onclick="switchRevisionSet('${set.id}')">Switch</button>
-              <button class="btn bsm" type="button" onclick="renameRevisionSet('${set.id}')">Edit</button>
+              ${state.editingSetId===set.id?`<button class="btn bsm bp" type="button" onclick="saveRevisionSetName('${set.id}')">Save name</button><button class="btn bsm" type="button" onclick="state.editingSetId=null;renderRevision()">Cancel</button>`:`<button class="btn bsm" type="button" onclick="renameRevisionSet('${set.id}')">Edit</button>`}
               <button class="btn bsm" type="button" onclick="publishRevisionSet('${set.id}')">Publish</button>
-              <button class="btn bsm br" type="button" onclick="deleteRevisionSet('${set.id}')">Delete</button>
+              ${state.confirmDeleteSetId===set.id?`<span class="knowledge-meta" style="align-self:center">Delete this set?</span><button class="btn bsm br" type="button" onclick="confirmDeleteRevisionSet('${set.id}')">Confirm</button><button class="btn bsm" type="button" onclick="cancelDeleteRevisionSet()">Cancel</button>`:`<button class="btn bsm br" type="button" onclick="requestDeleteRevisionSet('${set.id}')">Delete</button>`}
             </div>
           </div>
         `).join('')}
@@ -508,7 +585,7 @@ function renderSettings(){
           <div class="knowledge-title">${state.cards.length} private cards</div>
           <div class="knowledge-meta">Edit, link, publish, or remove your own cards.</div>
         </div>
-        <button class="btn br" onclick="clearRevisionData()">Clear local data</button>
+        ${state.confirmClearData?`<div><span class="knowledge-meta">Delete cards and progress from this device?</span> <button class="btn br bsm" type="button" onclick="clearRevisionData()">Confirm clear</button><button class="btn bsm" type="button" onclick="state.confirmClearData=false;renderRevision()">Cancel</button></div>`:`<button class="btn br" type="button" onclick="state.confirmClearData=true;renderRevision()">Clear local data</button>`}
       </div>
     </div>
   </div>`;
@@ -571,7 +648,7 @@ function bindAIFormEvents(){
 }
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
-  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate flashcards, practice questions, and linked ideas from your notes. AI use is restricted to an authenticated administrator account.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div></div><div class="fg"><label>Paste notes or source material</label><textarea data-ai-field="notes" id="ai-notes" rows="9" placeholder="Paste your notes here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate study guide</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Add flashcards to workspace</button>`:''}</div>`}</div>`;
+  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate a named revision set from your notes. Key cards use term-to-definition format; practice questions are added as question-and-answer cards.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div></div><div class="fg"><label>Paste notes or source material</label><textarea data-ai-field="notes" id="ai-notes" rows="9" placeholder="Paste your notes here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ Generate study guide</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">＋ Save as revision set</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
@@ -580,6 +657,7 @@ function renderRevision(){
   document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${Object.keys(state.progress).length} reviewed`;
   if(state.view==='leaderboard')loadRevisionLeaderboard();
   if(state.view==='ai')bindAIFormEvents();
+  if(state.view==='settings')bindSettingsEvents();
 }
 function selectRevisionCard(id){state.selected=id;state.view=state.view==='cards'?'cards':state.view;renderRevision();}
 function startTopic(topic){const decoded=decodeURIComponent(topic);const index=state.cards.findIndex(card=>card.topic===decoded);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
@@ -637,11 +715,23 @@ async function requestRevisionAI(){
   }
 }
 function importAIResult(){
-  const result=normalizeAIResult(state.aiResult||{});const generated=Array.isArray(result.flashcards)?result.flashcards:[];
-  const added=[];generated.forEach(item=>{if(!item.front&&!item.back)return;const card={id:'ai'+Date.now()+Math.random().toString(36).slice(2,6),subject:document.getElementById('ai-subject')?.value||'Custom',topic:'AI generated',title:item.front,answer:item.back,links:[],difficulty:2};state.cards.push(card);added.push(card);});
-  const byTitle=new Map(state.cards.map(card=>[card.title.toLowerCase(),card]));
-  (result.linked_ideas||[]).forEach(link=>{const first=byTitle.get(String(link.concept_a||'').toLowerCase());const second=byTitle.get(String(link.concept_b||'').toLowerCase());if(first&&second){first.links=first.links||[];second.links=second.links||[];if(!first.links.includes(second.id))first.links.push(second.id);if(!second.links.includes(first.id))second.links.push(first.id);}});
-  if(added.length){saveRevision();state.selected=added[0].id;state.view='overview';state.aiResult=null;renderRevision();}
+  const result=normalizeAIResult(state.aiResult||{});
+  const subject=document.getElementById('ai-subject')?.value.trim()||'General';
+  const level=document.getElementById('ai-level')?.value.trim()||'';
+  const requestedName=document.getElementById('ai-set-name')?.value.trim()||'';
+  const baseName=requestedName||`${subject}${level?` ${level}`:''} study guide`;
+  let name=baseName;let suffix=2;
+  while(state.accountSets.some(set=>set.name.toLowerCase()===name.toLowerCase()))name=`${baseName} (${suffix++})`;
+  const makeId=()=>`ai${Date.now()}${Math.random().toString(36).slice(2,7)}`;
+  const cards=[
+    ...result.flashcards.filter(item=>item.front||item.back).map(item=>({id:makeId(),subject,topic:'Key terms',title:item.front,answer:item.back,links:[],difficulty:2})),
+    ...result.practice_questions.filter(item=>item.question||item.answer).map(item=>({id:makeId(),subject,topic:'Practice questions',title:item.question,answer:item.answer,links:[],difficulty:2}))
+  ];
+  if(!cards.length){state.setMessage='The study guide did not contain any cards to save.';renderRevision();return;}
+  const newSet=normalizeRevisionSet({id:`set-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name,cards,progress:{},xp:0,streak:0,lastReview:'',published:false});
+  state.accountSets.push(newSet);state.activeSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
+  state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} cards in “${name}”.`;state.view='overview';
+  saveRevision();renderRevision();
 }
 function linkRevisionCard(id){
   const source=cardById(id);const choices=state.cards.filter(card=>card.id!==id);if(!source||!choices.length)return;
@@ -692,6 +782,8 @@ if (revisionQuickCreate) {
 }
 
 renderRevision();
+ThemeManager.initTheme('global');
+syncRevisionTheme();
 loadRevision();
 loadPublicNotes();
 </script>
