@@ -765,6 +765,16 @@ export default {
         });
       }
 
+      const credential = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      if (!credential) {
+        return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      if (!(await verifyAccountAccess(userKey, request))) {
+        return new Response("Sign in to sync this account.", { status: 401, headers: cors });
+      }
+
       const user = {
         userKey:          row.user_key,
         username:         row.username,
