@@ -956,6 +956,7 @@ const AdminManager = {
 
   render() {
     const token = this.getToken();
+    if (token && !this.role && !this.loading) this.refresh();
     if (!token) {
       const account = VaultUser.getUsername();
       return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
