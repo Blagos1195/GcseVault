@@ -999,64 +999,69 @@ export default {
     //   id = "<your-kv-namespace-id>"
     // ════════════════════════════════════════════════════════════════════════
 
-    // POST /themes/save — upsert a single custom theme for a user
-    // Body: { userKey, key, theme: { label, desc, '--bg': ..., ... } }
     if (url.pathname === "/themes/save" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key, theme } = body;
       if (!userKey || !key || !theme) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
-      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
-      if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      // Validate: key must be safe (alphanumeric + _ only, max 80 chars)
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
         return new Response("Invalid key", { status: 400, headers: cors });
       }
-      // Strip any non-CSS-var keys to keep the payload small & safe
-      const safeTheme = { label: String(theme.label || '').slice(0, 60), desc: String(theme.desc || '').slice(0, 120) };
-      Object.entries(theme).forEach(([k, v]) => {
-        if (k.startsWith('--')) safeTheme[k] = String(v).slice(0, 80);
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const safeTheme = { label: String(theme.label || "").slice(0, 60), desc: String(theme.desc || "").slice(0, 120) };
+      Object.entries(theme).forEach(([name, value]) => {
+        if (name.startsWith("--")) safeTheme[name] = String(value).slice(0, 80);
       });
-      const kvKey = `theme:${userKey}:${key}`;
-      await env.THEMES.put(kvKey, JSON.stringify(safeTheme));
+      const updatedAt = new Date().toISOString();
+      await env.DB.prepare(
+        "INSERT INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, theme_key) DO UPDATE SET theme_json = excluded.theme_json, updated_at = excluded.updated_at"
+      ).bind(userKey, key, JSON.stringify(safeTheme), updatedAt).run();
+      await env.THEMES.put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
-    // GET /themes/list?userKey=X — return all custom themes for a user
     if (url.pathname === "/themes/list" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
-      if (!userKey) {
-        return new Response("Missing userKey", { status: 400, headers: cors });
-      }
+      if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const prefix = `theme:${userKey}:`;
-      const list = await env.THEMES.list({ prefix });
+      let cursor;
+      do {
+        const page = await env.THEMES.list({ prefix, ...(cursor ? { cursor } : {}) });
+        for (const item of page.keys) {
+          const value = await env.THEMES.get(item.name, "json");
+          if (!value) continue;
+          const themeKey = item.name.slice(prefix.length);
+          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
+          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      const { results } = await env.DB.prepare(
+        "SELECT theme_key, theme_json FROM custom_themes WHERE user_key = ? ORDER BY theme_key"
+      ).bind(userKey).all();
       const themes = {};
-      for (const kv of list.keys) {
-        const themeKey = kv.name.slice(prefix.length);
-        const val = await env.THEMES.get(kv.name, "json");
-        if (val) themes[themeKey] = val;
-      }
+      for (const row of results) themes[row.theme_key] = JSON.parse(row.theme_json);
       return new Response(JSON.stringify({ themes }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
-    // DELETE /themes/delete — remove a custom theme
-    // Body: { userKey, key }
     if (url.pathname === "/themes/delete" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key } = body;
-      if (!userKey || !key) {
-        return new Response("Missing fields", { status: 400, headers: cors });
-      }
+      if (!userKey || !key) return new Response("Missing fields", { status: 400, headers: cors });
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
       await env.THEMES.delete(`theme:${userKey}:${key}`);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1153,7 +1158,7 @@ export default {
           ).bind(userKey).first();
         }
       }
-      const data = row ? JSON.parse(row.data_json) : null;
+      const data = row ? { ...JSON.parse(row.data_json), updatedAt: row.updated_at } : null;
       return new Response(JSON.stringify({ found: Boolean(data), data }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1184,7 +1189,7 @@ export default {
           ).bind(userKey).first();
         }
       }
-      const existing = existingRow ? JSON.parse(existingRow.data_json) : null;
+      const existing = existingRow ? { ...JSON.parse(existingRow.data_json), updatedAt: existingRow.updated_at } : null;
       const expectedUpdatedAt = String(body.expectedUpdatedAt || "");
       const currentUpdatedAt = existingRow ? String(existingRow.updated_at || existing.updatedAt || "") : "";
       if ((existingRow && expectedUpdatedAt !== currentUpdatedAt) || (!existingRow && expectedUpdatedAt)) {
@@ -1234,7 +1239,7 @@ export default {
         const latestRow = await env.DB.prepare(
           "SELECT data_json FROM revision_sync_data WHERE user_key = ?"
         ).bind(userKey).first();
-        return new Response(JSON.stringify({ conflict: true, data: latestRow ? JSON.parse(latestRow.data_json) : null }), {
+        return new Response(JSON.stringify({ conflict: true, data: latestRow ? { ...JSON.parse(latestRow.data_json), updatedAt: latestRow.updated_at } : null }), {
           status: 409,
           headers: { ...cors, "Content-Type": "application/json" }
         });
