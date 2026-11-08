@@ -105,6 +105,134 @@ export default {
       });
     }
 
+
+    async function hashValue(value) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+      return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function passwordHash(password, salt) {
+      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+      const bits = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", hash: "SHA-256", salt: Uint8Array.from(atob(salt), character => character.charCodeAt(0)), iterations: 600000 },
+        material,
+        256
+      );
+      return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function createAccountSession(userKey) {
+      const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+      const token = Array.from(tokenBytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      const now = new Date();
+      const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await env.DB.prepare(
+        "INSERT INTO account_sessions (token_hash, user_key, created_at, expires_at) VALUES (?, ?, ?, ?)"
+      ).bind(await hashValue(token), userKey, now.toISOString(), expires.toISOString()).run();
+      return token;
+    }
+
+    async function getAccountSession(req) {
+      const token = req.headers.get("X-Account-Session");
+      if (!token || token.length !== 64) return null;
+      const row = await env.DB.prepare(
+        "SELECT s.user_key, u.username, u.role FROM account_sessions s JOIN users u ON u.user_key = s.user_key WHERE s.token_hash = ? AND s.expires_at > ?"
+      ).bind(await hashValue(token), new Date().toISOString()).first();
+      return row ? { ...row, token } : null;
+    }
+
+    async function verifyAccountAccess(userKey, req) {
+      const credential = await env.DB.prepare(
+        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!credential) return true;
+      const session = await getAccountSession(req);
+      return Boolean(session && session.user_key === userKey);
+    }
+
+    if (url.pathname === "/account/setup" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const password = String(body.password || "");
+      if (!userKey || password.length < 12 || password.length > 128) {
+        return new Response("Use a password between 12 and 128 characters.", { status: 400, headers: cors });
+      }
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found.", { status: 404, headers: cors });
+      const existing = await env.DB.prepare(
+        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (existing) return new Response("This account already has a password. Sign in instead.", { status: 409, headers: cors });
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const salt = btoa(String.fromCharCode(...saltBytes));
+      const hash = await passwordHash(password, salt);
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(userKey, hash, salt, now, now).run();
+      const token = await createAccountSession(userKey);
+      const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
+      return new Response(JSON.stringify({ token, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/login" && request.method === "POST") {
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      const password = String(body.password || "");
+      if (!username || !password || username.length > 20 || password.length > 128) {
+        return new Response("Invalid username or password.", { status: 400, headers: cors });
+      }
+      const user = await env.DB.prepare(
+        "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+      ).bind(username).first();
+      if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      const candidate = await passwordHash(password, user.password_salt);
+      if (candidate !== user.password_hash) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      const token = await createAccountSession(user.user_key);
+      return new Response(JSON.stringify({ token, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/session" && request.method === "GET") {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      return new Response(JSON.stringify({ username: session.username, role: session.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/logout" && request.method === "POST") {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DB.prepare("DELETE FROM account_sessions WHERE token_hash = ?").bind(await hashValue(session.token)).run();
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    const accountScopedPaths = new Set([
+      "/lb/get", "/lb/register", "/lb/update-theme", "/lb/streak", "/lb/username-available",
+      "/themes/save", "/themes/list", "/themes/delete", "/revision/sync",
+      "/revision/public", "/revision/public/delete", "/dv/withdraw", "/withdraw"
+    ]);
+    if (accountScopedPaths.has(url.pathname)) {
+      let userKey = url.searchParams.get("userKey");
+      if (request.method !== "GET") {
+        try {
+          const body = await request.clone().json();
+          userKey = userKey || String(body.userKey || "").trim();
+        } catch {}
+      }
+      if (userKey && !(await verifyAccountAccess(userKey, request))) {
+        return new Response("Sign in to this account first.", { status: 401, headers: cors });
+      }
+    }
+
     if (url.pathname === "/admin/users" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
