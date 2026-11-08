@@ -430,6 +430,7 @@ export default {
       if (!userKey || !(await verifyAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
       }
+      delete data.userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -525,6 +526,7 @@ export default {
       if (!userKey || !(await verifyAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
       }
+      delete data.userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
