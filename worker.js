@@ -145,7 +145,7 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
-      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+/]{22}==$/.test(passwordSalt)) {
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
         return new Response("Invalid password setup details.", { status: 400, headers: cors });
       }
       const account = await env.DB.prepare(
@@ -207,7 +207,7 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
-      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+/]{22}==$/.test(passwordSalt)) {
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
         return new Response("Invalid password reset details.", { status: 400, headers: cors });
       }
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
