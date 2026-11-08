@@ -223,10 +223,10 @@ export default {
     if (url.pathname === "/withdraw" && request.method === "POST") {
       const body = await request.json();
       const { userKey, id } = body;
-      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!userKey || !id) return new Response("Missing userKey or id", { status: 400, headers: cors });
 
-      // Verify ownership: check the id is in this user's qv_pending_ids in DB
-      if (userKey) {
+      {
+
         try {
           const row = await env.DB.prepare(
             `SELECT qv_pending_ids, qv_pending_data FROM users WHERE user_key = ?`
