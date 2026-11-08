@@ -18,6 +18,7 @@ function makeEnv(rows = []) {
           bind(...values) {
             return {
               first: async () => {
+                if (sql.includes("FROM account_credentials")) return null;
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
                 if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
                 if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
