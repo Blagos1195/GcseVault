@@ -1296,9 +1296,10 @@ const AdminManager = {
       const detail = item._kind === 'quote'
         ? `${item.char || ''} · ${item.work || ''} · ${item.loc || ''}`
         : item._kind === 'date' ? `${item.year || ''} · ${item.topic || ''}` : item._kind === 'revision-note' ? `${item.cards?.length || 0} cards · ${item.subject || ''} · ${item.level || ''}` : item.description;
+      const reviewControls = item._kind === 'revision-note' && !item._pending ? '' : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`;
       const controls = item._kind === 'feedback'
         ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
-        : `${item._pending === false || item._kind !== 'revision-note' ? `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>` : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`}<button class="btn bsm" onclick="AdminManager.action(${index}, 'edit')">✏ Edit full data</button>${item._kind === 'revision-note' ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>` : ''}`;
+        : `${reviewControls}<button class="btn bsm" onclick="AdminManager.action(${index}, 'edit')">✏ Edit full data</button>${item._kind === 'revision-note' ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>` : ''}`;
       const submittedData = { ...item };
       delete submittedData._source;
       delete submittedData._kind;
