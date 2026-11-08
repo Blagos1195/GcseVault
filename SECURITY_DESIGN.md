@@ -1,37 +1,47 @@
-# Password account design
+# Password account security
 
-## Account model
+## How accounts work
 
 - Users sign in with a username and password.
-- Passwords are never stored. The Worker stores a unique random salt and a PBKDF2-HMAC-SHA-256 hash using 600,000 iterations.
-- Successful sign-in creates a random 256-bit session token. Only its SHA-256 hash is stored in D1.
-- Account sessions expire after 30 days and can be revoked by logging out.
-- Account passwords retain the existing internal user key so QuoteVault, DateVault, Revision, leaderboards, themes and moderation records remain linked.
-- Existing accounts can add a password after proving access with their existing user key. New devices can then sign in with username and password.
+- The Worker stores a PBKDF2-HMAC-SHA-256 password hash with 600,000 iterations and a unique random salt. It does not store plaintext passwords.
+- A successful login creates a cryptographically random 256-bit session token. D1 stores only the SHA-256 hash of that token.
+- Sessions expire after 30 days. Logging out revokes the current session.
+- The account's existing internal user key continues to link QuoteVault, DateVault, Revision, themes, leaderboard progress and moderation records.
+- Existing users add a password to their current account from a device where that account is already linked. They can then sign in on other devices with username and password.
 
-## Access control
+## Password advice
 
-- Password-protected account endpoints require a valid account session matching the account key.
-- Existing accounts without a password remain compatible during migration.
-- Admin roles remain separate from ordinary account access. Admin login requires an account session for password-protected accounts.
-- Public leaderboard results do not expose account keys or password data.
+Users should choose a password that is unique to GCSE Vault. Reusing a password from another site is risky: if that other site is breached, attackers may try the same password here.
 
-## Recovery
+Password hashing slows down offline guessing if the database is stolen, but it cannot make a weak or reused password safe. Login attempts are rate-limited by IP address and username.
 
-There is no email-based password reset in the current project. Keep the existing account key private as an account recovery credential until a separate recovery process is implemented. If a user loses both their password and their account key, the account cannot currently be recovered.
+## Account recovery
 
-## Scope and limitations
+The current recovery method relies on the existing account key. A user who still has a device linked to their account can use that key to set or reset the password. This key must be kept private and must not be shared.
 
-This is conventional password authentication, not end-to-end encryption. Passwords are not visible to administrators, but the Worker and database still process and store account content in readable form. Administrators with sufficient server/database access may be able to access account data. This is proportionate for revision progress and study sets, which are not intended to hold sensitive personal information.
+There is no email-based reset or support-assisted identity verification yet. If a user loses both access to their linked device/account key and their password, the account cannot currently be recovered. Do not promise otherwise.
 
-Users should choose a unique password rather than reusing one from another service. Password hashing makes a database leak less immediately damaging, but weak or reused passwords can still be guessed offline. Login attempts are rate-limited.
+## What administrators can and cannot see
 
-## Migration and rollout
+- Administrators do not have a way to view users' passwords. Only password hashes and salts are stored.
+- This is not end-to-end encryption. Revision sets and other account data are processed by the Worker and stored in the database/KV in readable form.
+- A person with sufficient access to the Cloudflare Worker, database or deployment pipeline may be able to access account data or change the application to collect data.
+- This is a proportionate design for study progress and revision sets, not a system for sensitive personal, financial or medical information.
 
-1. Apply the additive D1 migration 0004_password_accounts.sql.
-2. Deploy the Worker and website changes together.
-3. Existing users keep their account key and add a password from the account dialog. Their existing leaderboard, theme and Revision data remain linked to the same internal account.
-4. Users signing in on another device use their username and password. The Worker issues a session and returns the linked internal account key to that signed-in browser.
-5. Do not remove legacy account-key support until users have had time to add passwords and the remaining legacy accounts have been handled.
+## Existing accounts and migration
 
-No production migration or deployment has been performed from this branch.
+- Existing account keys remain in use internally, so the password conversion does not create new user records or intentionally detach existing progress.
+- An existing user must set a password from a browser that already has their account linked. Password login on a new device then retrieves the same internal account key.
+- Accounts that have not set a password remain on the legacy account-key flow during the transition.
+- Do not remove legacy support until users have had time to migrate and the remaining legacy accounts have been dealt with.
+
+## Production rollout checklist
+
+1. Back up the live D1 database and relevant KV namespaces.
+2. Apply migrations 0001 through 0004 in order, checking the target database and migration history first.
+3. Deploy the Worker and website changes together.
+4. Test a new account, an existing account adding a password, login on a second device, logout, admin access, Revision sync and account recovery.
+5. Compare user and progress counts before and after. Keep the KV copies until the migration is verified.
+6. Do not delete old account keys or legacy data as part of this rollout.
+
+The branch and draft PR contain code changes only. No production database migration, Cloudflare secret change or deployment has been performed.
