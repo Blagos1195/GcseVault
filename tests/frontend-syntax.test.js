@@ -5,7 +5,6 @@ import vm from "node:vm";
 
 const files = [
   "shared.js",
-  "auth-crypto.js",
   "quotes/index.html",
   "dates/index.html",
   "revision/index.html"
