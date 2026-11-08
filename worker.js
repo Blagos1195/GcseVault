@@ -15,30 +15,114 @@ export default {
 
     const ADMIN_KEY = env.ADMIN_KEY;
 
-    async function isAuthorized(reqUrl, req) {
-      const pw = reqUrl.searchParams.get("pw");
-      const header = req.headers.get("X-Admin-Key");
-      const token = reqUrl.searchParams.get("token") || req.headers.get("X-Session-Token");
-      if (pw === ADMIN_KEY || header === ADMIN_KEY) return true;
-      if (token) {
-        const val = await env.QUOTEVAULT.get("session:" + token);
-        return val === "1";
-      }
-      return false;
+    async function getSessionUser(reqUrl, req, tokenOverride) {
+      const token = tokenOverride || reqUrl.searchParams.get("token") || req.headers.get("X-Session-Token");
+      if (!token) return null;
+      const stored = await env.QUOTEVAULT.get("session:" + token);
+      if (!stored) return null;
+      let session;
+      try { session = JSON.parse(stored); } catch { return null; }
+      if (!session.userKey) return null;
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role FROM users WHERE user_key = ?"
+      ).bind(session.userKey).first();
+      if (!user || !["owner", "admin"].includes(user.role)) return null;
+      return { ...user, token };
     }
 
-    // ── AUTH ─────────────────────────────────────────────────────────────────
-    if (url.pathname === "/auth" && request.method === "POST") {
+    async function isAuthorized(reqUrl, req, tokenOverride) {
+      return Boolean(await getSessionUser(reqUrl, req, tokenOverride));
+    }
+
+    if (url.pathname === "/admin/status" && request.method === "GET") {
+      const owner = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE role = 'owner' LIMIT 1"
+      ).first();
+      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/bootstrap" && request.method === "POST") {
       const body = await request.json();
-      if (body.pw !== ADMIN_KEY) {
+      if (!ADMIN_KEY || body.pw !== ADMIN_KEY) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const token =
-        Date.now().toString(36) + "-" +
-        Math.random().toString(36).slice(2, 14) + "-" +
-        Math.random().toString(36).slice(2, 14);
-      await env.QUOTEVAULT.put("session:" + token, "1", { expirationTtl: 3600 });
-      return new Response(JSON.stringify({ token }), {
+      const userKey = String(body.userKey || "").trim();
+      if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
+      const existingOwner = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') LIMIT 1"
+      ).first();
+      if (existingOwner) return new Response("Owner setup has already been completed", { status: 409, headers: cors });
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      await env.DB.prepare(
+        "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user'"
+      ).bind(userKey).run();
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      if (!userKey) return new Response("Missing account key", { status: 400, headers: cors });
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!user || !["owner", "admin"].includes(user.role)) {
+        return new Response("This account does not have admin access", { status: 403, headers: cors });
+      }
+      const token = crypto.randomUUID() + crypto.randomUUID();
+      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey }), { expirationTtl: 28800 });
+      return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth/logout" && request.method === "POST") {
+      const body = await request.json();
+      const token = body.token || url.searchParams.get("token");
+      if (token) await env.QUOTEVAULT.delete("session:" + token);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/users" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const { results } = await env.DB.prepare(
+        "SELECT username, role FROM users ORDER BY username COLLATE NOCASE"
+      ).all();
+      return new Response(JSON.stringify({ users: results }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/users" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      const role = body.role;
+      if (!username || !["admin", "user"].includes(role)) {
+        return new Response("Invalid username or role", { status: 400, headers: cors });
+      }
+      const target = await env.DB.prepare(
+        "SELECT user_key, role FROM users WHERE LOWER(username) = LOWER(?)"
+      ).bind(username).first();
+      if (!target) return new Response("Account not found", { status: 404, headers: cors });
+      if (target.role === "owner") return new Response("The owner role cannot be changed here", { status: 403, headers: cors });
+      await env.DB.prepare(
+        "UPDATE users SET role = ? WHERE user_key = ? AND role != 'owner'"
+      ).bind(role, target.user_key).run();
+      return new Response(JSON.stringify({ success: true, username, role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -134,7 +218,7 @@ export default {
     if (url.pathname === "/approve" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -163,7 +247,7 @@ export default {
     if (url.pathname === "/reject" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.QUOTEVAULT.delete(body.id);
 
@@ -189,7 +273,7 @@ export default {
     if (url.pathname === "/update-public" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -204,7 +288,7 @@ export default {
     if (url.pathname === "/delete" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.PUBLIC_QUOTES.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
@@ -302,7 +386,7 @@ export default {
     if (url.pathname === "/dv/approve" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.DV_PENDING.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -330,7 +414,7 @@ export default {
     if (url.pathname === "/dv/reject" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PENDING.delete(body.id);
 
@@ -355,7 +439,7 @@ export default {
     if (url.pathname === "/dv/update-pending" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PENDING.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -369,7 +453,7 @@ export default {
     if (url.pathname === "/dv/update-public" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PUBLIC.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -383,7 +467,7 @@ export default {
     if (url.pathname === "/dv/delete" && request.method === "POST") {
       const body = await request.json();
       const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request, tok);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PUBLIC.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
