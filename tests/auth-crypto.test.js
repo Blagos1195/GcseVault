@@ -21,11 +21,11 @@ test("encrypted data round-trips and recovery key restores the encryption key", 
   const key = await crypto.deriveKey("a-long-unique-test-password", salt);
   const original = { cards: [{ front: "Question", back: "Answer" }], progress: { xp: 42 } };
   const envelope = await crypto.encrypt(key, original);
-  assert.deepEqual(await crypto.decrypt(key, envelope), original);
+  assert.equal(JSON.stringify(await crypto.decrypt(key, envelope)), JSON.stringify(original));
 
   const recovery = await crypto.createRecoveryPackage(key);
   const recoveredKey = await crypto.recoverKey(recovery.recoveryKey, recovery.wrappedKey);
-  assert.deepEqual(await crypto.decrypt(recoveredKey, envelope), original);
+  assert.equal(JSON.stringify(await crypto.decrypt(recoveredKey, envelope)), JSON.stringify(original));
 });
 
 test("tampered ciphertext is rejected", async () => {
