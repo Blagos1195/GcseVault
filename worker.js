@@ -112,6 +112,60 @@ export default {
       });
     }
 
+    if (url.pathname === "/admin/migrate-storage" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const phase = body.phase;
+      if (!["revision", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
+      const limit = Math.max(1, Math.min(100, Math.floor(Number(body.limit) || 100)));
+      const binding = phase === "revision" ? env.REVISION : env.THEMES;
+      const prefix = phase === "revision" ? "user:" : "theme:";
+      const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
+      let migrated = 0;
+      let skipped = 0;
+      for (const item of page.keys) {
+        const value = await binding.get(item.name, "json");
+        if (!value) {
+          skipped++;
+          continue;
+        }
+        if (phase === "revision") {
+          const userKey = item.name.slice("user:".length);
+          const result = await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
+          migrated += result.meta?.changes ? 1 : 0;
+        } else {
+          const remainder = item.name.slice("theme:".length);
+          const separator = remainder.lastIndexOf(":");
+          if (separator < 1) {
+            skipped++;
+            continue;
+          }
+          const userKey = remainder.slice(0, separator);
+          const themeKey = remainder.slice(separator + 1);
+          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) {
+            skipped++;
+            continue;
+          }
+          const result = await env.DB.prepare(
+            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
+          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
+          migrated += result.meta?.changes ? 1 : 0;
+        }
+      }
+      return new Response(JSON.stringify({
+        phase,
+        processed: page.keys.length,
+        migrated,
+        skipped,
+        complete: page.list_complete,
+        cursor: page.list_complete ? null : page.cursor
+      }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/admin/users" && request.method === "POST") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -1085,8 +1139,22 @@ export default {
         "SELECT username FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      const data = await env.REVISION.get(`user:${userKey}`, "json");
-      return new Response(JSON.stringify({ found: Boolean(data), data: data || null }), {
+      let row = await env.DB.prepare(
+        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!row) {
+        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        if (legacy) {
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+          row = await env.DB.prepare(
+            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          ).bind(userKey).first();
+        }
+      }
+      const data = row ? JSON.parse(row.data_json) : null;
+      return new Response(JSON.stringify({ found: Boolean(data), data }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -1102,16 +1170,25 @@ export default {
       if (!account || account.username.toLowerCase() !== username.toLowerCase()) {
         return new Response("Account verification failed", { status: 403, headers: cors });
       }
-      const existing = await env.REVISION.get(`user:${userKey}`, "json");
-      const expectedUpdatedAt = String(body.expectedUpdatedAt || "");
-      if (existing && expectedUpdatedAt !== String(existing.updatedAt || "")) {
-        return new Response(JSON.stringify({ conflict: true, data: existing }), {
-          status: 409,
-          headers: { ...cors, "Content-Type": "application/json" }
-        });
+      let existingRow = await env.DB.prepare(
+        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!existingRow) {
+        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        if (legacy) {
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+          existingRow = await env.DB.prepare(
+            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          ).bind(userKey).first();
+        }
       }
-      if (!existing && expectedUpdatedAt) {
-        return new Response(JSON.stringify({ conflict: true, data: null }), {
+      const existing = existingRow ? JSON.parse(existingRow.data_json) : null;
+      const expectedUpdatedAt = String(body.expectedUpdatedAt || "");
+      const currentUpdatedAt = existingRow ? String(existingRow.updated_at || existing.updatedAt || "") : "";
+      if ((existingRow && expectedUpdatedAt !== currentUpdatedAt) || (!existingRow && expectedUpdatedAt)) {
+        return new Response(JSON.stringify({ conflict: true, data: existing }), {
           status: 409,
           headers: { ...cors, "Content-Type": "application/json" }
         });
@@ -1132,7 +1209,7 @@ export default {
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
-const data = {
+      const data = {
         username,
         cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
         progress: body.progress && typeof body.progress === "object" ? body.progress : {},
@@ -1143,8 +1220,29 @@ const data = {
         lastReview: String(body.lastReview || ""),
         updatedAt: new Date().toISOString()
       };
-      await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
-      await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
+      let write;
+      if (existingRow) {
+        write = await env.DB.prepare(
+          "UPDATE revision_sync_data SET data_json = ?, updated_at = ? WHERE user_key = ? AND updated_at = ?"
+        ).bind(JSON.stringify(data), data.updatedAt, userKey, currentUpdatedAt).run();
+      } else {
+        write = await env.DB.prepare(
+          "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+        ).bind(userKey, JSON.stringify(data), data.updatedAt).run();
+      }
+      if (write.meta && write.meta.changes === 0) {
+        const latestRow = await env.DB.prepare(
+          "SELECT data_json FROM revision_sync_data WHERE user_key = ?"
+        ).bind(userKey).first();
+        return new Response(JSON.stringify({ conflict: true, data: latestRow ? JSON.parse(latestRow.data_json) : null }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      try {
+        await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
+        await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
+      } catch {}
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
