@@ -6,7 +6,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key"
+      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session"
     };
 
     if (request.method === "OPTIONS") {
@@ -15,30 +15,335 @@ export default {
 
     const ADMIN_KEY = env.ADMIN_KEY;
 
-    async function isAuthorized(reqUrl, req) {
-      const pw = reqUrl.searchParams.get("pw");
-      const header = req.headers.get("X-Admin-Key");
-      const token = reqUrl.searchParams.get("token") || req.headers.get("X-Session-Token");
-      if (pw === ADMIN_KEY || header === ADMIN_KEY) return true;
-      if (token) {
-        const val = await env.QUOTEVAULT.get("session:" + token);
-        return val === "1";
-      }
-      return false;
+    async function getSessionUser(reqUrl, req) {
+      const token = req.headers.get("X-Session-Token");
+      if (!token) return null;
+      const stored = await env.QUOTEVAULT.get("session:" + token);
+      if (!stored) return null;
+      let session;
+      try { session = JSON.parse(stored); } catch { return null; }
+      if (!session.userKey) return null;
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role FROM users WHERE user_key = ?"
+      ).bind(session.userKey).first();
+      if (!user || !["owner", "admin"].includes(user.role)) return null;
+      return { ...user, token };
     }
 
-    // ── AUTH ─────────────────────────────────────────────────────────────────
-    if (url.pathname === "/auth" && request.method === "POST") {
+    async function isAuthorized(reqUrl, req) {
+      return Boolean(await getSessionUser(reqUrl, req));
+    }
+
+    if (url.pathname === "/admin/status" && request.method === "GET") {
+      const owner = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
+      ).first();
+      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/bootstrap" && request.method === "POST") {
       const body = await request.json();
-      if (body.pw !== ADMIN_KEY) {
+      if (!ADMIN_KEY || body.pw !== ADMIN_KEY) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const token =
-        Date.now().toString(36) + "-" +
-        Math.random().toString(36).slice(2, 14) + "-" +
-        Math.random().toString(36).slice(2, 14);
-      await env.QUOTEVAULT.put("session:" + token, "1", { expirationTtl: 3600 });
-      return new Response(JSON.stringify({ token }), {
+      const userKey = String(body.userKey || "").trim();
+      if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found or not eligible for owner setup", { status: 404, headers: cors });
+      const usedAt = new Date().toISOString();
+      const results = await env.DB.batch([
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO admin_setup (id, user_key, used_at) SELECT 1, ?, ? WHERE NOT EXISTS (SELECT 1 FROM admin_setup WHERE id = 1) AND NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin')) AND EXISTS (SELECT 1 FROM users WHERE user_key = ? AND role = 'user')"
+        ).bind(userKey, usedAt, userKey),
+        env.DB.prepare(
+          "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user' AND EXISTS (SELECT 1 FROM admin_setup WHERE id = 1 AND user_key = ?)"
+        ).bind(userKey, userKey)
+      ]);
+      if (!results?.[0]?.meta?.changes || !results?.[1]?.meta?.changes) {
+        return new Response("Owner setup has already been completed", { status: 409, headers: cors });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      if (!userKey) return new Response("Missing account key", { status: 400, headers: cors });
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!user || !["owner", "admin"].includes(user.role)) {
+        return new Response("This account does not have admin access", { status: 403, headers: cors });
+      }
+      const token = crypto.randomUUID() + crypto.randomUUID();
+      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey }), { expirationTtl: 28800 });
+      return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth/session" && request.method === "GET") {
+      const user = await getSessionUser(url, request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      return new Response(JSON.stringify({ username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth/logout" && request.method === "POST") {
+      const user = await getSessionUser(url, request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete("session:" + user.token);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+
+    async function hashValue(value) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+      return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function createAccountSession(userKey) {
+      const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+      const token = Array.from(tokenBytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      const now = new Date();
+      const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await env.DB.prepare(
+        "INSERT INTO account_sessions (token_hash, user_key, created_at, expires_at) VALUES (?, ?, ?, ?)"
+      ).bind(await hashValue(token), userKey, now.toISOString(), expires.toISOString()).run();
+      return token;
+    }
+
+    async function getAccountSession(req) {
+      const token = req.headers.get("X-Account-Session");
+      if (!token || token.length !== 64) return null;
+      const row = await env.DB.prepare(
+        "SELECT s.user_key, u.username, u.role FROM account_sessions s JOIN users u ON u.user_key = s.user_key WHERE s.token_hash = ? AND s.expires_at > ?"
+      ).bind(await hashValue(token), new Date().toISOString()).first();
+      return row ? { ...row, token } : null;
+    }
+
+    async function verifyAccountAccess(userKey, req) {
+      const credential = await env.DB.prepare(
+        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!credential) return true;
+      const session = await getAccountSession(req);
+      return Boolean(session && session.user_key === userKey);
+    }
+
+    if (url.pathname === "/account/setup" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const passwordHashValue = String(body.passwordHash || "");
+      const passwordSalt = String(body.passwordSalt || "");
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
+        return new Response("Invalid password setup details.", { status: 400, headers: cors });
+      }
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found.", { status: 404, headers: cors });
+      const existing = await env.DB.prepare(
+        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (existing) return new Response("This account already has a password. Sign in instead.", { status: 409, headers: cors });
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(userKey, await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now).run();
+      const token = await createAccountSession(userKey);
+      const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
+      return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/challenge" && request.method === "GET") {
+      const username = String(url.searchParams.get("username") || "").trim();
+      if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
+      const credential = await env.DB.prepare(
+        "SELECT c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+      ).bind(username).first();
+      if (!credential) return new Response("Invalid username or password.", { status: 404, headers: cors });
+      return new Response(JSON.stringify({ passwordSalt: credential.password_salt }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+    if (url.pathname === "/account/login" && request.method === "POST") {
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      const passwordHashValue = String(body.passwordHash || "");
+      if (!username || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || username.length > 20) {
+        return new Response("Invalid username or password.", { status: 400, headers: cors });
+      }
+      const rateKey = "account-login:" + await hashValue((request.headers.get("CF-Connecting-IP") || "unknown") + ":" + username.toLowerCase());
+      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      if (attempts >= 8) return new Response("Too many sign-in attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
+      const user = await env.DB.prepare(
+        "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+      ).bind(username).first();
+      if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      if (await hashValue(passwordHashValue.toLowerCase()) !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete(rateKey);
+      const token = await createAccountSession(user.user_key);
+      return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+
+    if (url.pathname === "/account/reset" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const passwordHashValue = String(body.passwordHash || "");
+      const passwordSalt = String(body.passwordSalt || "");
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
+        return new Response("Invalid password reset details.", { status: 400, headers: cors });
+      }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found.", { status: 404, headers: cors });
+      const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
+      await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
+        .bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, new Date().toISOString(), userKey).run();
+      await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
+      const token = await createAccountSession(userKey);
+      const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
+      return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/session" && request.method === "GET") {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      return new Response(JSON.stringify({ userKey: session.user_key, username: session.username, role: session.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/account/logout" && request.method === "POST") {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DB.prepare("DELETE FROM account_sessions WHERE token_hash = ?").bind(await hashValue(session.token)).run();
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    const accountScopedPaths = new Set([
+      "/lb/get", "/lb/register", "/lb/update-theme", "/lb/streak", "/lb/username-available",
+      "/themes/save", "/themes/list", "/themes/delete", "/revision/sync",
+      "/revision/public", "/revision/public/delete", "/dv/withdraw", "/withdraw"
+    ]);
+    if (accountScopedPaths.has(url.pathname)) {
+      let userKey = url.searchParams.get("userKey");
+      if (request.method !== "GET") {
+        try {
+          const body = await request.clone().json();
+          userKey = userKey || String(body.userKey || "").trim();
+        } catch {}
+      }
+      if (userKey && !(await verifyAccountAccess(userKey, request))) {
+        return new Response("Sign in to this account first.", { status: 401, headers: cors });
+      }
+    }
+
+    if (url.pathname === "/admin/users" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const { results } = await env.DB.prepare(
+        "SELECT username, role FROM users ORDER BY username COLLATE NOCASE"
+      ).all();
+      return new Response(JSON.stringify({ users: results }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/migrate-storage" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const phase = body.phase;
+      if (!["revision", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
+      const limit = Math.max(1, Math.min(100, Math.floor(Number(body.limit) || 100)));
+      const binding = phase === "revision" ? env.REVISION : env.THEMES;
+      const prefix = phase === "revision" ? "user:" : "theme:";
+      const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
+      let migrated = 0;
+      let skipped = 0;
+      for (const item of page.keys) {
+        const value = await binding.get(item.name, "json");
+        if (!value) {
+          skipped++;
+          continue;
+        }
+        if (phase === "revision") {
+          const userKey = item.name.slice("user:".length);
+          const result = await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
+          migrated += result.meta?.changes ? 1 : 0;
+        } else {
+          const remainder = item.name.slice("theme:".length);
+          const separator = remainder.lastIndexOf(":");
+          if (separator < 1) {
+            skipped++;
+            continue;
+          }
+          const userKey = remainder.slice(0, separator);
+          const themeKey = remainder.slice(separator + 1);
+          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) {
+            skipped++;
+            continue;
+          }
+          const result = await env.DB.prepare(
+            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
+          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
+          migrated += result.meta?.changes ? 1 : 0;
+        }
+      }
+      return new Response(JSON.stringify({
+        phase,
+        processed: page.keys.length,
+        migrated,
+        skipped,
+        complete: page.list_complete,
+        cursor: page.list_complete ? null : page.cursor
+      }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/users" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      const role = body.role;
+      if (!username || !["admin", "user"].includes(role)) {
+        return new Response("Invalid username or role", { status: 400, headers: cors });
+      }
+      const target = await env.DB.prepare(
+        "SELECT user_key, role FROM users WHERE LOWER(username) = LOWER(?)"
+      ).bind(username).first();
+      if (!target) return new Response("Account not found", { status: 404, headers: cors });
+      if (target.role === "owner") return new Response("The owner role cannot be changed here", { status: 403, headers: cors });
+      await env.DB.prepare(
+        "UPDATE users SET role = ? WHERE user_key = ? AND role != 'owner'"
+      ).bind(role, target.user_key).run();
+      return new Response(JSON.stringify({ success: true, username, role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -77,33 +382,38 @@ export default {
     if (url.pathname === "/withdraw" && request.method === "POST") {
       const body = await request.json();
       const { userKey, id } = body;
-      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!userKey || !id) return new Response("Missing userKey or id", { status: 400, headers: cors });
 
-      // Verify ownership: check the id is in this user's qv_pending_ids in DB
-      if (userKey) {
+      {
+
         try {
           const row = await env.DB.prepare(
             `SELECT qv_pending_ids, qv_pending_data FROM users WHERE user_key = ?`
           ).bind(userKey).first();
 
-          if (row) {
-            const pendingIds = JSON.parse(row.qv_pending_ids || "[]");
-            if (!pendingIds.map(String).includes(String(id))) {
-              return new Response("Forbidden", { status: 403, headers: cors });
-            }
-            const newPendingIds = pendingIds.filter(i => String(i) !== String(id));
-            const pendingData = JSON.parse(row.qv_pending_data || "[]");
-            const newPendingData = pendingData.filter(p => String(p.id) !== String(id));
-            await env.DB.prepare(
-              `UPDATE users SET qv_pending_ids=?, qv_pending_data=?, updated_at=? WHERE user_key=?`
-            ).bind(
-              JSON.stringify(newPendingIds),
-              JSON.stringify(newPendingData),
-              new Date().toISOString(),
-              userKey
-            ).run();
+          if (!row) return new Response("Forbidden", { status: 403, headers: cors });
+
+          const pendingIds = JSON.parse(row.qv_pending_ids || "[]");
+          if (!pendingIds.map(String).includes(String(id))) {
+            return new Response("Forbidden", { status: 403, headers: cors });
           }
-        } catch (e) { /* non-fatal — proceed to KV delete */ }
+          const newPendingIds = pendingIds.filter(i => String(i) !== String(id));
+          const pendingData = JSON.parse(row.qv_pending_data || "[]");
+          const newPendingData = pendingData.filter(p => String(p.id) !== String(id));
+          await env.DB.prepare(
+            `UPDATE users SET qv_pending_ids=?, qv_pending_data=?, updated_at=? WHERE user_key=?`
+          ).bind(
+            JSON.stringify(newPendingIds),
+            JSON.stringify(newPendingData),
+            new Date().toISOString(),
+            userKey
+          ).run();
+        } catch (e) {
+          return new Response(JSON.stringify({ success: false, error: "Could not verify submission ownership." }), {
+            status: 500,
+            headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
       }
 
       await env.QUOTEVAULT.delete(id);
@@ -128,8 +438,7 @@ export default {
     // ── QUOTEVAULT APPROVE ────────────────────────────────────────────────────
     if (url.pathname === "/approve" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -157,14 +466,13 @@ export default {
     // ── QUOTEVAULT REJECT ─────────────────────────────────────────────────────
     if (url.pathname === "/reject" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.QUOTEVAULT.delete(body.id);
 
       try {
         const { results } = await env.DB.prepare(
-          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
+          `SELECT user_key, qv_pending_ids, qv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
         ).bind(`%${body.id}%`).all();
         for (const row of results) {
           const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
@@ -183,8 +491,7 @@ export default {
     // ── QUOTEVAULT UPDATE PUBLIC ──────────────────────────────────────────────
     if (url.pathname === "/update-public" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -198,8 +505,7 @@ export default {
     // ── QUOTEVAULT DELETE PUBLIC ──────────────────────────────────────────────
     if (url.pathname === "/delete" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.PUBLIC_QUOTES.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
@@ -233,23 +539,25 @@ export default {
           `SELECT dv_pending_ids, dv_pending_data FROM users WHERE user_key = ?`
         ).bind(userKey).first();
 
-        if (row) {
-          const pendingIds = JSON.parse(row.dv_pending_ids || "[]")
-            .filter(x => String(x) !== String(id));
-          const pendingData = JSON.parse(row.dv_pending_data || "[]")
-            .filter(x => String(x.id) !== String(id));
-
-          await env.DB.prepare(`
-            UPDATE users
-            SET dv_pending_ids=?, dv_pending_data=?, updated_at=?
-            WHERE user_key=?
-          `).bind(
-            JSON.stringify(pendingIds),
-            JSON.stringify(pendingData),
-            new Date().toISOString(),
-            userKey
-          ).run();
+        if (!row) return new Response("Forbidden", { status: 403, headers: cors });
+        const storedPendingIds = JSON.parse(row.dv_pending_ids || "[]");
+        if (!storedPendingIds.map(String).includes(String(id))) {
+          return new Response("Forbidden", { status: 403, headers: cors });
         }
+        const pendingIds = storedPendingIds.filter(x => String(x) !== String(id));
+        const pendingData = JSON.parse(row.dv_pending_data || "[]")
+          .filter(x => String(x.id) !== String(id));
+
+        await env.DB.prepare(`
+          UPDATE users
+          SET dv_pending_ids=?, dv_pending_data=?, updated_at=?
+          WHERE user_key=?
+        `).bind(
+          JSON.stringify(pendingIds),
+          JSON.stringify(pendingData),
+          new Date().toISOString(),
+          userKey
+        ).run();
       } catch (e) {
         return new Response(JSON.stringify({ success: false, error: e.message }), {
           status: 500,
@@ -294,8 +602,7 @@ export default {
 
     if (url.pathname === "/dv/approve" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.DV_PENDING.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -322,8 +629,7 @@ export default {
 
     if (url.pathname === "/dv/reject" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PENDING.delete(body.id);
 
@@ -347,8 +653,7 @@ export default {
 
     if (url.pathname === "/dv/update-pending" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PENDING.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -361,8 +666,7 @@ export default {
 
     if (url.pathname === "/dv/update-public" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PUBLIC.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -375,8 +679,7 @@ export default {
 
     if (url.pathname === "/dv/delete" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = tok === ADMIN_KEY || (tok && await env.QUOTEVAULT.get("session:" + tok) === "1");
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PUBLIC.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
@@ -391,14 +694,13 @@ export default {
     // GET /lb/list
     if (url.pathname === "/lb/list" && request.method === "GET") {
       const { results } = await env.DB.prepare(`
-        SELECT user_key, username, qv_mastered, dv_mastered, qv_xp, dv_xp,
+        SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp,
                streak, max_streak, updated_at
         FROM users
         ORDER BY (qv_xp + dv_xp) DESC
       `).all();
 
       const users = results.map(r => ({
-        userKey:     r.user_key,
         username:    r.username,
         qv_mastered: r.qv_mastered,
         dv_mastered: r.dv_mastered,
@@ -410,6 +712,19 @@ export default {
       }));
 
       return new Response(JSON.stringify({ users }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/lb/username-available" && request.method === "GET") {
+      const username = url.searchParams.get("username");
+      const userKey = url.searchParams.get("userKey");
+      if (!username) return new Response("Missing username", { status: 400, headers: cors });
+      const existing = await env.DB.prepare(
+        `SELECT user_key FROM users WHERE LOWER(username) = LOWER(?)`
+      ).bind(username.trim()).first();
+      const available = !existing || Boolean(userKey && existing.user_key === userKey);
+      return new Response(JSON.stringify({ available }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -430,6 +745,12 @@ export default {
 
       if (!row) {
         return new Response(JSON.stringify({ found: false }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+
+      if (!userKey) {
+        return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
           headers: { ...cors, "Content-Type": "application/json" }
         });
       }
@@ -468,6 +789,14 @@ export default {
 
       if (!username || !site || mastered === undefined || xp === undefined) {
         return new Response("Missing fields", { status: 400, headers: cors });
+      }
+      if (!["qv", "dv"].includes(site)) {
+        return new Response("Invalid site", { status: 400, headers: cors });
+      }
+      mastered = Number(mastered);
+      xp = Number(xp);
+      if (!Number.isFinite(mastered) || !Number.isFinite(xp) || mastered < 0 || xp < 0) {
+        return new Response("Invalid statistics", { status: 400, headers: cors });
       }
 
       const clean = username.trim();
@@ -609,12 +938,12 @@ export default {
         ).bind(clean).first();
         if (conflict) {
           return new Response(
-            JSON.stringify({ error: "Username already taken", existingKey: conflict.user_key }),
+            JSON.stringify({ error: "Username already taken" }),
             { status: 409, headers: { ...cors, "Content-Type": "application/json" } }
           );
         }
 
-        const kvKey      = "user:" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        const kvKey      = crypto.randomUUID();
         const updated_at = new Date().toISOString();
         const qv_mastered_ids = site === "qv" ? JSON.stringify(incomingIds) : "[]";
         const dv_mastered_ids = site === "dv" ? JSON.stringify(incomingIds) : "[]";
@@ -673,6 +1002,8 @@ export default {
       if (!userKey || theme === undefined) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       try {
         await env.DB.prepare(
           `UPDATE users SET theme=?, updated_at=? WHERE user_key=?`
@@ -693,6 +1024,10 @@ export default {
       if (!userKey) {
         return new Response("Missing userKey", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const safeStreak = Math.max(0, Math.min(10000, Math.floor(Number(streak) || 0)));
+      const safeMaxStreak = Math.max(safeStreak, Math.min(10000, Math.floor(Number(max_streak) || 0)));
       try {
         await env.DB.prepare(
           `UPDATE users
@@ -700,7 +1035,7 @@ export default {
                max_streak = CASE WHEN ? > COALESCE(max_streak, 0) THEN ? ELSE COALESCE(max_streak, 0) END,
                updated_at = ?
            WHERE user_key = ?`
-        ).bind(streak, max_streak, max_streak, new Date().toISOString(), userKey).run();
+        ).bind(safeStreak, safeMaxStreak, safeMaxStreak, new Date().toISOString(), userKey).run();
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...cors, "Content-Type": "application/json" }
         });
@@ -720,58 +1055,70 @@ export default {
     //   id = "<your-kv-namespace-id>"
     // ════════════════════════════════════════════════════════════════════════
 
-    // POST /themes/save — upsert a single custom theme for a user
-    // Body: { userKey, key, theme: { label, desc, '--bg': ..., ... } }
     if (url.pathname === "/themes/save" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key, theme } = body;
       if (!userKey || !key || !theme) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
-      // Validate: key must be safe (alphanumeric + _ only, max 80 chars)
-      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key).replace(/[^a-zA-Z0-9_]/g, '_'))) {
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
         return new Response("Invalid key", { status: 400, headers: cors });
       }
-      // Strip any non-CSS-var keys to keep the payload small & safe
-      const safeTheme = { label: String(theme.label || '').slice(0, 60), desc: String(theme.desc || '').slice(0, 120) };
-      Object.entries(theme).forEach(([k, v]) => {
-        if (k.startsWith('--')) safeTheme[k] = String(v).slice(0, 80);
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const safeTheme = { label: String(theme.label || "").slice(0, 60), desc: String(theme.desc || "").slice(0, 120) };
+      Object.entries(theme).forEach(([name, value]) => {
+        if (name.startsWith("--")) safeTheme[name] = String(value).slice(0, 80);
       });
-      const kvKey = `theme:${userKey}:${key}`;
-      await env.THEMES.put(kvKey, JSON.stringify(safeTheme));
+      const updatedAt = new Date().toISOString();
+      await env.DB.prepare(
+        "INSERT INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, theme_key) DO UPDATE SET theme_json = excluded.theme_json, updated_at = excluded.updated_at"
+      ).bind(userKey, key, JSON.stringify(safeTheme), updatedAt).run();
+      await env.THEMES.put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
-    // GET /themes/list?userKey=X — return all custom themes for a user
     if (url.pathname === "/themes/list" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
-      if (!userKey) {
-        return new Response("Missing userKey", { status: 400, headers: cors });
-      }
+      if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const prefix = `theme:${userKey}:`;
-      const list = await env.THEMES.list({ prefix });
+      let cursor;
+      do {
+        const page = await env.THEMES.list({ prefix, ...(cursor ? { cursor } : {}) });
+        for (const item of page.keys) {
+          const value = await env.THEMES.get(item.name, "json");
+          if (!value) continue;
+          const themeKey = item.name.slice(prefix.length);
+          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
+          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      const { results } = await env.DB.prepare(
+        "SELECT theme_key, theme_json FROM custom_themes WHERE user_key = ? ORDER BY theme_key"
+      ).bind(userKey).all();
       const themes = {};
-      for (const kv of list.keys) {
-        const themeKey = kv.name.slice(prefix.length);
-        const val = await env.THEMES.get(kv.name, "json");
-        if (val) themes[themeKey] = val;
-      }
+      for (const row of results) themes[row.theme_key] = JSON.parse(row.theme_json);
       return new Response(JSON.stringify({ themes }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
 
-    // DELETE /themes/delete — remove a custom theme
-    // Body: { userKey, key }
     if (url.pathname === "/themes/delete" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key } = body;
-      if (!userKey || !key) {
-        return new Response("Missing fields", { status: 400, headers: cors });
-      }
+      if (!userKey || !key) return new Response("Missing fields", { status: 400, headers: cors });
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       await env.THEMES.delete(`theme:${userKey}:${key}`);
+      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -849,8 +1196,26 @@ export default {
     if (url.pathname === "/revision/sync" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
-      const data = await env.REVISION.get(`user:${userKey}`, "json");
-      return new Response(JSON.stringify({ found: Boolean(data), data: data || null }), {
+      const account = await env.DB.prepare(
+        "SELECT username FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      let row = await env.DB.prepare(
+        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!row) {
+        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        if (legacy) {
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+          row = await env.DB.prepare(
+            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          ).bind(userKey).first();
+        }
+      }
+      const data = row ? { ...JSON.parse(row.data_json), updatedAt: row.updated_at } : null;
+      return new Response(JSON.stringify({ found: Boolean(data), data }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -860,6 +1225,35 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const username = String(body.username || "").trim().slice(0, 20);
       if (!userKey || !username) return new Response("Missing userKey or username", { status: 400, headers: cors });
+      const account = await env.DB.prepare(
+        "SELECT username FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account || account.username.toLowerCase() !== username.toLowerCase()) {
+        return new Response("Account verification failed", { status: 403, headers: cors });
+      }
+      let existingRow = await env.DB.prepare(
+        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!existingRow) {
+        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        if (legacy) {
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+          existingRow = await env.DB.prepare(
+            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          ).bind(userKey).first();
+        }
+      }
+      const existing = existingRow ? { ...JSON.parse(existingRow.data_json), updatedAt: existingRow.updated_at } : null;
+      const expectedUpdatedAt = String(body.expectedUpdatedAt || "");
+      const currentUpdatedAt = existingRow ? String(existingRow.updated_at || existing.updatedAt || "") : "";
+      if ((existingRow && expectedUpdatedAt !== currentUpdatedAt) || (!existingRow && expectedUpdatedAt)) {
+        return new Response(JSON.stringify({ conflict: true, data: existing }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
       const accountSets = Array.isArray(body.accountSets)
         ? body.accountSets.slice(0, 25).map((set, index) => ({
             id: String(set && set.id ? set.id : `set-${index + 1}`),
@@ -876,7 +1270,8 @@ export default {
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
-const data = {
+      const updatedAt = existingRow ? new Date(Math.max(Date.now(), Date.parse(currentUpdatedAt || 0) + 1)).toISOString() : new Date().toISOString();
+      const data = {
         username,
         cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
         progress: body.progress && typeof body.progress === "object" ? body.progress : {},
@@ -885,10 +1280,31 @@ const data = {
         xp: Math.max(0, Math.min(1000000, Number(body.xp) || 0)),
         streak: Math.max(0, Math.min(10000, Number(body.streak) || 0)),
         lastReview: String(body.lastReview || ""),
-        updatedAt: new Date().toISOString()
+        updatedAt
       };
-      await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
-      await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
+      let write;
+      if (existingRow) {
+        write = await env.DB.prepare(
+          "UPDATE revision_sync_data SET data_json = ?, updated_at = ? WHERE user_key = ? AND updated_at = ?"
+        ).bind(JSON.stringify(data), data.updatedAt, userKey, currentUpdatedAt).run();
+      } else {
+        write = await env.DB.prepare(
+          "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
+        ).bind(userKey, JSON.stringify(data), data.updatedAt).run();
+      }
+      if (write.meta && write.meta.changes === 0) {
+        const latestRow = await env.DB.prepare(
+          "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+        ).bind(userKey).first();
+        return new Response(JSON.stringify({ conflict: true, data: latestRow ? { ...JSON.parse(latestRow.data_json), updatedAt: latestRow.updated_at } : null }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      try {
+        await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
+        await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
+      } catch {}
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -931,7 +1347,9 @@ const data = {
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
-      const id = `rn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const id = `rn-${crypto.randomUUID()}`;
       const publicNote = { id, ownerKey: userKey, title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
       await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -1022,6 +1440,8 @@ const data = {
       const id = String(body.id || "").trim();
       const note = id ? await env.REVISION.get(`public:${id}`, "json") : null;
       if (!userKey || !id) return new Response("Missing fields", { status: 400, headers: cors });
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       if (note.ownerKey !== userKey) return new Response("Forbidden", { status: 403, headers: cors });
       await env.REVISION.delete(`public:${id}`);

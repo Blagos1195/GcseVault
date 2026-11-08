@@ -273,6 +273,160 @@ const VaultUser = {
     return value;
   },
 
+  async readResponse(response) {
+    const raw = await response.text();
+    try { return JSON.parse(raw); } catch { return { error: raw || `HTTP ${response.status}` }; }
+  },
+
+  getAccountSession() {
+    return localStorage.getItem('vault_account_session') || null;
+  },
+
+  setAccountSession(value) {
+    if (!value) return null;
+    localStorage.setItem('vault_account_session', value);
+    return value;
+  },
+
+  async createPasswordCredentials(password) {
+    if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
+      throw new Error('Use a password between 12 and 128 characters.');
+    }
+    const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+    const passwordSalt = btoa(String.fromCharCode(...saltBytes));
+    const passwordHash = await this.derivePasswordHash(password, passwordSalt);
+    return { passwordSalt, passwordHash };
+  },
+
+  async derivePasswordHash(password, passwordSalt) {
+    const saltBytes = Uint8Array.from(atob(passwordSalt), character => character.charCodeAt(0));
+    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: 600000 },
+      material,
+      256
+    );
+    return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, '0')).join('');
+  },
+
+  async setupPassword(password) {
+    const userKey = this.getKey();
+    if (!userKey) throw new Error('Link your existing account first.');
+    const credentials = await this.createPasswordCredentials(password);
+    const response = await fetch(`${this.WORKER_URL}/account/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, ...credentials })
+    });
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not set password.');
+    this.setAccountSession(data.token);
+    this.setUsername(data.username);
+    return data;
+  },
+
+  async login(username, password) {
+    const challengeResponse = await fetch(`${this.WORKER_URL}/account/challenge?username=${encodeURIComponent(username)}`);
+    const challenge = await this.readResponse(challengeResponse);
+    if (!challengeResponse.ok) throw new Error('Invalid username or password.');
+    const passwordHash = await this.derivePasswordHash(password, challenge.passwordSalt);
+    const response = await fetch(`${this.WORKER_URL}/account/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, passwordHash })
+    });
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Invalid username or password.');
+    this.setAccountSession(data.token);
+    this.setKey(data.userKey);
+    this.setUsername(data.username);
+    return data;
+  },
+
+  async resetPassword(password) {
+    const userKey = this.getKey();
+    if (!userKey) throw new Error('Link your account key before resetting the password.');
+    const credentials = await this.createPasswordCredentials(password);
+    const response = await fetch(`${this.WORKER_URL}/account/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, ...credentials })
+    });
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not reset password.');
+    this.setAccountSession(data.token);
+    this.setUsername(data.username);
+    return data;
+  },
+
+  async logoutAccount() {
+    if (this.getAccountSession()) {
+      await fetch(`${this.WORKER_URL}/account/logout`, { method: 'POST' }).catch(() => {});
+    }
+    localStorage.removeItem('vault_account_session');
+  },
+
+  showAccountDialog() {
+    if (typeof window.openModal !== 'function') return;
+    const linked = this.getKey();
+    window.openModal(`<div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Sign in with your username and password, or add a password to an account already linked on this device.</div>
+      <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
+      <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
+      <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bg" id="vault-account-login">Sign in</button>
+        ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
+        ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
+        ${this.getAccountSession() ? '<button class="btn" id="vault-account-logout">Sign out</button>' : ''}
+        <button class="btn" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`);
+    const username = document.getElementById('vault-account-username');
+    const password = document.getElementById('vault-account-password');
+    const error = document.getElementById('vault-account-error');
+    const login = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.login(username.value.trim(), password.value);
+        window.closeModal();
+        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
+        if (typeof window.loadRevision === 'function') await window.loadRevision();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
+    document.getElementById('vault-account-login').onclick = login;
+    const logout = document.getElementById('vault-account-logout');
+    if (logout) logout.onclick = async () => {
+      await this.logoutAccount();
+      window.closeModal();
+      if (typeof window.render === 'function') window.render();
+      if (typeof window.renderRevision === 'function') window.renderRevision();
+    };
+    const reset = document.getElementById('vault-account-reset');
+    if (reset) reset.onclick = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.resetPassword(password.value);
+        window.closeModal();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
+    const setup = document.getElementById('vault-account-setup');
+    if (setup) setup.onclick = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.setupPassword(password.value);
+        window.closeModal();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
+  },
+
   getProfile() {
     return {
       username: this.getUsername(),
@@ -337,6 +491,21 @@ const VaultUser = {
     }
   }
 };
+
+if (!window.__vaultAccountFetchWrapped) {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === 'string' ? input : input.url;
+    if (requestUrl && requestUrl.startsWith(VaultUser.WORKER_URL)) {
+      const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+      const token = VaultUser.getAccountSession();
+      if (token) headers.set('X-Account-Session', token);
+      init = { ...init, headers };
+    }
+    return nativeFetch(input, init);
+  };
+  window.__vaultAccountFetchWrapped = true;
+}
 
 const ThemeManager = {
   WORKER_URL: VaultUser.WORKER_URL,
@@ -746,7 +915,7 @@ function formatNumber(value) {
 }
 
 function getAdminToken() {
-  return localStorage.getItem('gcse_vault_admin_token') || null;
+  return sessionStorage.getItem('gcse_vault_admin_token') || null;
 }
 
 function hasAdminSession() {
@@ -756,12 +925,11 @@ function hasAdminSession() {
 async function apiRequest(path, options = {}) {
   const token = getAdminToken();
   const url = new URL(path, `${WORKER_API}/`);
-  if (token) url.searchParams.set('token', token);
-
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'X-Session-Token': token } : {}),
       ...(options.headers || {})
     }
   });
@@ -780,25 +948,58 @@ function getSavedUserProfile() {
 
 const AdminManager = {
   token: null,
+  role: null,
+  username: null,
   items: [],
+  users: [],
   loading: false,
+  migrating: false,
+  migrationStatus: '',
+  statusChecked: false,
+  statusChecking: false,
+  ownerInitialized: true,
   error: '',
 
   getToken() {
     return this.token || getAdminToken();
   },
 
-  async login(password) {
+  async checkStatus() {
+    if (this.statusChecked || this.statusChecking) return;
+    this.statusChecking = true;
+    try {
+      const response = await fetch(`${WORKER_API}/admin/status`);
+      if (!response.ok) throw new Error('Status check failed');
+      const data = await response.json();
+      this.ownerInitialized = Boolean(data.initialized);
+    } catch {
+      this.ownerInitialized = true;
+    } finally {
+      this.statusChecking = false;
+      this.statusChecked = true;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  async login() {
+    const userKey = VaultUser.getKey();
+    if (!userKey) {
+      this.error = 'Link your GCSE Vault account before signing in.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
     try {
       const response = await fetch(`${WORKER_API}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pw: password })
+        body: JSON.stringify({ userKey })
       });
-      if (!response.ok) throw new Error(response.status === 401 ? 'Incorrect password' : `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(response.status === 403 ? 'This account does not have admin access.' : `HTTP ${response.status}`);
       const data = await response.json();
       this.token = data.token;
-      localStorage.setItem('gcse_vault_admin_token', data.token);
+      this.role = data.role;
+      this.username = data.username;
+      sessionStorage.setItem('gcse_vault_admin_token', data.token);
       this.error = '';
       await this.refresh();
     } catch (error) {
@@ -807,18 +1008,111 @@ const AdminManager = {
     }
   },
 
-  logout() {
+  async bootstrap() {
+    const userKey = VaultUser.getKey();
+    const password = document.getElementById('admin-bootstrap-key')?.value || '';
+    if (!userKey) {
+      this.error = 'Link your GCSE Vault account before setting up the owner.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
+    if (!password) {
+      this.error = 'Enter the one-time setup key.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
+    try {
+      const response = await fetch(`${WORKER_API}/admin/bootstrap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userKey, pw: password })
+      });
+      if (!response.ok) throw new Error(response.status === 409 ? 'Owner setup has already been completed.' : `HTTP ${response.status}`);
+      this.ownerInitialized = true;
+      this.statusChecked = true;
+      await this.login();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  async logout() {
+    const token = this.getToken();
+    if (token) {
+      fetch(`${WORKER_API}/auth/logout`, {
+        method: 'POST',
+        headers: { 'X-Session-Token': token }
+      }).catch(() => {});
+    }
     this.token = null;
+    this.role = null;
+    this.username = null;
     this.items = [];
+    this.users = [];
+    sessionStorage.removeItem('gcse_vault_admin_token');
     localStorage.removeItem('gcse_vault_admin_token');
     if (typeof window.render === 'function') window.render();
   },
 
   async request(path) {
     const token = this.getToken();
-    const response = await fetch(`${WORKER_API}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`);
+    const response = await fetch(`${WORKER_API}${path}`, {
+      headers: { 'X-Session-Token': token }
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
+  },
+
+  async migrateStorage() {
+    if (this.role !== 'owner' || this.migrating) return;
+    this.migrating = true;
+    this.migrationStatus = 'Preparing storage migration...';
+    this.error = '';
+    if (typeof window.render === 'function') window.render();
+    try {
+      for (const phase of ['revision', 'themes']) {
+        let cursor = null;
+        let processed = 0;
+        let migrated = 0;
+        do {
+          const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
+            body: JSON.stringify({ phase, cursor, limit: 100 })
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          const result = await response.json();
+          processed += result.processed || 0;
+          migrated += result.migrated || 0;
+          cursor = result.cursor || null;
+          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied...`;
+          if (typeof window.render === 'function') window.render();
+        } while (cursor);
+      }
+      this.migrationStatus = 'Migration complete. Original KV copies have been retained as backups.';
+    } catch (error) {
+      this.error = error.message;
+      this.migrationStatus = 'Migration paused. You can safely run it again.';
+    } finally {
+      this.migrating = false;
+      await this.refresh();
+    }
+  },
+
+  async setRole(username, role) {
+    try {
+      const response = await fetch(`${WORKER_API}/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
+        body: JSON.stringify({ username, role })
+      });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Account not found.' : `HTTP ${response.status}`);
+      await this.refresh();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
   },
 
   async refresh() {
@@ -827,6 +1121,9 @@ const AdminManager = {
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
+      const session = await this.request('/auth/session');
+      this.role = session.role;
+      this.username = session.username;
       const [quotes, dates, feedback, publicRevision] = await Promise.all([
         this.request('/pending'),
         this.request('/dv/pending'),
@@ -839,8 +1136,15 @@ const AdminManager = {
         ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' })),
         ...(publicRevision.notes || []).map((item) => ({ ...item, _source: 'Public Revision note', _kind: 'revision-note', _pending: Boolean(item.pending) }))
       ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
+      this.users = this.role === 'owner' ? (await this.request('/admin/users')).users || [] : [];
     } catch (error) {
       this.error = error.message;
+      if (error.message === 'HTTP 401') {
+        this.token = null;
+        this.role = null;
+        this.username = null;
+        sessionStorage.removeItem('gcse_vault_admin_token');
+      }
     } finally {
       this.loading = false;
       if (typeof window.render === 'function') window.render();
@@ -859,16 +1163,16 @@ const AdminManager = {
     const path = routes[item._kind]?.[action];
     if (!path) return;
     try {
-      let body = { id: item.id, token: this.getToken() };
+      const body = { id: item.id };
       if (action === 'edit') {
         const title = window.prompt('Edit public note title:', item.title || '');
         if (!title) return;
         const subject = window.prompt('Edit subject:', item.subject || 'General') || item.subject || 'General';
         body.note = { title, subject, level: item.level || '', cards: item.cards || [] };
       }
-      const response = await fetch(`${WORKER_API}${path}?token=${encodeURIComponent(this.getToken())}`, {
+      const response = await fetch(`${WORKER_API}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
         body: JSON.stringify(body)
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -881,13 +1185,25 @@ const AdminManager = {
 
   render() {
     const token = this.getToken();
+    if (token && !this.role && !this.loading) this.refresh();
     if (!token) {
+      if (!this.statusChecked) {
+        this.checkStatus();
+        return `<div><div class="pt">Admin Panel</div><div class="ps">Checking account permissions...</div></div>`;
+      }
+      const account = VaultUser.getUsername();
       return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
         <div class="pt">Admin Panel</div>
         <div class="ps">One shared review queue for QuoteVault, DateVault, and Feedback</div>
-        <div class="card" style="max-width:360px">
-          <div class="fg"><label>Password</label><input type="password" id="shared-admin-password" placeholder="Enter admin password"></div>
-          <button class="btn bg" onclick="AdminManager.login(document.getElementById('shared-admin-password').value)">🔐 Login</button>
+        <div class="card" style="max-width:380px">
+          <div class="knowledge-title">${account ? `Signed in account: ${UI.escapeHTML(account)}` : 'No account linked'}</div>
+          <div class="knowledge-meta" style="margin:6px 0 10px">${account ? 'Admin access is linked to your GCSE Vault account.' : 'Link your GCSE Vault account in Settings first.'}</div>
+          <button class="btn bg" onclick="AdminManager.login()" ${account ? '' : 'disabled'}>🔐 Sign in with account</button>
+          ${!this.ownerInitialized ? `<details style="margin-top:14px">
+            <summary style="cursor:pointer;color:var(--text2);font-size:.75rem">First owner setup</summary>
+            <div class="fg" style="margin-top:9px"><label for="admin-bootstrap-key">One-time setup key</label><input type="password" id="admin-bootstrap-key" autocomplete="off" placeholder="Initial setup key"></div>
+            <button class="btn" onclick="AdminManager.bootstrap()" ${account ? '' : 'disabled'}>Set up this account as owner</button>
+          </details>` : ''}
           ${this.error ? `<div class="qfb qwr" style="margin-top:8px">${UI.escapeHTML(this.error)}</div>` : ''}
         </div>
       </div>`;
@@ -916,13 +1232,19 @@ const AdminManager = {
         <div style="display:flex;gap:6px;margin-top:8px">${controls}</div>
       </div>`;
     }).join('');
-
+    const userManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
+      <div class="sec" style="margin-top:0">Account permissions</div>
+      <button class="btn bsm" onclick="AdminManager.migrateStorage()" ${this.migrating ? 'disabled' : ''}>${this.migrating ? 'Migrating...' : 'Migrate existing storage to D1'}</button>
+      ${this.migrationStatus ? `<div class="knowledge-meta" style="margin:7px 0">${UI.escapeHTML(this.migrationStatus)}</div>` : ''}
+      ${this.users.map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${UI.escapeHTML(user.role)}</div></div>${user.role === 'owner' ? '<span class="tag tg">Owner</span>' : user.role === 'admin' ? `<button class="btn bsm br" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','user')">Remove admin</button>` : `<button class="btn bsm" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','admin')">Make admin</button>`}</div>`).join('') || '<div class="ps">No accounts found.</div>'}
+    </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div><div class="pt">Admin Panel</div><div class="ps">All sites and feedback in one queue</div></div>
+        <div><div class="pt">Admin Panel</div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
         <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
+      ${userManagement}
       <div class="g4" style="margin:10px 0 12px">
         <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
         <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>

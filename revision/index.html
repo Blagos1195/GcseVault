@@ -270,14 +270,72 @@ function syncActiveRevisionSet(){
   localStorage.setItem(revisionAccountSetsKey, JSON.stringify(state.accountSets));
   localStorage.setItem(revisionActiveSetKey, state.activeSetId);
 }
-function saveRevision(){
+function revisionLocalUpdatedAtKey(){
+  const userKey=revisionUserKey();
+  if(!userKey)return 'revision_local_updated_at';
+  const key=`revision_local_updated_at:${userKey}`;
+  const legacy=localStorage.getItem('revision_local_updated_at');
+  if(!localStorage.getItem(key)&&legacy&&!localStorage.getItem('revision_local_updated_at_migrated')){
+    localStorage.setItem(key,legacy);
+    localStorage.setItem('revision_local_updated_at_migrated','1');
+  }
+  return key;
+}
+function saveRevision(remote=false){
+  if(!remote)localStorage.setItem(revisionLocalUpdatedAtKey(),new Date().toISOString());
   localStorage.setItem(REVISION_KEY,JSON.stringify(state.cards));
   localStorage.setItem(REVISION_PROGRESS_KEY,JSON.stringify(state.progress));
   localStorage.setItem('revision_xp',String(state.xp));
   localStorage.setItem('revision_streak',String(state.streak));
   localStorage.setItem('revision_last_review',state.lastReview);
   syncActiveRevisionSet();
-  syncRevisionSoon();
+  if(!remote)syncRevisionSoon();
+}
+function revisionSnapshotKey(userKey){
+  return `revision_local_snapshot:${userKey||'anonymous'}`;
+}
+function captureRevisionSnapshot(userKey=revisionUserKey()){
+  const updatedAt=userKey
+    ? localStorage.getItem(revisionLocalUpdatedAtKey())||''
+    : localStorage.getItem('revision_local_updated_at')||'';
+  if(userKey&&updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),updatedAt);
+  localStorage.setItem('revision_local_updated_at_migrated','1');
+  const snapshot={
+    accountSets:state.accountSets,
+    activeSetId:state.activeSetId,
+    cards:state.cards,
+    progress:state.progress,
+    xp:state.xp,
+    streak:state.streak,
+    lastReview:state.lastReview,
+    updatedAt
+  };
+  localStorage.setItem(revisionSnapshotKey(userKey),JSON.stringify(snapshot));
+}
+function restoreRevisionSnapshot(userKey){
+  let snapshot=null;
+  try{snapshot=JSON.parse(localStorage.getItem(revisionSnapshotKey(userKey))||'null');}catch{}
+  if(snapshot){
+    state.accountSets=Array.isArray(snapshot.accountSets)?snapshot.accountSets.map(set=>normalizeRevisionSet(set,DEFAULT_REVISION_SET_ID)):initialRevisionSets;
+    state.activeSetId=snapshot.activeSetId||state.accountSets[0]?.id||DEFAULT_REVISION_SET_ID;
+    state.cards=Array.isArray(snapshot.cards)?snapshot.cards:[];
+    state.progress=snapshot.progress&&typeof snapshot.progress==='object'?snapshot.progress:{};
+    state.xp=Number(snapshot.xp)||0;
+    state.streak=Number(snapshot.streak)||0;
+    state.lastReview=snapshot.lastReview||'';
+    if(snapshot.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),snapshot.updatedAt);
+    else localStorage.removeItem(revisionLocalUpdatedAtKey());
+  }else{
+    state.accountSets=[normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''},DEFAULT_REVISION_SET_ID)];
+    state.activeSetId=DEFAULT_REVISION_SET_ID;
+    state.cards=[];
+    state.progress={};
+    state.xp=0;
+    state.streak=0;
+    state.lastReview='';
+    localStorage.removeItem(revisionLocalUpdatedAtKey());
+  }
+  saveRevision(true);
 }
 function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
@@ -476,14 +534,46 @@ function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topi
 function revisionUserKey(){return VaultUser.getKey();}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
-function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername())revisionSyncTimer=setTimeout(syncRevision,700);}
+let revisionRemoteUpdatedAt=null;
+let revisionConflictData=null;
+let revisionSyncConflict=false;
+function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);}
+function applyRevisionRemoteData(data){
+  const remoteSets = Array.isArray(data.accountSets) && data.accountSets.length
+    ? data.accountSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID))
+    : initialRevisionSets;
+  state.accountSets = remoteSets;
+  const activeSet = remoteSets.find(set => set.id === data.activeSetId) || remoteSets[0];
+  if (activeSet) state.activeSetId = activeSet.id;
+  state.cards = Array.isArray(data.cards) ? data.cards : (Array.isArray(activeSet?.cards) ? activeSet.cards : []);
+  state.progress = data.progress && typeof data.progress === 'object' ? data.progress : (activeSet && activeSet.progress ? activeSet.progress : {});
+  state.xp = Number(data.xp) || state.xp || 0;
+  state.streak = Number(data.streak) || state.streak || 0;
+  state.lastReview = data.lastReview || (activeSet && activeSet.lastReview ? activeSet.lastReview : state.lastReview) || '';
+  const syncedSet = getActiveRevisionSet();
+  if (syncedSet) {
+    syncedSet.cards = state.cards;
+    syncedSet.progress = state.progress;
+    syncedSet.xp = state.xp;
+    syncedSet.streak = state.streak;
+    syncedSet.lastReview = state.lastReview;
+  }
+  if(data.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),data.updatedAt);
+  saveRevision(true);
+}
 async function syncRevision(){
-  if(!revisionUserKey()||!revisionUsername()||state.syncing)return;
+  if(!revisionUserKey()||!revisionUsername()||state.syncing||revisionSyncConflict)return;
   state.syncing=true;
+  const syncUserKey=revisionUserKey();
+  const syncLocalKey=revisionLocalUpdatedAtKey();
+  let syncAgain=false;
   try{
+    const localUpdatedAt=localStorage.getItem(syncLocalKey)||'';
     const payload = {
-      userKey: revisionUserKey(),
+      userKey: syncUserKey,
       username: revisionUsername(),
+      expectedUpdatedAt: revisionRemoteUpdatedAt || '',
+      localUpdatedAt,
       cards: state.cards,
       progress: state.progress,
       accountSets: state.accountSets,
@@ -492,39 +582,80 @@ async function syncRevision(){
       streak: state.streak,
       lastReview: state.lastReview
     };
-    await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  }catch(error){}finally{state.syncing=false;}
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(response.status===409){
+      const conflict=await response.json();
+      revisionConflictData=conflict.data;
+      revisionSyncConflict=true;
+      state.accountMessage='Revision data changed on another device. Your local copy has been preserved.';
+      state.accountMessageType='error';
+      renderRevision();
+      return;
+    }
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const result=await response.json();
+    revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
+    if(localStorage.getItem(syncLocalKey)===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(syncLocalKey,revisionRemoteUpdatedAt);
+    else syncAgain=true;
+  }catch(error){
+    state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
+    state.accountMessageType='error';
+  }finally{
+    state.syncing=false;
+    if(syncAgain)syncRevisionSoon();
+  }
+}
+async function resolveRevisionSyncConflict(choice){
+  if(!revisionSyncConflict)return;
+  if(choice==='remote'&&revisionConflictData){
+    revisionRemoteUpdatedAt=revisionConflictData.updatedAt||null;
+    revisionSyncConflict=false;
+    const remote=revisionConflictData;
+    revisionConflictData=null;
+    applyRevisionRemoteData(remote);
+    state.accountMessage='The other device’s copy has been loaded.';
+    state.accountMessageType='success';
+    renderRevision();
+    return;
+  }
+  revisionRemoteUpdatedAt=revisionConflictData?.updatedAt||null;
+  revisionSyncConflict=false;
+  revisionConflictData=null;
+  state.accountMessage='Keeping this device’s copy. Syncing it as the latest version.';
+  state.accountMessageType='success';
+  await syncRevision();
+  renderRevision();
 }
 async function loadRevision(){
   if(!revisionUserKey())return;
+  if(!localStorage.getItem(revisionSnapshotKey(revisionUserKey())))captureRevisionSnapshot(revisionUserKey());
   try{
     const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const payload=await response.json();
     if(payload.found&&payload.data){
-      const remoteSets = Array.isArray(payload.data.accountSets) && payload.data.accountSets.length
-        ? payload.data.accountSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID))
-        : initialRevisionSets;
-      state.accountSets = remoteSets;
-      const activeSet = remoteSets.find(set => set.id === payload.data.activeSetId) || remoteSets[0];
-      if (activeSet) state.activeSetId = activeSet.id;
-      state.cards = Array.isArray(payload.data.cards) ? payload.data.cards : (Array.isArray(activeSet?.cards) ? activeSet.cards : []);
-      state.progress = payload.data.progress && typeof payload.data.progress === 'object' ? payload.data.progress : (activeSet && activeSet.progress ? activeSet.progress : {});
-      state.xp = Number(payload.data.xp) || state.xp || 0;
-      state.streak = Number(payload.data.streak) || state.streak || 0;
-      state.lastReview = payload.data.lastReview || (activeSet && activeSet.lastReview ? activeSet.lastReview : state.lastReview) || '';
-      
-      const syncedSet = getActiveRevisionSet();
-      if (syncedSet) {
-        syncedSet.cards = state.cards;
-        syncedSet.progress = state.progress;
-        syncedSet.xp = state.xp;
-        syncedSet.streak = state.streak;
-        syncedSet.lastReview = state.lastReview;
+      const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
+      if(localUpdatedAt&&payload.data.updatedAt&&localUpdatedAt>payload.data.updatedAt){
+        revisionRemoteUpdatedAt=payload.data.updatedAt;
+        state.view='settings';
+        revisionConflictData=payload.data;
+        revisionSyncConflict=true;
+        state.accountMessage='This device has newer unsynced revision changes. Choose which copy to keep in Settings.';
+        state.accountMessageType='error';
+        renderRevision();
+        return;
       }
-      saveRevision();
+      revisionRemoteUpdatedAt=payload.data.updatedAt||null;
+      applyRevisionRemoteData(payload.data);
       renderRevision();
+    }else{
+      revisionRemoteUpdatedAt=null;
+      await syncRevision();
     }
-  }catch(error){}
+  }catch(error){
+    state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
+    state.accountMessageType='error';
+  }
 }
 async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
 function awardRevisionXP(score){
@@ -532,6 +663,9 @@ function awardRevisionXP(score){
   if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
 }
 async function createRevisionAccount(){
+  revisionRemoteUpdatedAt=null;
+  revisionSyncConflict=false;
+  revisionConflictData=null;
   const username=document.getElementById('revision-account-username')?.value.trim()||'';
   if(username.length<3||username.length>20||!/^[a-zA-Z0-9_-]+$/.test(username)){
     state.accountMessage='Use 3–20 letters, numbers, underscores, or hyphens for the username.';
@@ -542,12 +676,21 @@ async function createRevisionAccount(){
     const response=await fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})});
     const data=await response.json();
     if(!response.ok||!data.userKey)throw new Error(data.error||'Could not create account.');
+    captureRevisionSnapshot('');
+    const anonymousSnapshot=localStorage.getItem(revisionSnapshotKey('anonymous'));
     VaultUser.setUsername(data.user?.username||username);VaultUser.setKey(data.userKey);
+    if(anonymousSnapshot)localStorage.setItem(revisionSnapshotKey(data.userKey),anonymousSnapshot);
+    restoreRevisionSnapshot(data.userKey);
+    revisionRemoteUpdatedAt=null;
     state.accountMessage='Account created. Your revision sets are syncing.';state.accountMessageType='success';
     await syncRevision();renderRevision();
+    if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();
   }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
 }
 async function linkRevisionAccount(){
+  revisionRemoteUpdatedAt=null;
+  revisionSyncConflict=false;
+  revisionConflictData=null;
   const userKey=document.getElementById('revision-account-key')?.value.trim()||'';
   if(userKey.length<10){state.accountMessage='Enter the user key from your other device.';state.accountMessageType='error';renderRevision();return;}
   state.accountMessage='Checking the user key…';state.accountMessageType='success';renderRevision();
@@ -555,10 +698,16 @@ async function linkRevisionAccount(){
     const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(userKey)}`);
     const data=await response.json();
     if(!response.ok||!data.found||!data.user)throw new Error('That user key was not found. Check it and try again.');
+    clearTimeout(revisionSyncTimer);
+    captureRevisionSnapshot(revisionUserKey());
     VaultUser.setKey(userKey);VaultUser.setUsername(data.user.username);
+    restoreRevisionSnapshot(userKey);
+    revisionRemoteUpdatedAt=null;
     if(data.user.theme){await ThemeManager.loadServerCustomThemes('global');if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');}
     state.accountMessage=`Linked to ${data.user.username}. Loading your saved revision sets…`;state.accountMessageType='success';
-    await loadRevision();state.accountMessage=`Linked to ${data.user.username}.`;renderRevision();
+    await loadRevision();
+    if(!revisionSyncConflict)state.accountMessage=`Linked to ${data.user.username}.`;
+    renderRevision();
   }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
 }
 async function copyRevisionUserKey(){
@@ -660,7 +809,9 @@ function renderSettings(){
     <div class="card">
       <div class="sec" style="margin-top:0">Shared account</div>
       ${revisionUserKey()?`<div class="srow"><div><div class="knowledge-title">${escapeRevision(revisionUsername()||'Account linked')}</div><div class="knowledge-meta">Revision sets sync across devices</div></div><button class="btn bsm" type="button" onclick="syncRevision()">Sync now</button></div><div class="fg" style="margin-top:8px"><label for="revision-account-current-key">Your user key</label><div style="display:flex;gap:7px;align-items:flex-start"><input id="revision-account-current-key" type="text" readonly value="${escapeRevision(revisionUserKey())}" style="font-family:'DM Mono',monospace;font-size:.72rem"><button class="btn bsm" type="button" onclick="copyRevisionUserKey()" title="Copy user key" aria-label="Copy user key">Copy</button></div></div><details style="margin-top:8px"><summary style="cursor:pointer;color:var(--text2);font-size:.75rem">Link a different account</summary><div class="fg" style="margin-top:9px"><label for="revision-account-key">User key from your other device</label><input id="revision-account-key" type="text" autocomplete="off" placeholder="Paste user key" value="${escapeRevision(state.accountDraft.userKey)}"></div><button class="btn" type="button" onclick="linkRevisionAccount()">Link account</button></details>`:`<div class="g2"><div><div class="knowledge-title">Create a shared account</div><div class="knowledge-meta">A username and generated user key connect your sets across devices.</div><div class="fg" style="margin-top:9px"><label for="revision-account-username">Username</label><input id="revision-account-username" type="text" maxlength="20" autocomplete="username" placeholder="3–20 letters, numbers, _ or -" value="${escapeRevision(state.accountDraft.username||revisionUsername()||'')}"></div><button class="btn bp" type="button" onclick="createRevisionAccount()">Create account</button></div><div><div class="knowledge-title">Link an existing account</div><div class="knowledge-meta">Paste the user key shown in Settings on your other device.</div><div class="fg" style="margin-top:9px"><label for="revision-account-key">User key</label><input id="revision-account-key" type="text" autocomplete="off" placeholder="Paste user key" value="${escapeRevision(state.accountDraft.userKey)}"></div><button class="btn" type="button" onclick="linkRevisionAccount()">Link account</button></div></div>`}
+      <button class="btn bsm" type="button" style="margin-top:9px" onclick="VaultUser.showAccountDialog()">Password account / sign in</button>
       ${accountStatus}
+      ${revisionSyncConflict?'<div class="qfb qwr" role="status">Changes exist on this device and another device. Your local data has not been overwritten.<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px"><button class="btn bsm" type="button" onclick="resolveRevisionSyncConflict(\'remote\')">Load other device copy</button><button class="btn bsm bp" type="button" onclick="resolveRevisionSyncConflict(\'local\')">Keep this device copy</button></div></div>':''}
       <div class="srow">
         <div>
           <div class="knowledge-title">Revision XP</div>
@@ -774,7 +925,7 @@ function aiActionLabel(mode=state.aiDraft.mode||'new'){
 }
 function renderAI(){
   const loggedIn=Boolean(AdminManager.getToken());
-  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate, extend, or reconnect flashcards. Results are previewed first; they are not saved until you apply them.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="fg"><label>Admin password</label><input type="password" id="revision-ai-password" placeholder="Enter admin password"></div><button class="btn bg" onclick="loginRevisionAI()">🔐 Unlock AI tools</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label for="ai-mode">Action</label><select data-ai-field="mode" id="ai-mode"><option value="new"${state.aiDraft.mode==='new'?' selected':''}>Create a new set</option><option value="add"${state.aiDraft.mode==='add'?' selected':''}>Add missing cards to active set</option><option value="links"${state.aiDraft.mode==='links'?' selected':''}>Repair links in active set</option></select></div><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">New flashcards</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div><div class="fg"><label for="ai-source">Source reference (optional)</label><input data-ai-field="source" type="text" id="ai-source" placeholder="Textbook, page, URL" value="${escapeRevision(state.aiDraft.source || '')}"></div></div><div class="fg"><label>Topic notes / syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div class="fg"><label for="ai-file">Attach notes file (.txt, .md, .csv, .pdf, .docx)</label><input id="ai-file" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleRevisionFile('ai-file','ai-notes')"></div>${state.uploadMessage?`<div class="knowledge-meta" role="status">${escapeRevision(state.uploadMessage)}</div>`:''}${state.aiNotice?`<div class="qfb ${state.aiNotice.startsWith('No flashcards')?'qwr':'qok'}" role="status">${escapeRevision(state.aiNotice)}</div>`:''}<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ ${aiActionLabel()}</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">${state.aiDraft.mode==='links'?'＋ Apply connections':state.aiDraft.mode==='add'?'＋ Add cards to active set':'＋ Create new set'}</button>`:''}</div>`}</div>`;
+  return `<div style="max-width:760px;margin:0 auto"><div class="pt">AI revision tools</div><div class="ps">Generate, extend, or reconnect flashcards. Results are previewed first; they are not saved until you apply them.</div>${!loggedIn?`<div class="ai-warning">AI generation is locked. An administrator must log in before provider credits can be used.</div><div class="card" style="max-width:380px;margin-top:10px"><div class="knowledge-meta">Account: ${escapeRevision(revisionUsername()||'Not linked')}</div><button class="btn bg" onclick="loginRevisionAI()" ${revisionUserKey()?'':'disabled'}>🔐 Sign in as admin</button>${AdminManager.error?`<div class="qfb qwr">${escapeRevision(AdminManager.error)}</div>`:''}</div>`:`<div class="card"><div class="g2"><div class="fg"><label for="ai-mode">Action</label><select data-ai-field="mode" id="ai-mode"><option value="new"${state.aiDraft.mode==='new'?' selected':''}>Create a new set</option><option value="add"${state.aiDraft.mode==='add'?' selected':''}>Add missing cards to active set</option><option value="links"${state.aiDraft.mode==='links'?' selected':''}>Repair links in active set</option></select></div><div class="fg"><label>Set name</label><input data-ai-field="setName" type="text" id="ai-set-name" placeholder="e.g. Cell Biology" value="${escapeRevision(state.aiDraft.setName || '')}"></div><div class="fg"><label>Subject</label><input data-ai-field="subject" type="text" id="ai-subject" placeholder="e.g. Biology" value="${escapeRevision(state.aiDraft.subject || '')}"></div><div class="fg"><label>Level</label><input data-ai-field="level" type="text" id="ai-level" placeholder="e.g. GCSE, A-Level" value="${escapeRevision(state.aiDraft.level || '')}"></div><div class="fg"><label for="ai-count">New flashcards</label><input data-ai-field="count" type="number" id="ai-count" min="5" max="100" step="1" value="${escapeRevision(state.aiDraft.count || '30')}"></div><div class="fg"><label for="ai-source">Source reference (optional)</label><input data-ai-field="source" type="text" id="ai-source" placeholder="Textbook, page, URL" value="${escapeRevision(state.aiDraft.source || '')}"></div></div><div class="fg"><label>Topic notes / syllabus content</label><textarea data-ai-field="notes" id="ai-notes" rows="12" placeholder="Paste all the material for the topic here...">${escapeRevision(state.aiDraft.notes || '')}</textarea></div><div class="fg"><label for="ai-file">Attach notes file (.txt, .md, .csv, .pdf, .docx)</label><input id="ai-file" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleRevisionFile('ai-file','ai-notes')"></div>${state.uploadMessage?`<div class="knowledge-meta" role="status">${escapeRevision(state.uploadMessage)}</div>`:''}${state.aiNotice?`<div class="qfb ${state.aiNotice.startsWith('No flashcards')?'qwr':'qok'}" role="status">${escapeRevision(state.aiNotice)}</div>`:''}<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" onclick="requestRevisionAI()">✦ ${aiActionLabel()}</button><button class="btn" onclick="AdminManager.logout();renderRevision()">🔒 Lock AI</button></div>${state.aiResult?`${renderAIResult(state.aiResult)}<button class="btn bg" style="margin-top:8px" onclick="importAIResult()">${state.aiDraft.mode==='links'?'＋ Apply connections':state.aiDraft.mode==='add'?'＋ Add cards to active set':'＋ Create new set'}</button>`:''}</div>`}</div>`;
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
@@ -793,7 +944,7 @@ async function loadRevisionLeaderboard(){try{const response=await fetch(`${Theme
 async function publishRevisionNotes(){if(!revisionUserKey()||!revisionUsername()){alert('Set up an account before publishing notes.');state.view='settings';renderRevision();return;}const title=(prompt('Name this public note set:','My revision notes')||'').trim();if(!title)return;try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),note:{title,subject:'General',level:'',cards:state.cards}})});if(!response.ok)throw new Error();alert('Submitted for admin approval. It will appear publicly after review.');}catch(error){alert('Could not submit notes.');}}
 async function importPublicNote(id){const note=state.publicNotes.find(item=>item.id===id);if(!note)return;const existing=new Set(state.cards.map(card=>String(card.title).toLowerCase()));const imported=(note.cards||[]).filter(card=>!existing.has(String(card.title||'').toLowerCase())).map(card=>({...card,id:'import'+Date.now()+Math.random().toString(36).slice(2,6),links:[]}));state.cards.push(...imported);saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();}
 async function deletePublicNote(id){if(!confirm('Delete this public note set?'))return;try{await fetch(`${ThemeManager.WORKER_URL}/revision/public/delete`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),id})});await loadPublicNotes();}catch(error){alert('Could not delete public notes.');}}
-async function loginRevisionAI(){const password=document.getElementById('revision-ai-password')?.value||'';if(!password)return;await AdminManager.login(password);renderRevision();}
+async function loginRevisionAI(){await AdminManager.login();renderRevision();}
 async function requestRevisionAI(){
   const notes=document.getElementById('ai-notes')?.value||'';
   const requestedMode=document.getElementById('ai-mode')?.value||'new';
@@ -834,7 +985,7 @@ async function requestRevisionAI(){
     const source=document.getElementById('ai-source')?.value.trim()||'';
     const existingCards=mode==='new'?[]:state.cards.map(card=>({id:card.id,front:card.title,back:card.answer}));
     const material=[subject?`Subject: ${subject}`:'',level?`Level: ${level}`:'',source?`Source reference: ${source}`:'',notes.trim()||'Find useful connections among the existing cards.'].filter(Boolean).join('\n\n');
-    const response=await fetch(`${ThemeManager.WORKER_URL}/generate?token=${encodeURIComponent(token)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,count,mode,existingCards,material}),signal:controller.signal});
+    const response=await fetch(`${ThemeManager.WORKER_URL}/generate`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':token},body:JSON.stringify({count,mode,existingCards,material}),signal:controller.signal});
     showStatus('Response received. Reading the study guide...');
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||`HTTP ${response.status}`);
