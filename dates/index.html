@@ -1193,9 +1193,9 @@ async function lbConfirmUsername(){
   // (skip check if it's just a case change of our own name)
   if(!isSameUser){
     try{
-      const r=await fetch(WORKER_URL+'/lb/get?username='+encodeURIComponent(v));
+      const r=await fetch(WORKER_URL+'/lb/username-available?username='+encodeURIComponent(v)+'&userKey='+encodeURIComponent(myKey||''));
       const d=await r.json();
-      if(d.found&&d.user&&d.user.username){
+      if(!d.available){
         // Taken by someone else
         const errEl=document.getElementById('lb-name-err');
         if(errEl)errEl.innerHTML=`<span style="color:var(--coral)">⚠ Username already taken — choose another</span>`;
