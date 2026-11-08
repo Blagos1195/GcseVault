@@ -305,3 +305,15 @@ test("QuoteVault withdrawal requires an account key", async () => {
   assert.equal(response.status, 400);
   assert.equal(deleted, false);
 });
+
+test("admin logout requires the session header", async () => {
+  let deleted = false;
+  const env = makeEnv();
+  env.QUOTEVAULT.delete = async () => { deleted = true; };
+  const denied = await call("/auth/logout?token=test-session", env, {});
+  assert.equal(denied.status, 401);
+  assert.equal(deleted, false);
+  const allowed = await call("/auth/logout", env, {}, { "X-Session-Token": "test-session" });
+  assert.equal(allowed.status, 200);
+  assert.equal(deleted, true);
+});
