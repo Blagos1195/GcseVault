@@ -296,3 +296,12 @@ test("theme migration preserves account keys containing separators", async () =>
   assert.equal(data.migrated, 1);
   assert.ok(env.updates.some(update => update.sql.includes("custom_themes") && update.values[0] === "user:old-account" && update.values[1] === "dark_theme"));
 });
+
+test("QuoteVault withdrawal requires an account key", async () => {
+  let deleted = false;
+  const env = makeEnv();
+  env.QUOTEVAULT.delete = async () => { deleted = true; };
+  const response = await call("/withdraw", env, { id: "quote-1" });
+  assert.equal(response.status, 400);
+  assert.equal(deleted, false);
+});
