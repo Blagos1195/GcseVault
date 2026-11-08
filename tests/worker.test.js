@@ -4,6 +4,11 @@ import worker from "../worker.js";
 import { webcrypto } from "node:crypto";
 
 
+async function hashVerifier(value) {
+  const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(value.toLowerCase()));
+  return Buffer.from(digest).toString("hex");
+}
+
 async function derivePasswordHash(password, passwordSalt) {
   const saltBytes = Buffer.from(passwordSalt, "base64");
   const material = await webcrypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
@@ -428,7 +433,7 @@ test("password account setup hashes passwords, creates sessions and protects acc
   const setupData = await setup.json();
   assert.equal(setup.status, 200);
   assert.equal(setupData.userKey, account.user_key);
-  assert.equal(credential.password_hash, passwordHash);
+  assert.equal(credential.password_hash, await hashVerifier(passwordHash));
   assert.equal(credential.password_salt, passwordSalt);
   assert.equal(credential.password_hash.length, 64);
 
