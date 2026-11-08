@@ -371,7 +371,7 @@ const VaultUser = {
     const linked = this.getKey();
     window.openModal(`<div>
       <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
-      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Studying is free without an account. Sign in only when you want leaderboard access or account syncing. If you have an older account, link it with its existing user key below. This keeps your existing username and progress. Do not register a second account.</div>
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Studying and creating personal cards are free without an account. Sign in when you want to join leaderboards, sync across devices, or submit cards and notes for publication. If you have an older account, link it with its existing user key below. This keeps your existing username and progress. Do not register a second account.</div>
       ${!linked ? '<div class="fg"><label for="vault-account-old-key">Older account user key</label><input id="vault-account-old-key" autocomplete="off" placeholder="Paste your existing user key"></div><div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use the key from your old device or account settings. Your key stays private.</div>' : ''}
       <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
       <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
