@@ -3339,43 +3339,9 @@ function rAdmin(){
   */
 }
 
-async function adminLogin(){
-  const pw=(document.getElementById('adm-pw')?.value||'').trim();
-  if(!pw)return;
-  const errEl=document.getElementById('adm-err');
-  errEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)">⏳ Checking…</div>`;
-  try{
-    const resp=await fetch(WORKER_URL+'/auth',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pw})
-    });
-    if(resp.status===401){errEl.innerHTML=`<div class="qfb qwr">❌ Incorrect password</div>`;return;}
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
-    _adminToken=data.token;
-    _adminAuth=true;
-    adminLoadPending();
-  }catch(e){
-    errEl.innerHTML=`<div class="qfb qwr">❌ Login failed: ${e.message}</div>`;
-  }
-}
-
-function adminLogout(){_adminAuth=false;_adminToken=null;_adminPending=[];render();}
-
-async function adminLoadPending(){
-  render(); // show panel with loading state
-  try{
-    const resp=await fetch(WORKER_URL+'/pending?token='+encodeURIComponent(_adminToken));
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
-    _adminPending=data.items||[];
-  }catch(e){
-    _adminPending=[];
-    toast('⚠ Could not load pending quotes: '+e.message,3500);
-  }
-  render();
-}
+async function adminLogin(){await AdminManager.login();}
+function adminLogout(){AdminManager.logout();}
+async function adminLoadPending(){await AdminManager.refresh();}
 
 function rAdminPanel(){
   const pending=_adminPending;
