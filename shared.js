@@ -746,7 +746,7 @@ function formatNumber(value) {
 }
 
 function getAdminToken() {
-  return localStorage.getItem('gcse_vault_admin_token') || null;
+  return sessionStorage.getItem('gcse_vault_admin_token') || null;
 }
 
 function hasAdminSession() {
@@ -780,7 +780,10 @@ function getSavedUserProfile() {
 
 const AdminManager = {
   token: null,
+  role: null,
+  username: null,
   items: [],
+  users: [],
   loading: false,
   error: '',
 
@@ -788,17 +791,25 @@ const AdminManager = {
     return this.token || getAdminToken();
   },
 
-  async login(password) {
+  async login() {
+    const userKey = VaultUser.getKey();
+    if (!userKey) {
+      this.error = 'Link your GCSE Vault account before signing in.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
     try {
       const response = await fetch(`${WORKER_API}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pw: password })
+        body: JSON.stringify({ userKey })
       });
-      if (!response.ok) throw new Error(response.status === 401 ? 'Incorrect password' : `HTTP ${response.status}`);
+      if (!response.ok) throw new Error(response.status === 403 ? 'This account does not have admin access.' : `HTTP ${response.status}`);
       const data = await response.json();
       this.token = data.token;
-      localStorage.setItem('gcse_vault_admin_token', data.token);
+      this.role = data.role;
+      this.username = data.username;
+      sessionStorage.setItem('gcse_vault_admin_token', data.token);
       this.error = '';
       await this.refresh();
     } catch (error) {
@@ -807,9 +818,48 @@ const AdminManager = {
     }
   },
 
-  logout() {
+  async bootstrap() {
+    const userKey = VaultUser.getKey();
+    const password = document.getElementById('admin-bootstrap-key')?.value || '';
+    if (!userKey) {
+      this.error = 'Link your GCSE Vault account before setting up the owner.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
+    if (!password) {
+      this.error = 'Enter the one-time setup key.';
+      if (typeof window.render === 'function') window.render();
+      return;
+    }
+    try {
+      const response = await fetch(`${WORKER_API}/admin/bootstrap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userKey, pw: password })
+      });
+      if (!response.ok) throw new Error(response.status === 409 ? 'Owner setup has already been completed.' : `HTTP ${response.status}`);
+      await this.login();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
+  async logout() {
+    const token = this.getToken();
+    if (token) {
+      fetch(`${WORKER_API}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      }).catch(() => {});
+    }
     this.token = null;
+    this.role = null;
+    this.username = null;
     this.items = [];
+    this.users = [];
+    sessionStorage.removeItem('gcse_vault_admin_token');
     localStorage.removeItem('gcse_vault_admin_token');
     if (typeof window.render === 'function') window.render();
   },
@@ -821,12 +871,30 @@ const AdminManager = {
     return response.json();
   },
 
+  async setRole(username, role) {
+    try {
+      const response = await fetch(`${WORKER_API}/admin/users?token=${encodeURIComponent(this.getToken())}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, role })
+      });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Account not found.' : `HTTP ${response.status}`);
+      await this.refresh();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
+
   async refresh() {
     if (!this.getToken()) return;
     this.loading = true;
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
+      const session = await this.request('/auth/session');
+      this.role = session.role;
+      this.username = session.username;
       const [quotes, dates, feedback, publicRevision] = await Promise.all([
         this.request('/pending'),
         this.request('/dv/pending'),
@@ -839,8 +907,15 @@ const AdminManager = {
         ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' })),
         ...(publicRevision.notes || []).map((item) => ({ ...item, _source: 'Public Revision note', _kind: 'revision-note', _pending: Boolean(item.pending) }))
       ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
+      this.users = this.role === 'owner' ? (await this.request('/admin/users')).users || [] : [];
     } catch (error) {
       this.error = error.message;
+      if (error.message === 'HTTP 401') {
+        this.token = null;
+        this.role = null;
+        this.username = null;
+        sessionStorage.removeItem('gcse_vault_admin_token');
+      }
     } finally {
       this.loading = false;
       if (typeof window.render === 'function') window.render();
@@ -859,7 +934,7 @@ const AdminManager = {
     const path = routes[item._kind]?.[action];
     if (!path) return;
     try {
-      let body = { id: item.id, token: this.getToken() };
+      const body = { id: item.id, token: this.getToken() };
       if (action === 'edit') {
         const title = window.prompt('Edit public note title:', item.title || '');
         if (!title) return;
@@ -882,12 +957,19 @@ const AdminManager = {
   render() {
     const token = this.getToken();
     if (!token) {
+      const account = VaultUser.getUsername();
       return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
         <div class="pt">Admin Panel</div>
         <div class="ps">One shared review queue for QuoteVault, DateVault, and Feedback</div>
-        <div class="card" style="max-width:360px">
-          <div class="fg"><label>Password</label><input type="password" id="shared-admin-password" placeholder="Enter admin password"></div>
-          <button class="btn bg" onclick="AdminManager.login(document.getElementById('shared-admin-password').value)">🔐 Login</button>
+        <div class="card" style="max-width:380px">
+          <div class="knowledge-title">${account ? `Signed in account: ${UI.escapeHTML(account)}` : 'No account linked'}</div>
+          <div class="knowledge-meta" style="margin:6px 0 10px">${account ? 'Admin access is linked to your GCSE Vault account.' : 'Link your GCSE Vault account in Settings first.'}</div>
+          <button class="btn bg" onclick="AdminManager.login()" ${account ? '' : 'disabled'}>🔐 Sign in with account</button>
+          <details style="margin-top:14px">
+            <summary style="cursor:pointer;color:var(--text2);font-size:.75rem">First owner setup</summary>
+            <div class="fg" style="margin-top:9px"><label for="admin-bootstrap-key">One-time setup key</label><input type="password" id="admin-bootstrap-key" autocomplete="off" placeholder="Initial setup key"></div>
+            <button class="btn" onclick="AdminManager.bootstrap()" ${account ? '' : 'disabled'}>Set up this account as owner</button>
+          </details>
           ${this.error ? `<div class="qfb qwr" style="margin-top:8px">${UI.escapeHTML(this.error)}</div>` : ''}
         </div>
       </div>`;
@@ -916,13 +998,17 @@ const AdminManager = {
         <div style="display:flex;gap:6px;margin-top:8px">${controls}</div>
       </div>`;
     }).join('');
-
+    const userManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
+      <div class="sec" style="margin-top:0">Account permissions</div>
+      ${this.users.map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${UI.escapeHTML(user.role)}</div></div>${user.role === 'owner' ? '<span class="tag tg">Owner</span>' : user.role === 'admin' ? `<button class="btn bsm br" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','user')">Remove admin</button>` : `<button class="btn bsm" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','admin')">Make admin</button>`}</div>`).join('') || '<div class="ps">No accounts found.</div>'}
+    </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div><div class="pt">Admin Panel</div><div class="ps">All sites and feedback in one queue</div></div>
+        <div><div class="pt">Admin Panel</div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
         <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
+      ${userManagement}
       <div class="g4" style="margin:10px 0 12px">
         <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
         <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>
