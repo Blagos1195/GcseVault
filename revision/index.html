@@ -518,10 +518,13 @@ function applyRevisionRemoteData(data){
 async function syncRevision(){
   if(!revisionUserKey()||!revisionUsername()||state.syncing||revisionSyncConflict)return;
   state.syncing=true;
+  const syncUserKey=revisionUserKey();
+  const syncLocalKey=revisionLocalUpdatedAtKey();
+  let syncAgain=false;
   try{
-    const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
+    const localUpdatedAt=localStorage.getItem(syncLocalKey)||'';
     const payload = {
-      userKey: revisionUserKey(),
+      userKey: syncUserKey,
       username: revisionUsername(),
       expectedUpdatedAt: revisionRemoteUpdatedAt || '',
       localUpdatedAt,
@@ -546,11 +549,15 @@ async function syncRevision(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const result=await response.json();
     revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
-    if(localStorage.getItem(revisionLocalUpdatedAtKey())===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),revisionRemoteUpdatedAt);
+    if(localStorage.getItem(syncLocalKey)===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(syncLocalKey,revisionRemoteUpdatedAt);
+    else syncAgain=true;
   }catch(error){
     state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
     state.accountMessageType='error';
-  }finally{state.syncing=false;}
+  }finally{
+    state.syncing=false;
+    if(syncAgain)syncRevisionSoon();
+  }
 }
 async function resolveRevisionSyncConflict(choice){
   if(!revisionSyncConflict)return;
@@ -596,6 +603,7 @@ async function loadRevision(){
       renderRevision();
     }else{
       revisionRemoteUpdatedAt=null;
+      await syncRevision();
     }
   }catch(error){
     state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
@@ -640,7 +648,9 @@ async function linkRevisionAccount(){
     VaultUser.setKey(userKey);VaultUser.setUsername(data.user.username);
     if(data.user.theme){await ThemeManager.loadServerCustomThemes('global');if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');}
     state.accountMessage=`Linked to ${data.user.username}. Loading your saved revision sets…`;state.accountMessageType='success';
-    await loadRevision();state.accountMessage=`Linked to ${data.user.username}.`;renderRevision();
+    await loadRevision();
+    if(!revisionSyncConflict)state.accountMessage=`Linked to ${data.user.username}.`;
+    renderRevision();
   }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
 }
 async function copyRevisionUserKey(){
