@@ -86,24 +86,29 @@ export default {
             `SELECT qv_pending_ids, qv_pending_data FROM users WHERE user_key = ?`
           ).bind(userKey).first();
 
-          if (row) {
-            const pendingIds = JSON.parse(row.qv_pending_ids || "[]");
-            if (!pendingIds.map(String).includes(String(id))) {
-              return new Response("Forbidden", { status: 403, headers: cors });
-            }
-            const newPendingIds = pendingIds.filter(i => String(i) !== String(id));
-            const pendingData = JSON.parse(row.qv_pending_data || "[]");
-            const newPendingData = pendingData.filter(p => String(p.id) !== String(id));
-            await env.DB.prepare(
-              `UPDATE users SET qv_pending_ids=?, qv_pending_data=?, updated_at=? WHERE user_key=?`
-            ).bind(
-              JSON.stringify(newPendingIds),
-              JSON.stringify(newPendingData),
-              new Date().toISOString(),
-              userKey
-            ).run();
+          if (!row) return new Response("Forbidden", { status: 403, headers: cors });
+
+          const pendingIds = JSON.parse(row.qv_pending_ids || "[]");
+          if (!pendingIds.map(String).includes(String(id))) {
+            return new Response("Forbidden", { status: 403, headers: cors });
           }
-        } catch (e) { /* non-fatal — proceed to KV delete */ }
+          const newPendingIds = pendingIds.filter(i => String(i) !== String(id));
+          const pendingData = JSON.parse(row.qv_pending_data || "[]");
+          const newPendingData = pendingData.filter(p => String(p.id) !== String(id));
+          await env.DB.prepare(
+            `UPDATE users SET qv_pending_ids=?, qv_pending_data=?, updated_at=? WHERE user_key=?`
+          ).bind(
+            JSON.stringify(newPendingIds),
+            JSON.stringify(newPendingData),
+            new Date().toISOString(),
+            userKey
+          ).run();
+        } catch (e) {
+          return new Response(JSON.stringify({ success: false, error: "Could not verify submission ownership." }), {
+            status: 500,
+            headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
       }
 
       await env.QUOTEVAULT.delete(id);
@@ -233,23 +238,25 @@ export default {
           `SELECT dv_pending_ids, dv_pending_data FROM users WHERE user_key = ?`
         ).bind(userKey).first();
 
-        if (row) {
-          const pendingIds = JSON.parse(row.dv_pending_ids || "[]")
-            .filter(x => String(x) !== String(id));
-          const pendingData = JSON.parse(row.dv_pending_data || "[]")
-            .filter(x => String(x.id) !== String(id));
-
-          await env.DB.prepare(`
-            UPDATE users
-            SET dv_pending_ids=?, dv_pending_data=?, updated_at=?
-            WHERE user_key=?
-          `).bind(
-            JSON.stringify(pendingIds),
-            JSON.stringify(pendingData),
-            new Date().toISOString(),
-            userKey
-          ).run();
+        if (!row) return new Response("Forbidden", { status: 403, headers: cors });
+        const storedPendingIds = JSON.parse(row.dv_pending_ids || "[]");
+        if (!storedPendingIds.map(String).includes(String(id))) {
+          return new Response("Forbidden", { status: 403, headers: cors });
         }
+        const pendingIds = storedPendingIds.filter(x => String(x) !== String(id));
+        const pendingData = JSON.parse(row.dv_pending_data || "[]")
+          .filter(x => String(x.id) !== String(id));
+
+        await env.DB.prepare(`
+          UPDATE users
+          SET dv_pending_ids=?, dv_pending_data=?, updated_at=?
+          WHERE user_key=?
+        `).bind(
+          JSON.stringify(pendingIds),
+          JSON.stringify(pendingData),
+          new Date().toISOString(),
+          userKey
+        ).run();
       } catch (e) {
         return new Response(JSON.stringify({ success: false, error: e.message }), {
           status: 500,
@@ -742,7 +749,7 @@ export default {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
       // Validate: key must be safe (alphanumeric + _ only, max 80 chars)
-      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key).replace(/[^a-zA-Z0-9_]/g, '_'))) {
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
         return new Response("Invalid key", { status: 400, headers: cors });
       }
       // Strip any non-CSS-var keys to keep the payload small & safe
