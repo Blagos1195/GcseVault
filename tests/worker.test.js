@@ -27,6 +27,15 @@ function makeEnv(rows = []) {
     QUOTEVAULT: {
       get: async () => null,
       delete: async () => {}
+    },
+    DV_PENDING: {
+      delete: async () => {}
+    },
+    THEMES: {
+      put: async () => {},
+      delete: async () => {},
+      list: async () => ({ keys: [] }),
+      get: async () => null
     }
   };
 }
@@ -109,4 +118,41 @@ test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrel
   assert.equal(env.updates.length, 1);
   assert.deepEqual(JSON.parse(env.updates[0].values[0]), ["quote-2"]);
   assert.deepEqual(JSON.parse(env.updates[0].values[1]), ["quote-1"]);
+});
+
+test("DateVault withdrawal cannot delete another user's pending submission", async () => {
+  let deleted = false;
+  const env = makeEnv([{
+    user_key: "account-key",
+    dv_pending_ids: '["owned-fact"]',
+    dv_pending_data: "[]"
+  }]);
+  env.DV_PENDING.delete = async () => {
+    deleted = true;
+  };
+
+  const response = await call("/dv/withdraw", env, {
+    userKey: "account-key",
+    id: "another-users-fact"
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(deleted, false);
+});
+
+test("custom theme keys reject separators", async () => {
+  let saved = false;
+  const env = makeEnv();
+  env.THEMES.put = async () => {
+    saved = true;
+  };
+
+  const response = await call("/themes/save", env, {
+    userKey: "account-key",
+    key: "theme:other-user",
+    theme: { label: "Test" }
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(saved, false);
 });
