@@ -1156,7 +1156,8 @@ function showUsernameModal(onConfirm){
             setUsername(u);
             closeModal();
             if(typeof onConfirm === 'function') onConfirm();
-            lbUpdate();
+            await lbUpdate();
+            if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();
             render();
           } else {
             const d = await r.json();
