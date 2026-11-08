@@ -774,7 +774,7 @@ function renderSettings(){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:7px">
         ${Object.entries(themes).map(([key,theme])=>`<button class="revision-theme-choice" type="button" data-revision-theme="${escapeRevision(key)}" aria-pressed="${key===selectedTheme}" style="text-align:left;padding:8px;border:1px solid ${key===selectedTheme?'var(--purple)':'var(--border2)'};border-radius:7px;background:${escapeRevision(theme['--bg2']||'var(--bg2)')};color:${escapeRevision(theme['--text']||'var(--text)')};cursor:pointer"><span style="display:flex;gap:4px;margin-bottom:6px"><i style="width:15px;height:7px;background:${escapeRevision(theme['--gold']||'var(--gold)')};border-radius:4px"></i><i style="width:15px;height:7px;background:${escapeRevision(theme['--purple']||'var(--purple)')};border-radius:4px"></i><i style="width:15px;height:7px;background:${escapeRevision(theme['--teal']||'var(--teal)')};border-radius:4px"></i></span><span style="font-size:.72rem;font-weight:600">${escapeRevision(theme.label||key)}${key===selectedTheme?' · Active':''}</span></button>`).join('')}
       </div>
-      ${revisionUserKey()?`<button class="btn bsm" type="button" style="margin-top:9px" onclick="syncRevisionThemes()">Sync saved themes</button>`:''}
+      ${VaultUser.getAccountSession()?`<button class="btn bsm" type="button" style="margin-top:9px" onclick="syncRevisionThemes()">Sync saved themes</button>`:''}
       ${themeStatus}
     </div>
     <div class="card" style="margin-top:10px">
