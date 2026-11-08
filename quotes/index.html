@@ -1304,7 +1304,8 @@ async function lbConfirmUsername(){
   closeModal();
   toast('👤 Username '+(oldName&&!isSameUser?'changed to: ':'set: ')+v);
   if(window._lbCb){window._lbCb();window._lbCb=null;}
-  lbUpdate();
+  await lbUpdate();
+  if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();
 }
 
 // Leaderboard cache
