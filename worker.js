@@ -628,9 +628,11 @@ export default {
           } while (cursor);
         }
 
-        await env.DB.prepare(
-          "UPDATE users SET user_key = ? WHERE user_key = ?"
-        ).bind(newUserKey, userKey).run();
+        await env.DB.batch([
+          env.DB.prepare("UPDATE users SET user_key = ? WHERE user_key = ?").bind(newUserKey, userKey),
+          env.DB.prepare("UPDATE revision_sync_data SET user_key = ? WHERE user_key = ?").bind(newUserKey, userKey),
+          env.DB.prepare("UPDATE custom_themes SET user_key = ? WHERE user_key = ?").bind(newUserKey, userKey)
+        ]);
       } catch (error) {
         const moved = await env.DB.prepare(
           "SELECT user_key FROM users WHERE user_key = ?"
@@ -1061,8 +1063,8 @@ export default {
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
       await env.THEMES.delete(`theme:${userKey}:${key}`);
+      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
