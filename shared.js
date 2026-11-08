@@ -442,6 +442,7 @@ const VaultUser = {
             if (!response.ok || !account.userKey) throw new Error(account.error || 'Could not create account.');
             this.setKey(account.userKey);
             this.setUsername(account.user?.username || name);
+            mode = 'setup';
             await this.setupPassword(password.value);
           } else if (mode === 'setup') {
             await this.setupPassword(password.value);
@@ -450,8 +451,13 @@ const VaultUser = {
           }
           await finish();
         } catch (e) {
-          error.textContent = e.message;
-          submit.disabled = false;
+          if (mode === 'setup' && this.getKey() && !this.getAccountSession()) {
+            refresh();
+            document.getElementById('vault-account-error').textContent = e.message;
+          } else {
+            error.textContent = e.message;
+            submit.disabled = false;
+          }
         }
       };
       const toggle = document.getElementById('vault-account-toggle');
