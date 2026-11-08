@@ -177,7 +177,7 @@ test("DateVault withdrawal cannot delete another user's pending submission", asy
     id: "another-users-fact"
   });
 
-  assert.equal(response.status, 403);
+  assert.equal(response.status, 401);
   assert.equal(deleted, false);
 });
 
