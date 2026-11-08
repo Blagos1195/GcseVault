@@ -2822,7 +2822,6 @@ async function saveQuote(){
   const tempId=Date.now().toString()+'-qv'+Math.random().toString(36).slice(2,6);
   const q={
     id:tempId,
-    userKey:VaultUser.getKey(),
     work:document.getElementById('a-w').value,
     char:c,loc:`${act}${sc?', '+sc:''}`.trim()||'Unknown',
     themes:(document.getElementById('a-th').value||'').split(',').map(t=>t.trim()).filter(Boolean),
@@ -2841,7 +2840,7 @@ async function saveQuote(){
     const resp=await fetch(WORKER_URL+'/submit',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(q)
+      body:JSON.stringify({...q,userKey:VaultUser.getKey()})
     });
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();
