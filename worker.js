@@ -131,13 +131,21 @@ export default {
       return row ? { ...row, token } : null;
     }
 
-    async function verifyAccountAccess(userKey, req) {
+    async function verifyPasswordAccountAccess(userKey, req) {
       const credential = await env.DB.prepare(
         "SELECT user_key FROM account_credentials WHERE user_key = ?"
       ).bind(userKey).first();
       if (!credential) return false;
       const session = await getAccountSession(req);
       return Boolean(session && session.user_key === userKey);
+    }
+
+    async function verifyAccountAccess(userKey, req) {
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return true;
+      return verifyPasswordAccountAccess(userKey, req);
     }
 
     if (url.pathname === "/account/setup" && request.method === "POST") {
@@ -427,7 +435,7 @@ export default {
     if (url.pathname === "/submit" && request.method === "POST") {
       const data = await request.json();
       const userKey = String(data.userKey || "").trim();
-      if (!userKey || !(await verifyAccountAccess(userKey, request))) {
+      if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
       }
       delete data.userKey;
@@ -523,7 +531,7 @@ export default {
         if (url.pathname === "/dv/submit" && request.method === "POST") {
       const data = await request.json();
       const userKey = String(data.userKey || "").trim();
-      if (!userKey || !(await verifyAccountAccess(userKey, request))) {
+      if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
       }
       delete data.userKey;
@@ -1373,7 +1381,7 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
-      if (!(await verifyAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
