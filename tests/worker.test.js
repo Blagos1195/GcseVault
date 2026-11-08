@@ -1,6 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker.js";
+import { webcrypto } from "node:crypto";
+
+
+async function derivePasswordHash(password, passwordSalt) {
+  const saltBytes = Buffer.from(passwordSalt, "base64");
+  const material = await webcrypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await webcrypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations: 600000 },
+    material,
+    256
+  );
+  return Buffer.from(bits).toString("hex");
+}
 
 function makeEnv(rows = []) {
   const updates = [];
@@ -375,6 +388,7 @@ test("password account setup hashes passwords, creates sessions and protects acc
           if (sql.includes("SELECT user_key FROM users WHERE user_key")) return values[0] === account.user_key ? { user_key: account.user_key } : null;
           if (sql.includes("SELECT user_key FROM account_credentials")) return credential ? { user_key: account.user_key } : null;
           if (sql.includes("SELECT username, role FROM users")) return { username: account.username, role: account.role };
+          if (sql.includes("SELECT c.password_salt FROM users")) return credential ? { password_salt: credential.password_salt } : null;
           if (sql.includes("FROM users u JOIN account_credentials")) {
             return credential && values[0].toLowerCase() === account.username.toLowerCase()
               ? { ...account, password_hash: credential.password_hash, password_salt: credential.password_salt }
@@ -404,22 +418,29 @@ test("password account setup hashes passwords, creates sessions and protects acc
     }
   });
 
+  const passwordSalt = Buffer.from(webcrypto.getRandomValues(new Uint8Array(16))).toString("base64");
+  const passwordHash = await derivePasswordHash("a-unique-long-test-password", passwordSalt);
   const setup = await call("/account/setup", env, {
     userKey: account.user_key,
-    password: "a-unique-long-test-password"
+    passwordSalt,
+    passwordHash
   });
   const setupData = await setup.json();
   assert.equal(setup.status, 200);
   assert.equal(setupData.userKey, account.user_key);
-  assert.notEqual(credential.password_hash, "a-unique-long-test-password");
+  assert.equal(credential.password_hash, passwordHash);
+  assert.equal(credential.password_salt, passwordSalt);
   assert.equal(credential.password_hash.length, 64);
 
   const denied = await call("/lb/get?userKey=account-key", env);
   assert.equal(denied.status, 401);
 
+  const challenge = await call("/account/challenge?username=student", env);
+  const challengeData = await challenge.json();
+  const loginHash = await derivePasswordHash("a-unique-long-test-password", challengeData.passwordSalt);
   const login = await call("/account/login", env, {
     username: account.username,
-    password: "a-unique-long-test-password"
+    passwordHash: loginHash
   });
   const loginData = await login.json();
   assert.equal(login.status, 200);
@@ -436,9 +457,10 @@ test("password account setup hashes passwords, creates sessions and protects acc
   });
   assert.equal(allowed.status, 200);
 
+  const wrongHash = await derivePasswordHash("not-the-password", challengeData.passwordSalt);
   const wrongPassword = await call("/account/login", env, {
     username: account.username,
-    password: "not-the-password"
+    passwordHash: wrongHash
   });
   assert.equal(wrongPassword.status, 401);
 });
