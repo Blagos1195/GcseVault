@@ -118,9 +118,8 @@ test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrel
   }]);
 
   const response = await call("/reject", env, {
-    token: "test-session",
     id: "quote-1"
-  });
+  }, { "X-Session-Token": "test-session" });
 
   assert.equal(response.status, 200);
   assert.equal(env.updates.length, 1);
