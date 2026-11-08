@@ -186,14 +186,44 @@ export default {
       if (!username || !password || username.length > 20 || password.length > 128) {
         return new Response("Invalid username or password.", { status: 400, headers: cors });
       }
+      const rateKey = "account-login:" + await hashValue((request.headers.get("CF-Connecting-IP") || "unknown") + ":" + username.toLowerCase());
+      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      if (attempts >= 8) return new Response("Too many sign-in attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const user = await env.DB.prepare(
         "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
       const candidate = await passwordHash(password, user.password_salt);
       if (candidate !== user.password_hash) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete(rateKey);
       const token = await createAccountSession(user.user_key);
       return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+
+    if (url.pathname === "/account/reset" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const password = String(body.password || "");
+      if (!userKey || password.length < 12 || password.length > 128) {
+        return new Response("Use a password between 12 and 128 characters.", { status: 400, headers: cors });
+      }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found.", { status: 404, headers: cors });
+      const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const salt = btoa(String.fromCharCode(...saltBytes));
+      const hash = await passwordHash(password, salt);
+      await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
+        .bind(hash, salt, new Date().toISOString(), userKey).run();
+      await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
+      const token = await createAccountSession(userKey);
+      const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
+      return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
