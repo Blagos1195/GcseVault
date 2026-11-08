@@ -244,7 +244,7 @@ export default {
     const accountScopedPaths = new Set([
       "/lb/update-theme", "/lb/streak", "/lb/username-available",
       "/themes/save", "/themes/list", "/themes/delete", "/revision/sync",
-      "/revision/public", "/revision/public/delete", "/dv/withdraw", "/withdraw"
+      "/revision/public/delete", "/dv/withdraw", "/withdraw"
     ]);
     if (accountScopedPaths.has(url.pathname)) {
       let userKey = url.searchParams.get("userKey");
