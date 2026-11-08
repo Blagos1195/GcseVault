@@ -20,7 +20,7 @@ This split is not automatically a design flaw. D1 is suited to structured accoun
 - Username lookups return only whether a username exists and its public name, not the account key or private progress/submission data.
 - Leaderboard registration validates the site identifier and numeric statistics before using them.
 - QuoteVault rejection cleanup now selects the correct QuoteVault pending-ID column.
-- QuoteVault and DateVault withdrawal routes verify that the supplied account owns the pending submission before deleting it. Database verification errors fail closed.
+- QuoteVault withdrawals now fail closed when an account key is supplied but the ownership record cannot be verified; users without a linked account retain the existing submission-ID withdrawal path. DateVault withdrawals require an account key and verify that the pending submission belongs to it. Database verification errors fail closed.
 - Custom theme keys reject separators rather than silently validating a transformed version of the key.
 - Added worker regression tests and a GitHub Actions test workflow.
 - Removed the local Wrangler account cache from the current tree and added ignore rules for Wrangler and environment files.
