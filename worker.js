@@ -250,8 +250,8 @@ export default {
     }
 
     const accountScopedPaths = new Set([
-      "/lb/update-theme", "/lb/streak", "/lb/username-available",
-      "/themes/save", "/themes/list", "/themes/delete", "/revision/sync",
+      "/lb/update-theme", "/lb/streak",
+      "/themes/save", "/themes/list", "/themes/delete",
       "/revision/public/delete", "/dv/withdraw", "/withdraw"
     ]);
     if (accountScopedPaths.has(url.pathname)) {
@@ -1234,6 +1234,7 @@ export default {
         "SELECT username FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let row = await env.DB.prepare(
         "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
       ).bind(userKey).first();
@@ -1265,6 +1266,7 @@ export default {
       if (!account || account.username.toLowerCase() !== username.toLowerCase()) {
         return new Response("Account verification failed", { status: 403, headers: cors });
       }
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let existingRow = await env.DB.prepare(
         "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
       ).bind(userKey).first();
