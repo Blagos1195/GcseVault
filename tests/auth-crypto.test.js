@@ -30,7 +30,7 @@ test("encrypted data round-trips and recovery key restores the encryption key", 
 
 test("tampered ciphertext is rejected", async () => {
   const crypto = browser.GcseVaultCrypto;
-  const key = await crypto.deriveKey("another-long-unique-test-password", crypto.createSalt());
+  const key = await crypto.createVaultKey();
   const envelope = await crypto.encrypt(key, { private: true });
   envelope.ciphertext = envelope.ciphertext.slice(0, -4) + "AAAA";
   await assert.rejects(() => crypto.decrypt(key, envelope));
