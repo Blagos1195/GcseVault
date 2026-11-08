@@ -3322,7 +3322,6 @@ function exportCSV(){
 // ════════════════════════════════════════════════
 // ADMIN PANEL
 // ════════════════════════════════════════════════
-let _adminToken=null,_adminAuth=false,_adminPending=[];
 
 function rAdmin(){
   return AdminManager.render();
@@ -3349,81 +3348,6 @@ function rAdmin(){
 async function adminLogin(){await AdminManager.login();}
 function adminLogout(){AdminManager.logout();}
 async function adminLoadPending(){await AdminManager.refresh();}
-function rAdminPanel(){
-  const pending=_adminPending;const approved=S.custom;
-  const pendingHTML=pending===null?`<div style="font-size:.78rem;color:var(--blue)">⏳ Loading…</div>`
-    :pending.length===0?`<div style="font-size:.78rem;color:var(--teal2)">✅ No facts awaiting review</div>`
-    :pending.map((q,i)=>`<div class="dc" style="border-left:3px solid var(--amber)">
-      <div class="dc-date">${q.year||'?'}</div><div class="dc-event">${q.event}</div>
-      <div style="font-size:.7rem;color:var(--text2);margin-bottom:5px">${(q.significance||'').slice(0,120)}…</div>
-      <div class="dc-m"><span class="tag tp">${q.topic||''}</span><span class="tag tb">${q.period||''}</span></div>
-      <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">
-        <button class="btn bsm" style="background:rgba(44,182,125,.15);border-color:var(--teal);color:var(--teal2)" onclick="adminApprove(${i})">✅ Approve</button>
-        <button class="btn bsm" style="background:rgba(74,158,255,.1);border-color:var(--blue);color:var(--blue)" onclick="adminEditPending(${i})">✏️ Edit & Approve</button>
-        <button class="btn bsm br" onclick="adminReject(${i})">❌ Reject</button>
-      </div>
-    </div>`).join('');
-  const approvedHTML=approved.length===0
-    ?`<div style="font-size:.78rem;color:var(--text3)">No custom facts added yet</div>`
-    :approved.map((q,i)=>`<div class="dc" style="border-left:3px solid var(--teal)">
-      <div class="dc-date">${q.year||'?'}</div><div class="dc-event">${q.event||'Unnamed fact'}</div>
-      <div style="font-size:.7rem;color:var(--text2);margin-bottom:5px">${(q.significance||'').slice(0,100)}${q.significance&&q.significance.length>100?'…':''}</div>
-      <div class="dc-m"><span class="tag tp">${q.topic||''}</span><span class="tag tb">${q.period||''}</span></div>
-      <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">
-        <button class="btn bsm" style="background:rgba(74,158,255,.1);border-color:var(--blue);color:var(--blue)" onclick="adminEditApproved(${i})">✏️ Edit</button>
-        <button class="btn bsm" style="background:rgba(255,80,80,.12);border-color:var(--coral);color:var(--coral)" onclick="adminDeleteApproved(${i})">🗑 Delete</button>
-      </div>
-    </div>`).join('');
-  return`<div>
-  ${backBtn()}
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px">
-    <div class="pt">Admin Panel</div>
-    <div style="display:flex;gap:6px">
-      <button class="btn bsm" onclick="adminLoadPending()" style="color:var(--blue);border-color:var(--blue)">🔄 Refresh</button>
-      <button class="btn bsm" onclick="adminLogout()" style="color:var(--coral);border-color:var(--coral)">🔒 Logout</button>
-    </div>
-  </div>
-  <div class="ps">Submissions from all devices · approve, edit, or reject · manage vault</div>
-  <div class="g2" style="margin-bottom:12px">
-    <div class="scard"><div class="snum" style="color:var(--amber)">${Array.isArray(pending)?pending.length:'…'}</div><div class="slbl">Pending Review</div></div>
-    <div class="scard"><div class="snum" style="color:var(--teal)">${approved.length}</div><div class="slbl">Approved Custom</div></div>
-  </div>
-  <div class="sec" style="margin-top:0">📬 Pending Approval</div>${pendingHTML}
-  <div class="sec">✅ Approved / Added Facts</div>${approvedHTML}
-  </div>`;
-}
-async function adminApprove(idx){
-  const q={..._adminPending[idx]};if(!q)return;
-  try{
-    const resp=await fetch(WORKER_URL+'/dv/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:q.id})});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-  }catch(e){toast('⚠ Worker error: '+e.message,3500);return;}
-  delete q.submittedAt;delete q._submittedByMe;delete q._status;delete q._userSubmitted;
-  // Move from pending → custom (dedup)
-  S.pending=S.pending.filter(p=>p.id!==q.id);
-  if(!S.custom.find(c=>String(c.id)===String(q.id)))S.custom.push(q);
-  addXP(5);save();
-  _adminPending.splice(idx,1);buildNav();toast('✅ Fact approved! +5 XP');render();
-}
-async function adminReject(idx){
-  const q=_adminPending[idx];if(!q)return;
-  try{
-    const resp=await fetch(WORKER_URL+'/dv/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:q.id})});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-  }catch(e){toast('⚠ Worker error: '+e.message,3500);return;}
-  _adminPending.splice(idx,1);
-  toast('❌ Fact rejected — submitter will be notified on next load');render();
-}
-async function adminDeleteApproved(idx){
-  const q=S.custom[idx];if(!q)return;
-  if(!confirm(`Delete "${q.event||q.year}"?`))return;
-  if(q.id){
-    try{await fetch(WORKER_URL+'/dv/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:q.id})});}
-    catch(e){/*non-fatal*/}
-  }
-  S.custom.splice(idx,1);save();toast('🗑 Fact deleted');render();
-}
-
 async function loadCloudDates(){
   try{
     const resp=await fetch(WORKER_URL+'/dv/quotes');if(!resp.ok)return;
@@ -3451,80 +3375,6 @@ async function loadCloudDates(){
 
 // ════════════════════════════════════════════════
 // ADMIN EDIT HELPERS — with worker update call
-// ════════════════════════════════════════════════
-function adminEditPending(idx){
-  const q=_adminPending[idx];if(!q)return;
-  openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:10px">✏️ Edit & Approve</div>
-    ${_dvEditFields(q,'ep')}
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn bp" onclick="adminSavePendingEdit(${idx})">✅ Save & Approve</button>
-      <button class="btn" onclick="closeModal()">Cancel</button>
-    </div>
-  </div>`);
-}
-async function adminSavePendingEdit(idx){
-  const q={..._adminPending[idx],..._dvReadFields('ep')};
-  // First update the pending item in the worker with the edited data
-  try{
-    await fetch(WORKER_URL+'/dv/update-pending',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:q.id,data:q})});
-  }catch(e){/* non-fatal */}
-  // Then approve it (moves from pending → public in the worker)
-  try{
-    await fetch(WORKER_URL+'/dv/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:q.id})});
-  }catch(e){toast('⚠ Worker approve error: '+e.message,3500);}
-  _adminPending.splice(idx,1);
-  delete q.submittedAt;delete q._submittedByMe;delete q._status;delete q._userSubmitted;
-  S.pending=S.pending.filter(p=>p.id!==q.id);
-  if(!S.custom.find(c=>String(c.id)===String(q.id)))S.custom.push(q);
-  addXP(5);save();buildNav();closeModal();
-  toast('✅ Edited, approved & added! +5 XP');render();
-}
-function adminEditApproved(idx){
-  const q=S.custom[idx];if(!q)return;
-  openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:10px">✏️ Edit Approved Fact</div>
-    ${_dvEditFields(q,'ea')}
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn bp" onclick="adminSaveApprovedEdit(${idx})">💾 Save Changes</button>
-      <button class="btn" onclick="closeModal()">Cancel</button>
-    </div>
-  </div>`);
-}
-async function adminSaveApprovedEdit(idx){
-  const updated={...S.custom[idx],..._dvReadFields('ea')};
-  S.custom[idx]=updated;save();
-  // Push edit to worker so it persists in the cloud
-  try{
-    await fetch(WORKER_URL+'/dv/update-public',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:_adminToken,id:updated.id,data:updated})});
-  }catch(e){/* non-fatal — local save succeeded */}
-  closeModal();toast('💾 Fact updated');render();
-}
-function _dvEditFields(q,pfx){
-  return`
-  <div class="fg"><label>Year / Date</label><input type="text" id="${pfx}-yr" value="${q.year||''}"></div>
-  <div class="fg"><label>Event</label><input type="text" id="${pfx}-ev" value="${q.event||''}"></div>
-  <div class="fg"><label>Significance</label><textarea id="${pfx}-sig" rows="3">${q.significance||''}</textarea></div>
-  <div class="g2">
-    <div class="fg"><label>Topic</label><input type="text" id="${pfx}-to" value="${q.topic||''}"></div>
-    <div class="fg"><label>Period</label><input type="text" id="${pfx}-pe" value="${q.period||''}"></div>
-  </div>
-  <div class="g2">
-    <div class="fg"><label>Section</label><input type="text" id="${pfx}-sec" value="${q.section||''}"></div>
-    <div class="fg"><label>Category</label><input type="text" id="${pfx}-cat" value="${q.category||''}"></div>
-  </div>
-  <div class="fg"><label>Stars (1-5)</label>
-    <select id="${pfx}-st">${[1,2,3,4,5].map(n=>`<option${q.stars===n?' selected':''}>${n}</option>`).join('')}</select>
-  </div>
-  <div class="fg"><label>Note (optional)</label><input type="text" id="${pfx}-no" value="${q.note||''}"></div>`;
-}
-function _dvReadFields(pfx){
-  const g=id=>document.getElementById(id)?.value||'';
-  return{year:g(`${pfx}-yr`).trim(),event:g(`${pfx}-ev`).trim(),significance:g(`${pfx}-sig`).trim(),topic:g(`${pfx}-to`).trim(),period:g(`${pfx}-pe`).trim(),section:g(`${pfx}-sec`).trim(),category:g(`${pfx}-cat`).trim(),stars:+g(`${pfx}-st`),note:g(`${pfx}-no`).trim(),yearNum:parseInt((g(`${pfx}-yr`).match(/\d+/)||[])[0])||0};
-}
-
-// ════════════════════════════════════════════════
-// INIT
 // ════════════════════════════════════════════════
 async function startup(){
   try {
