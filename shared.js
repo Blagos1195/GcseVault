@@ -786,10 +786,27 @@ const AdminManager = {
   loading: false,
   migrating: false,
   migrationStatus: '',
+  statusChecked: false,
+  ownerInitialized: true,
   error: '',
 
   getToken() {
     return this.token || getAdminToken();
+  },
+
+  async checkStatus() {
+    if (this.statusChecked) return;
+    try {
+      const response = await fetch(`${WORKER_API}/admin/status`);
+      if (!response.ok) throw new Error('Status check failed');
+      const data = await response.json();
+      this.ownerInitialized = Boolean(data.initialized);
+    } catch {
+      this.ownerInitialized = true;
+    } finally {
+      this.statusChecked = true;
+      if (typeof window.render === 'function') window.render();
+    }
   },
 
   async login() {
@@ -996,6 +1013,10 @@ const AdminManager = {
     const token = this.getToken();
     if (token && !this.role && !this.loading) this.refresh();
     if (!token) {
+      if (!this.statusChecked) {
+        this.checkStatus();
+        return `<div><div class="pt">Admin Panel</div><div class="ps">Checking account permissions...</div></div>`;
+      }
       const account = VaultUser.getUsername();
       return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
         <div class="pt">Admin Panel</div>
@@ -1004,11 +1025,11 @@ const AdminManager = {
           <div class="knowledge-title">${account ? `Signed in account: ${UI.escapeHTML(account)}` : 'No account linked'}</div>
           <div class="knowledge-meta" style="margin:6px 0 10px">${account ? 'Admin access is linked to your GCSE Vault account.' : 'Link your GCSE Vault account in Settings first.'}</div>
           <button class="btn bg" onclick="AdminManager.login()" ${account ? '' : 'disabled'}>🔐 Sign in with account</button>
-          <details style="margin-top:14px">
+          ${!this.ownerInitialized ? `<details style="margin-top:14px">
             <summary style="cursor:pointer;color:var(--text2);font-size:.75rem">First owner setup</summary>
             <div class="fg" style="margin-top:9px"><label for="admin-bootstrap-key">One-time setup key</label><input type="password" id="admin-bootstrap-key" autocomplete="off" placeholder="Initial setup key"></div>
             <button class="btn" onclick="AdminManager.bootstrap()" ${account ? '' : 'disabled'}>Set up this account as owner</button>
-          </details>
+          </details>` : ''}
           ${this.error ? `<div class="qfb qwr" style="margin-top:8px">${UI.escapeHTML(this.error)}</div>` : ''}
         </div>
       </div>`;
