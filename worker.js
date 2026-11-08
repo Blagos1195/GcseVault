@@ -92,9 +92,9 @@ export default {
     }
 
     if (url.pathname === "/auth/logout" && request.method === "POST") {
-      const body = await request.json();
-      const token = body.token || url.searchParams.get("token");
-      if (token) await env.QUOTEVAULT.delete("session:" + token);
+      const user = await getSessionUser(url, request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete("session:" + user.token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
