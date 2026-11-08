@@ -164,7 +164,7 @@ export default {
 
       try {
         const { results } = await env.DB.prepare(
-          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
+          `SELECT user_key, qv_pending_ids, qv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
         ).bind(`%${body.id}%`).all();
         for (const row of results) {
           const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
@@ -391,14 +391,13 @@ export default {
     // GET /lb/list
     if (url.pathname === "/lb/list" && request.method === "GET") {
       const { results } = await env.DB.prepare(`
-        SELECT user_key, username, qv_mastered, dv_mastered, qv_xp, dv_xp,
+        SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp,
                streak, max_streak, updated_at
         FROM users
         ORDER BY (qv_xp + dv_xp) DESC
       `).all();
 
       const users = results.map(r => ({
-        userKey:     r.user_key,
         username:    r.username,
         qv_mastered: r.qv_mastered,
         dv_mastered: r.dv_mastered,
@@ -430,6 +429,12 @@ export default {
 
       if (!row) {
         return new Response(JSON.stringify({ found: false }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+
+      if (!userKey) {
+        return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
           headers: { ...cors, "Content-Type": "application/json" }
         });
       }
@@ -468,6 +473,14 @@ export default {
 
       if (!username || !site || mastered === undefined || xp === undefined) {
         return new Response("Missing fields", { status: 400, headers: cors });
+      }
+      if (!["qv", "dv"].includes(site)) {
+        return new Response("Invalid site", { status: 400, headers: cors });
+      }
+      mastered = Number(mastered);
+      xp = Number(xp);
+      if (!Number.isFinite(mastered) || !Number.isFinite(xp) || mastered < 0 || xp < 0) {
+        return new Response("Invalid statistics", { status: 400, headers: cors });
       }
 
       const clean = username.trim();
