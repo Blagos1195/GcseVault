@@ -379,6 +379,7 @@ const VaultUser = {
         <button class="btn bg" id="vault-account-login">Sign in</button>
         ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
         ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
+        ${this.getAccountSession() ? '<button class="btn" id="vault-account-logout">Sign out</button>' : ''}
         <button class="btn" onclick="closeModal()">Cancel</button>
       </div>
     </div>`);
@@ -397,6 +398,13 @@ const VaultUser = {
       } catch (e) { error.textContent = e.message; }
     };
     document.getElementById('vault-account-login').onclick = login;
+    const logout = document.getElementById('vault-account-logout');
+    if (logout) logout.onclick = async () => {
+      await this.logoutAccount();
+      window.closeModal();
+      if (typeof window.render === 'function') window.render();
+      if (typeof window.renderRevision === 'function') window.renderRevision();
+    };
     const reset = document.getElementById('vault-account-reset');
     if (reset) reset.onclick = async () => {
       try {
