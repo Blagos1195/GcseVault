@@ -213,7 +213,7 @@ test("owner can grant an account admin role", async () => {
 
 test("revision sync verifies the account username", async () => {
   const env = makeEnv([{ username: "different-user" }]);
-  env.REVISION = { get: async () => null, put: async () => {} };
+  env.REVISION = { get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null, put: async () => {} };
   const response = await call("/revision/sync", env, {
     userKey: "account-key",
     username: "student",
