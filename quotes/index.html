@@ -1054,6 +1054,8 @@ async function lbUpdate(){
     if(r.ok) {
       const d = await r.json();
       if(d.userKey && d.userKey !== k) setUserKey(d.userKey);
+    } else if(r.status===401) {
+      VaultUser.showAccountDialog();
     }
   } catch(e) { /* non-fatal */ }
 }
@@ -1257,7 +1259,7 @@ function showUsernameModal(onConfirm){
  <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
  <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
  You just mastered a quote! Choose a username to appear on the leaderboard.<br>
- <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
+ <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · password required for leaderboard access</span>
  </div>
     <div class="fg">
       <label>Username</label>
@@ -2813,6 +2815,7 @@ function checkDup(){
 }
 
 async function saveQuote(){
+  if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const t=(document.getElementById('a-t')?.value||'').trim();
   const c=(document.getElementById('a-c')?.value||'').trim();
   if(!t||!c){toast('Fill in quote text and character');return;}
@@ -2839,7 +2842,7 @@ async function saveQuote(){
     const resp=await fetch(WORKER_URL+'/submit',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(q)
+      body:JSON.stringify({...q,userKey:VaultUser.getKey()})
     });
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();

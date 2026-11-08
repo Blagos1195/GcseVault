@@ -131,13 +131,21 @@ export default {
       return row ? { ...row, token } : null;
     }
 
-    async function verifyAccountAccess(userKey, req) {
+    async function verifyPasswordAccountAccess(userKey, req) {
       const credential = await env.DB.prepare(
         "SELECT user_key FROM account_credentials WHERE user_key = ?"
       ).bind(userKey).first();
-      if (!credential) return true;
+      if (!credential) return false;
       const session = await getAccountSession(req);
       return Boolean(session && session.user_key === userKey);
+    }
+
+    async function verifyAccountAccess(userKey, req) {
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return true;
+      return verifyPasswordAccountAccess(userKey, req);
     }
 
     if (url.pathname === "/account/setup" && request.method === "POST") {
@@ -242,9 +250,9 @@ export default {
     }
 
     const accountScopedPaths = new Set([
-      "/lb/get", "/lb/register", "/lb/update-theme", "/lb/streak", "/lb/username-available",
-      "/themes/save", "/themes/list", "/themes/delete", "/revision/sync",
-      "/revision/public", "/revision/public/delete", "/dv/withdraw", "/withdraw"
+      "/lb/update-theme", "/lb/streak",
+      "/themes/save", "/themes/list", "/themes/delete",
+      "/revision/public/delete", "/dv/withdraw", "/withdraw"
     ]);
     if (accountScopedPaths.has(url.pathname)) {
       let userKey = url.searchParams.get("userKey");
@@ -426,6 +434,11 @@ export default {
     // ── QUOTEVAULT SUBMIT ─────────────────────────────────────────────────────
     if (url.pathname === "/submit" && request.method === "POST") {
       const data = await request.json();
+      const userKey = String(data.userKey || "").trim();
+      if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
+        return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
+      }
+      delete data.userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -517,6 +530,11 @@ export default {
 
         if (url.pathname === "/dv/submit" && request.method === "POST") {
       const data = await request.json();
+      const userKey = String(data.userKey || "").trim();
+      if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
+        return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
+      }
+      delete data.userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -755,6 +773,16 @@ export default {
         });
       }
 
+      const credential = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      if (!credential) {
+        return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      if (!(await verifyAccountAccess(userKey, request))) {
+        return new Response("Sign in to sync this account.", { status: 401, headers: cors });
+      }
+
       const user = {
         userKey:          row.user_key,
         username:         row.username,
@@ -786,6 +814,12 @@ export default {
       const body = await request.json();
       let { userKey, username, site, mastered, xp, mastered_ids,
             pending_ids, pending_data, theme } = body;
+      if (userKey) {
+        const existingAccount = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+        if (existingAccount && !(await verifyAccountAccess(userKey, request))) {
+          return new Response("Sign in with a password account before joining or updating leaderboards.", { status: 401, headers: cors });
+        }
+      }
 
       if (!username || !site || mastered === undefined || xp === undefined) {
         return new Response("Missing fields", { status: 400, headers: cors });
@@ -1200,6 +1234,7 @@ export default {
         "SELECT username FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let row = await env.DB.prepare(
         "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
       ).bind(userKey).first();
@@ -1231,6 +1266,7 @@ export default {
       if (!account || account.username.toLowerCase() !== username.toLowerCase()) {
         return new Response("Account verification failed", { status: 403, headers: cors });
       }
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let existingRow = await env.DB.prepare(
         "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
       ).bind(userKey).first();
@@ -1347,6 +1383,7 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
+      if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;

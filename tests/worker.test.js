@@ -177,13 +177,30 @@ test("DateVault withdrawal cannot delete another user's pending submission", asy
     id: "another-users-fact"
   });
 
-  assert.equal(response.status, 403);
+  assert.equal(response.status, 401);
   assert.equal(deleted, false);
 });
 
 test("custom theme keys reject separators", async () => {
   let saved = false;
   const env = makeEnv();
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    if (!sql.includes("FROM account_credentials") && !sql.includes("FROM account_sessions")) return statement;
+    return {
+      ...statement,
+      bind(...values) {
+        const bound = statement.bind(...values);
+        return {
+          ...bound,
+          first: async () => sql.includes("FROM account_credentials")
+            ? { user_key: values[0] }
+            : { user_key: "account-key", username: "student", role: "user" }
+        };
+      }
+    };
+  };
   env.THEMES.put = async () => {
     saved = true;
   };
@@ -192,7 +209,7 @@ test("custom theme keys reject separators", async () => {
     userKey: "account-key",
     key: "theme:other-user",
     theme: { label: "Test" }
-  });
+  }, { "X-Account-Session": "a".repeat(64) });
 
   assert.equal(response.status, 400);
   assert.equal(saved, false);
@@ -468,4 +485,44 @@ test("password account setup hashes passwords, creates sessions and protects acc
     passwordHash: wrongHash
   });
   assert.equal(wrongPassword.status, 401);
+});
+
+
+test("legacy accounts cannot update leaderboard stats before password setup", async () => {
+  const env = makeEnv([{ user_key: "account-key", username: "student" }]);
+  const response = await call("/lb/register", env, {
+    userKey: "account-key",
+    username: "student",
+    site: "qv",
+    mastered: 0,
+    xp: 0
+  });
+  assert.equal(response.status, 401);
+});
+
+test("QuoteVault submissions require a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/submit", env, {
+    userKey: "account-key",
+    text: "A submitted quote"
+  });
+  assert.equal(response.status, 401);
+});
+
+test("DateVault submissions require a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/dv/submit", env, {
+    userKey: "account-key",
+    event: "A submitted fact"
+  });
+  assert.equal(response.status, 401);
+});
+
+test("Revision publication requires a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/revision/public", env, {
+    userKey: "account-key",
+    note: { title: "Revision notes", cards: [] }
+  });
+  assert.equal(response.status, 401);
 });

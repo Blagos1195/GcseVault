@@ -896,7 +896,7 @@ async function lbUpdate(){
       body:JSON.stringify(payload)
     });
     const d=await r.json();
-    // Cache the stable userKey returned by the worker
+    if(r.status===401){VaultUser.showAccountDialog();return;}
     if(d.userKey&&d.userKey!==k)setUserKey(d.userKey);
   }catch(e){/* non-fatal */}
 }
@@ -1104,7 +1104,7 @@ function showUsernameModal(onConfirm){
     <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
     <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
       Choose a username to appear on the leaderboard.<br>
-      <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · saved locally · no password needed</span>
+      <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · password required for leaderboard access</span>
     </div>
     <input type="text" id="usernameInput" ${suggestion} placeholder="Enter username..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:8px;border-radius:4px;font-size:.85rem;margin-bottom:12px;outline:none">
     <button id="usernameBtn" style="width:100%;background:var(--purple);color:#fff;border:none;padding:8px;border-radius:4px;font-size:.85rem;font-weight:500;cursor:pointer">Set Username</button>
@@ -2900,6 +2900,7 @@ function checkDupFact(){
   else el.innerHTML=`<div class="qfb qok">✓ No duplicate — looks new!</div>`;
 }
 async function saveFact(){
+  if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const yr=(document.getElementById('a-yr')?.value||'').trim();
   const ev=(document.getElementById('a-ev')?.value||'').trim();
   const sig=(document.getElementById('a-sig')?.value||'').trim();
@@ -2914,7 +2915,7 @@ async function saveFact(){
   const fbEl=document.getElementById('add-fb');
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)">⏳ Submitting…</div>`;
   try{
-    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)});
+    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();
     if(result.id)q.id=result.id;
