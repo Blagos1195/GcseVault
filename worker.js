@@ -111,16 +111,6 @@ export default {
       return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
     }
 
-    async function passwordHash(password, salt) {
-      const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-      const bits = await crypto.subtle.deriveBits(
-        { name: "PBKDF2", hash: "SHA-256", salt: Uint8Array.from(atob(salt), character => character.charCodeAt(0)), iterations: 600000 },
-        material,
-        256
-      );
-      return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, "0")).join("");
-    }
-
     async function createAccountSession(userKey) {
       const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
       const token = Array.from(tokenBytes, byte => byte.toString(16).padStart(2, "0")).join("");
@@ -153,9 +143,10 @@ export default {
     if (url.pathname === "/account/setup" && request.method === "POST") {
       const body = await request.json();
       const userKey = String(body.userKey || "").trim();
-      const password = String(body.password || "");
-      if (!userKey || password.length < 12 || password.length > 128) {
-        return new Response("Use a password between 12 and 128 characters.", { status: 400, headers: cors });
+      const passwordHashValue = String(body.passwordHash || "");
+      const passwordSalt = String(body.passwordSalt || "");
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+/]{22}==$/.test(passwordSalt)) {
+        return new Response("Invalid password setup details.", { status: 400, headers: cors });
       }
       const account = await env.DB.prepare(
         "SELECT user_key FROM users WHERE user_key = ?"
@@ -165,13 +156,10 @@ export default {
         "SELECT user_key FROM account_credentials WHERE user_key = ?"
       ).bind(userKey).first();
       if (existing) return new Response("This account already has a password. Sign in instead.", { status: 409, headers: cors });
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const salt = btoa(String.fromCharCode(...saltBytes));
-      const hash = await passwordHash(password, salt);
       const now = new Date().toISOString();
       await env.DB.prepare(
         "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-      ).bind(userKey, hash, salt, now, now).run();
+      ).bind(userKey, passwordHashValue, passwordSalt, now, now).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
       return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
@@ -179,11 +167,22 @@ export default {
       });
     }
 
+    if (url.pathname === "/account/challenge" && request.method === "GET") {
+      const username = String(url.searchParams.get("username") || "").trim();
+      if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
+      const credential = await env.DB.prepare(
+        "SELECT c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+      ).bind(username).first();
+      if (!credential) return new Response("Invalid username or password.", { status: 404, headers: cors });
+      return new Response(JSON.stringify({ passwordSalt: credential.password_salt }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
     if (url.pathname === "/account/login" && request.method === "POST") {
       const body = await request.json();
       const username = String(body.username || "").trim();
-      const password = String(body.password || "");
-      if (!username || !password || username.length > 20 || password.length > 128) {
+      const passwordHashValue = String(body.passwordHash || "");
+      if (!username || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || username.length > 20) {
         return new Response("Invalid username or password.", { status: 400, headers: cors });
       }
       const rateKey = "account-login:" + await hashValue((request.headers.get("CF-Connecting-IP") || "unknown") + ":" + username.toLowerCase());
@@ -194,8 +193,7 @@ export default {
         "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
-      const candidate = await passwordHash(password, user.password_salt);
-      if (candidate !== user.password_hash) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      if (passwordHashValue.toLowerCase() !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
       await env.QUOTEVAULT.delete(rateKey);
       const token = await createAccountSession(user.user_key);
       return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
@@ -207,19 +205,17 @@ export default {
     if (url.pathname === "/account/reset" && request.method === "POST") {
       const body = await request.json();
       const userKey = String(body.userKey || "").trim();
-      const password = String(body.password || "");
-      if (!userKey || password.length < 12 || password.length > 128) {
-        return new Response("Use a password between 12 and 128 characters.", { status: 400, headers: cors });
+      const passwordHashValue = String(body.passwordHash || "");
+      const passwordSalt = String(body.passwordSalt || "");
+      if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+/]{22}==$/.test(passwordSalt)) {
+        return new Response("Invalid password reset details.", { status: 400, headers: cors });
       }
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found.", { status: 404, headers: cors });
       const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
       if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
-      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-      const salt = btoa(String.fromCharCode(...saltBytes));
-      const hash = await passwordHash(password, salt);
       await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
-        .bind(hash, salt, new Date().toISOString(), userKey).run();
+        .bind(passwordHashValue, passwordSalt, new Date().toISOString(), userKey).run();
       await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
