@@ -6,7 +6,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token"
+      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session"
     };
 
     if (request.method === "OPTIONS") {
@@ -174,7 +174,7 @@ export default {
       ).bind(userKey, hash, salt, now, now).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
-      return new Response(JSON.stringify({ token, username: user.username, role: user.role || "user" }), {
+      return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -193,7 +193,7 @@ export default {
       const candidate = await passwordHash(password, user.password_salt);
       if (candidate !== user.password_hash) return new Response("Invalid username or password.", { status: 401, headers: cors });
       const token = await createAccountSession(user.user_key);
-      return new Response(JSON.stringify({ token, username: user.username, role: user.role || "user" }), {
+      return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -201,7 +201,7 @@ export default {
     if (url.pathname === "/account/session" && request.method === "GET") {
       const session = await getAccountSession(request);
       if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
-      return new Response(JSON.stringify({ username: session.username, role: session.role || "user" }), {
+      return new Response(JSON.stringify({ userKey: session.user_key, username: session.username, role: session.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
