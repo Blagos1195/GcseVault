@@ -896,7 +896,7 @@ async function lbUpdate(){
       body:JSON.stringify(payload)
     });
     const d=await r.json();
-    // Cache the stable userKey returned by the worker
+    if(r.status===401){VaultUser.showAccountDialog();return;}
     if(d.userKey&&d.userKey!==k)setUserKey(d.userKey);
   }catch(e){/* non-fatal */}
 }
