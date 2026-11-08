@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS account_credentials (
   user_key TEXT PRIMARY KEY,
   password_hash TEXT NOT NULL,
   password_salt TEXT NOT NULL,
-  encryption_salt TEXT NOT NULL,
   recovery_wrapped_key TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
