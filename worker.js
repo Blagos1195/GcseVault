@@ -512,6 +512,109 @@ export default {
       });
     }
 
+    if (url.pathname === "/lb/rotate-key" && request.method === "POST") {
+      const body = await request.json();
+      const userKey = String(body.userKey || "").trim();
+      const newUserKey = String(body.newUserKey || "").trim();
+      if (!userKey || !/^[0-9a-f-]{36}$/i.test(newUserKey)) {
+        return new Response("Invalid account key", { status: 400, headers: cors });
+      }
+      const account = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const collision = await env.DB.prepare(
+        "SELECT user_key FROM users WHERE user_key = ?"
+      ).bind(newUserKey).first();
+      if (collision) return new Response("New account key is already in use", { status: 409, headers: cors });
+
+      const copiedThemeKeys = [];
+      const changedNotes = [];
+      let copiedRevision = false;
+      let copiedLeaderboard = false;
+      const oldThemePrefix = `theme:${userKey}:`;
+      const newThemePrefix = `theme:${newUserKey}:`;
+
+      const rollback = async () => {
+        for (const item of changedNotes) await env.REVISION.put(item.key, JSON.stringify(item.value));
+        for (const key of copiedThemeKeys) await env.THEMES.delete(key);
+        if (copiedRevision) await env.REVISION.delete(`user:${newUserKey}`);
+        if (copiedLeaderboard) await env.REVISION.delete(`leaderboard:${newUserKey}`);
+      };
+
+      try {
+        const revisionData = await env.REVISION.get(`user:${userKey}`, "json");
+        if (revisionData) {
+          await env.REVISION.put(`user:${newUserKey}`, JSON.stringify(revisionData));
+          copiedRevision = true;
+        }
+        const leaderboard = await env.REVISION.get(`leaderboard:${userKey}`, "json");
+        if (leaderboard) {
+          await env.REVISION.put(`leaderboard:${newUserKey}`, JSON.stringify({ ...leaderboard, userKey: newUserKey }));
+          copiedLeaderboard = true;
+        }
+
+        let themeCursor;
+        do {
+          const page = await env.THEMES.list({ prefix: oldThemePrefix, ...(themeCursor ? { cursor: themeCursor } : {}) });
+          for (const item of page.keys) {
+            const value = await env.THEMES.get(item.name);
+            if (value !== null) {
+              const nextKey = newThemePrefix + item.name.slice(oldThemePrefix.length);
+              await env.THEMES.put(nextKey, value);
+              copiedThemeKeys.push(nextKey);
+            }
+          }
+          themeCursor = page.list_complete ? null : page.cursor;
+        } while (themeCursor);
+
+        for (const prefix of ["public:", "public-pending:"]) {
+          let cursor;
+          do {
+            const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
+            for (const item of page.keys) {
+              const note = await env.REVISION.get(item.name, "json");
+              if (note && note.ownerKey === userKey) {
+                changedNotes.push({ key: item.name, value: note });
+                await env.REVISION.put(item.name, JSON.stringify({ ...note, ownerKey: newUserKey }));
+              }
+            }
+            cursor = page.list_complete ? null : page.cursor;
+          } while (cursor);
+        }
+
+        await env.DB.prepare(
+          "UPDATE users SET user_key = ? WHERE user_key = ?"
+        ).bind(newUserKey, userKey).run();
+      } catch (error) {
+        const moved = await env.DB.prepare(
+          "SELECT user_key FROM users WHERE user_key = ?"
+        ).bind(newUserKey).first();
+        if (!moved) {
+          try { await rollback(); } catch {}
+          return new Response(JSON.stringify({ success: false, error: "Account key rotation failed. The original key remains active." }), {
+            status: 500,
+            headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
+      }
+
+      try {
+        await env.REVISION.delete(`user:${userKey}`);
+        await env.REVISION.delete(`leaderboard:${userKey}`);
+        let cursor;
+        do {
+          const page = await env.THEMES.list({ prefix: oldThemePrefix, ...(cursor ? { cursor } : {}) });
+          for (const item of page.keys) await env.THEMES.delete(item.name);
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+      } catch {}
+
+      return new Response(JSON.stringify({ success: true, userKey: newUserKey }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
     if (url.pathname === "/lb/username-available" && request.method === "GET") {
       const username = url.searchParams.get("username");
       const userKey = url.searchParams.get("userKey");
