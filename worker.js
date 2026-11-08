@@ -159,7 +159,7 @@ export default {
       const now = new Date().toISOString();
       await env.DB.prepare(
         "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-      ).bind(userKey, passwordHashValue, passwordSalt, now, now).run();
+      ).bind(userKey, await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
       return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
@@ -193,7 +193,7 @@ export default {
         "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
-      if (passwordHashValue.toLowerCase() !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
+      if (await hashValue(passwordHashValue.toLowerCase()) !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
       await env.QUOTEVAULT.delete(rateKey);
       const token = await createAccountSession(user.user_key);
       return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
@@ -215,7 +215,7 @@ export default {
       const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
       if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
       await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
-        .bind(passwordHashValue, passwordSalt, new Date().toISOString(), userKey).run();
+        .bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, new Date().toISOString(), userKey).run();
       await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
