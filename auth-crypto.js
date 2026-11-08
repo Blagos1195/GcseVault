@@ -1,7 +1,6 @@
 (() => {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
-  const iterations = 600000;
 
   function toBase64(bytes) {
     let binary = '';
@@ -13,24 +12,8 @@
     return Uint8Array.from(atob(value), character => character.charCodeAt(0));
   }
 
-  async function deriveKey(password, salt) {
-    if (typeof password !== 'string' || password.length < 12) {
-      throw new Error('Use a password with at least 12 characters.');
-    }
-    const material = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(password),
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    );
-    return crypto.subtle.deriveKey(
-      { name: 'PBKDF2', hash: 'SHA-256', salt: fromBase64(salt), iterations },
-      material,
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
+  async function createVaultKey() {
+    return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
   async function encrypt(key, value) {
@@ -98,10 +81,7 @@
   }
 
   window.GcseVaultCrypto = Object.freeze({
-    createSalt() {
-      return toBase64(crypto.getRandomValues(new Uint8Array(16)));
-    },
-    deriveKey,
+    createVaultKey,
     encrypt,
     decrypt,
     createRecoveryPackage,
