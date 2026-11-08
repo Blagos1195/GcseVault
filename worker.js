@@ -974,6 +974,10 @@ export default {
     if (url.pathname === "/revision/sync" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
+      const account = await env.DB.prepare(
+        "SELECT username FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const data = await env.REVISION.get(`user:${userKey}`, "json");
       return new Response(JSON.stringify({ found: Boolean(data), data: data || null }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -985,6 +989,26 @@ export default {
       const userKey = String(body.userKey || "").trim();
       const username = String(body.username || "").trim().slice(0, 20);
       if (!userKey || !username) return new Response("Missing userKey or username", { status: 400, headers: cors });
+      const account = await env.DB.prepare(
+        "SELECT username FROM users WHERE user_key = ?"
+      ).bind(userKey).first();
+      if (!account || account.username.toLowerCase() !== username.toLowerCase()) {
+        return new Response("Account verification failed", { status: 403, headers: cors });
+      }
+      const existing = await env.REVISION.get(`user:${userKey}`, "json");
+      const expectedUpdatedAt = String(body.expectedUpdatedAt || "");
+      if (existing && expectedUpdatedAt !== String(existing.updatedAt || "")) {
+        return new Response(JSON.stringify({ conflict: true, data: existing }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      if (!existing && expectedUpdatedAt) {
+        return new Response(JSON.stringify({ conflict: true, data: null }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
       const accountSets = Array.isArray(body.accountSets)
         ? body.accountSets.slice(0, 25).map((set, index) => ({
             id: String(set && set.id ? set.id : `set-${index + 1}`),
