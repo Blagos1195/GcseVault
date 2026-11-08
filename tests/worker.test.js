@@ -10,6 +10,7 @@ function makeEnv(rows = []) {
     DB: {
       prepare(sql) {
         return {
+          first: async () => null,
           all: async () => ({ results: rows }),
           bind(...values) {
             return {
