@@ -11,8 +11,8 @@ The current system is not a password account system: usernames are display names
 - Keep `users.user_key` as an internal stable account identifier so existing leaderboard and moderation records remain linked.
 - Add a separate credential record for each account.
 - Store only a salted password hash, never the password.
-- Store a separate random encryption salt. The browser derives an AES-256-GCM key from the password and this salt.
-- Store only a recovery-key-wrapped copy of the encryption key. The recovery key is generated in the browser and shown once.
+- Generate a random AES-256-GCM encryption key in the browser, independently of the account password.
+- Store only a recovery-key-wrapped copy of the encryption key. The 256-bit recovery key is generated in the browser and shown once. A new device needs this recovery key to unlock private data.
 - Store opaque, hashed session tokens. The raw token is held by the browser and is never stored in D1.
 - Admin roles remain attached to the account. Admin access must require a valid account session, not an old account key.
 
@@ -53,4 +53,4 @@ The current system is not a password account system: usernames are display names
 
 ## Implementation status
 
-The additive schema and browser cryptography primitive are prepared on the audit branch. The private-data key is random and independent of the login password, so password reuse alone cannot decrypt stored revision content. They are not wired into the live account flows, and no production migration or deployment has occurred. The current bearer-key login remains active until the full conversion is complete.
+The additive schema and browser cryptography primitive are prepared on the audit branch. The private-data key is random and independent of the login password, so password reuse alone cannot decrypt stored revision content. The private-data key is random and independent of the login password, so password reuse alone cannot decrypt stored revision content. They are not wired into the live account flows, and no production migration or deployment has occurred. The current bearer-key login remains active until the full conversion is complete.
