@@ -32,7 +32,7 @@ function makeEnv(rows = []) {
       }
     },
     QUOTEVAULT: {
-      get: async () => null,
+      get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null,
       delete: async () => {}
     },
     DV_PENDING: {
@@ -117,7 +117,7 @@ test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrel
   }]);
 
   const response = await call("/reject", env, {
-    pw: "test-admin",
+    token: "test-session",
     id: "quote-1"
   });
 
