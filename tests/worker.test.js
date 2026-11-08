@@ -184,6 +184,23 @@ test("DateVault withdrawal cannot delete another user's pending submission", asy
 test("custom theme keys reject separators", async () => {
   let saved = false;
   const env = makeEnv();
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    if (!sql.includes("FROM account_credentials") && !sql.includes("FROM account_sessions")) return statement;
+    return {
+      ...statement,
+      bind(...values) {
+        const bound = statement.bind(...values);
+        return {
+          ...bound,
+          first: async () => sql.includes("FROM account_credentials")
+            ? { user_key: values[0] }
+            : { user_key: "account-key", username: "student", role: "user" }
+        };
+      }
+    };
+  };
   env.THEMES.put = async () => {
     saved = true;
   };
@@ -192,7 +209,7 @@ test("custom theme keys reject separators", async () => {
     userKey: "account-key",
     key: "theme:other-user",
     theme: { label: "Test" }
-  });
+  }, { "X-Account-Session": "a".repeat(64) });
 
   assert.equal(response.status, 400);
   assert.equal(saved, false);
