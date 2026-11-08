@@ -273,6 +273,95 @@ const VaultUser = {
     return value;
   },
 
+  getAccountSession() {
+    return localStorage.getItem('vault_account_session') || null;
+  },
+
+  setAccountSession(value) {
+    if (!value) return null;
+    localStorage.setItem('vault_account_session', value);
+    return value;
+  },
+
+  async setupPassword(password) {
+    const userKey = this.getKey();
+    if (!userKey) throw new Error('Link your existing account first.');
+    const response = await fetch(`${this.WORKER_URL}/account/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not set password.');
+    this.setAccountSession(data.token);
+    this.setUsername(data.username);
+    return data;
+  },
+
+  async login(username, password) {
+    const response = await fetch(`${this.WORKER_URL}/account/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message || 'Invalid username or password.');
+    this.setAccountSession(data.token);
+    this.setKey(data.userKey);
+    this.setUsername(data.username);
+    return data;
+  },
+
+  async logoutAccount() {
+    const token = this.getAccountSession();
+    if (token) {
+      await fetch(`${this.WORKER_URL}/account/logout`, { method: 'POST' }).catch(() => {});
+    }
+    localStorage.removeItem('vault_account_session');
+  },
+
+  showAccountDialog() {
+    if (typeof window.openModal !== 'function') return;
+    const linked = this.getKey();
+    window.openModal(`<div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Sign in with your username and password, or add a password to an account already linked on this device.</div>
+      <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
+      <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
+      <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bg" id="vault-account-login">Sign in</button>
+        ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
+        <button class="btn" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`);
+    const username = document.getElementById('vault-account-username');
+    const password = document.getElementById('vault-account-password');
+    const error = document.getElementById('vault-account-error');
+    const login = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.login(username.value.trim(), password.value);
+        window.closeModal();
+        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
+        if (typeof window.loadRevision === 'function') await window.loadRevision();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
+    document.getElementById('vault-account-login').onclick = login;
+    const setup = document.getElementById('vault-account-setup');
+    if (setup) setup.onclick = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.setupPassword(password.value);
+        window.closeModal();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
+  },
+
   getProfile() {
     return {
       username: this.getUsername(),
@@ -337,6 +426,21 @@ const VaultUser = {
     }
   }
 };
+
+if (!window.__vaultAccountFetchWrapped) {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = (input, init = {}) => {
+    const requestUrl = typeof input === 'string' ? input : input.url;
+    if (requestUrl && requestUrl.startsWith(VaultUser.WORKER_URL)) {
+      const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+      const token = VaultUser.getAccountSession();
+      if (token) headers.set('X-Account-Session', token);
+      init = { ...init, headers };
+    }
+    return nativeFetch(input, init);
+  };
+  window.__vaultAccountFetchWrapped = true;
+}
 
 const ThemeManager = {
   WORKER_URL: VaultUser.WORKER_URL,
