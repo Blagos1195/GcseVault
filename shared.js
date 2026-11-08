@@ -375,6 +375,7 @@ const VaultUser = {
       ${!linked ? '<div class="fg"><label for="vault-account-old-key">Older account user key</label><input id="vault-account-old-key" autocomplete="off" placeholder="Paste your existing user key"></div><div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use the key from your old device or account settings. Your key stays private.</div>' : ''}
       <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
       <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
+      <div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use at least 12 characters when creating or changing your password.</div>
       <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn bg" id="vault-account-login">Sign in</button>
