@@ -371,12 +371,14 @@ const VaultUser = {
     const linked = this.getKey();
     window.openModal(`<div>
       <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
-      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Sign in with your username and password, or add a password to an account already linked on this device.</div>
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Studying is free without an account. Sign in only when you want leaderboard access or account syncing. If you have an older account, link it with its existing user key below. This keeps your existing username and progress. Do not register a second account.</div>
+      ${!linked ? '<div class="fg"><label for="vault-account-old-key">Older account user key</label><input id="vault-account-old-key" autocomplete="off" placeholder="Paste your existing user key"></div><div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use the key from your old device or account settings. Your key stays private.</div>' : ''}
       <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
       <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
       <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn bg" id="vault-account-login">Sign in</button>
+        ${!linked ? '<button class="btn" id="vault-account-migrate">Link old account & set password</button>' : ''}
         ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
         ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
         ${this.getAccountSession() ? '<button class="btn" id="vault-account-logout">Sign out</button>' : ''}
@@ -398,6 +400,33 @@ const VaultUser = {
       } catch (e) { error.textContent = e.message; }
     };
     document.getElementById('vault-account-login').onclick = login;
+    const migrate = document.getElementById('vault-account-migrate');
+    if (migrate) migrate.onclick = async () => {
+      const key = document.getElementById('vault-account-old-key').value.trim();
+      try {
+        if (key.length < 10) throw new Error('Paste the user key from your existing account.');
+        if (password.value.length < 12) throw new Error('Choose a password of at least 12 characters.');
+        migrate.disabled = true;
+        migrate.textContent = 'Checking existing account…';
+        const response = await fetch(`${this.WORKER_URL}/lb/get?userKey=${encodeURIComponent(key)}`);
+        const account = await this.readResponse(response);
+        if (!response.ok || !account.found || !account.user) throw new Error('That key was not found. Check it and try again.');
+        this.setKey(key);
+        this.setUsername(account.user.username);
+        username.value = account.user.username;
+        migrate.textContent = 'Setting password…';
+        await this.setupPassword(password.value);
+        window.closeModal();
+        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
+        if (typeof window.loadRevision === 'function') await window.loadRevision();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) {
+        error.textContent = e.message;
+        migrate.disabled = false;
+        migrate.textContent = 'Link old account & set password';
+      }
+    };
     const logout = document.getElementById('vault-account-logout');
     if (logout) logout.onclick = async () => {
       await this.logoutAccount();
