@@ -36,7 +36,7 @@ The current system is not a password account system: usernames are display names
 
 - Password hashing protects the authentication database from disclosure of plaintext passwords.
 - End-to-end encryption prevents someone with database or KV read access from reading private revision content.
-- A weak or reused password remains a risk. A database thief can attempt offline password guesses against the stored password hash and, if successful, derive the encryption key. Users should choose a unique password, ideally with a password manager.
+- A weak or reused password remains a risk to account access. A database thief can attempt offline password guesses against the stored password hash. However, guessing the account password alone does not reveal the independent random encryption key; the attacker also needs the separate 256-bit recovery key. Users should still choose a unique password, ideally with a password manager.
 - A site operator who can change the JavaScript served to users could publish malicious code that captures passwords or decrypted data on a later login. E2EE protects stored data and backend access; it cannot protect users from a compromised application delivery pipeline.
 - Public leaderboard data, public submissions, moderation records and operational metadata are not covered by private revision encryption.
 - The existing QuoteVault/DateVault practice progress is primarily stored in browser local storage. It needs a separate inventory before any claim that all user data is end-to-end encrypted.
@@ -53,4 +53,4 @@ The current system is not a password account system: usernames are display names
 
 ## Implementation status
 
-The additive schema and browser cryptography primitive are prepared on the audit branch. They are not wired into the live account flows, and no production migration or deployment has occurred. The current bearer-key login remains active until the full conversion is complete.
+The additive schema and browser cryptography primitive are prepared on the audit branch. The private-data key is random and independent of the login password, so password reuse alone cannot decrypt stored revision content. They are not wired into the live account flows, and no production migration or deployment has occurred. The current bearer-key login remains active until the full conversion is complete.
