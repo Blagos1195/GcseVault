@@ -2906,7 +2906,7 @@ async function saveFact(){
   const sig=(document.getElementById('a-sig')?.value||'').trim();
   if(!yr||!ev||!sig){toast('Fill in year, event, and significance');return;}
   const tempId=Date.now().toString()+'-dv'+Math.random().toString(36).slice(2,6);
-  const q={id:tempId,userKey:VaultUser.getKey(),year:yr,event:ev,significance:sig,
+  const q={id:tempId,year:yr,event:ev,significance:sig,
     topic:document.getElementById('a-to').value,period:document.getElementById('a-pe').value,
     section:document.getElementById('a-sec').value,category:document.getElementById('a-cat').value,
     stars:+document.getElementById('a-st').value,note:document.getElementById('a-no').value,
@@ -2915,7 +2915,7 @@ async function saveFact(){
   const fbEl=document.getElementById('add-fb');
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)">⏳ Submitting…</div>`;
   try{
-    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)});
+    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();
     if(result.id)q.id=result.id;
