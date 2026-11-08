@@ -288,13 +288,35 @@ const VaultUser = {
     return value;
   },
 
+  async createPasswordCredentials(password) {
+    if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
+      throw new Error('Use a password between 12 and 128 characters.');
+    }
+    const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+    const passwordSalt = btoa(String.fromCharCode(...saltBytes));
+    const passwordHash = await this.derivePasswordHash(password, passwordSalt);
+    return { passwordSalt, passwordHash };
+  },
+
+  async derivePasswordHash(password, passwordSalt) {
+    const saltBytes = Uint8Array.from(atob(passwordSalt), character => character.charCodeAt(0));
+    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: 600000 },
+      material,
+      256
+    );
+    return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, '0')).join('');
+  },
+
   async setupPassword(password) {
     const userKey = this.getKey();
     if (!userKey) throw new Error('Link your existing account first.');
+    const credentials = await this.createPasswordCredentials(password);
     const response = await fetch(`${this.WORKER_URL}/account/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userKey, password })
+      body: JSON.stringify({ userKey, ...credentials })
     });
     const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Could not set password.');
@@ -304,10 +326,14 @@ const VaultUser = {
   },
 
   async login(username, password) {
+    const challengeResponse = await fetch(`${this.WORKER_URL}/account/challenge?username=${encodeURIComponent(username)}`);
+    const challenge = await this.readResponse(challengeResponse);
+    if (!challengeResponse.ok) throw new Error('Invalid username or password.');
+    const passwordHash = await this.derivePasswordHash(password, challenge.passwordSalt);
     const response = await fetch(`${this.WORKER_URL}/account/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, passwordHash })
     });
     const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Invalid username or password.');
@@ -320,10 +346,11 @@ const VaultUser = {
   async resetPassword(password) {
     const userKey = this.getKey();
     if (!userKey) throw new Error('Link your account key before resetting the password.');
+    const credentials = await this.createPasswordCredentials(password);
     const response = await fetch(`${this.WORKER_URL}/account/reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userKey, password })
+      body: JSON.stringify({ userKey, ...credentials })
     });
     const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Could not reset password.');
