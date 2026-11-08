@@ -837,12 +837,12 @@ export default {
         ).bind(clean).first();
         if (conflict) {
           return new Response(
-            JSON.stringify({ error: "Username already taken", existingKey: conflict.user_key }),
+            JSON.stringify({ error: "Username already taken" }),
             { status: 409, headers: { ...cors, "Content-Type": "application/json" } }
           );
         }
 
-        const kvKey      = "user:" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        const kvKey      = crypto.randomUUID();
         const updated_at = new Date().toISOString();
         const qv_mastered_ids = site === "qv" ? JSON.stringify(incomingIds) : "[]";
         const dv_mastered_ids = site === "dv" ? JSON.stringify(incomingIds) : "[]";
@@ -956,6 +956,8 @@ export default {
       if (!userKey || !key || !theme) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       // Validate: key must be safe (alphanumeric + _ only, max 80 chars)
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
         return new Response("Invalid key", { status: 400, headers: cors });
@@ -978,6 +980,8 @@ export default {
       if (!userKey) {
         return new Response("Missing userKey", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const prefix = `theme:${userKey}:`;
       const list = await env.THEMES.list({ prefix });
       const themes = {};
@@ -999,6 +1003,9 @@ export default {
       if (!userKey || !key) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       await env.THEMES.delete(`theme:${userKey}:${key}`);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1183,7 +1190,9 @@ const data = {
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
-      const id = `rn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const id = `rn-${crypto.randomUUID()}`;
       const publicNote = { id, ownerKey: userKey, title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
       await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -1274,6 +1283,8 @@ const data = {
       const id = String(body.id || "").trim();
       const note = id ? await env.REVISION.get(`public:${id}`, "json") : null;
       if (!userKey || !id) return new Response("Missing fields", { status: 400, headers: cors });
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       if (note.ownerKey !== userKey) return new Response("Forbidden", { status: 403, headers: cors });
       await env.REVISION.delete(`public:${id}`);
