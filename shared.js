@@ -851,8 +851,7 @@ const AdminManager = {
     if (token) {
       fetch(`${WORKER_API}/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        headers: { 'X-Session-Token': token }
       }).catch(() => {});
     }
     this.token = null;
