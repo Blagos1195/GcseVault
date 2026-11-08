@@ -3225,26 +3225,15 @@ function rSett(){
     ${getUserKey()?`<button class="btn bsm" style="color:var(--teal2);border-color:var(--teal);margin-left:4px" onclick="loadServerCustomThemes().then(()=>render()).then(()=>toast('☁️ Themes synced'))">☁️ Sync</button>`:''}
   </div>
 
-  <div class="sec">Leaderboard &amp; Account</div>
+  <div class="sec">Account</div>
   <div class="card" style="max-width:420px;margin-bottom:10px">
     <div class="srow">
       <div>
-        <div style="font-size:.8rem">Username</div>
-        <div style="font-size:.68rem;color:var(--text3)">${getUsername()?`Currently: <strong style="color:var(--gold)">${getUsername()}</strong>`:'Not set — set one to join the leaderboard'}</div>
+        <div style="font-size:.8rem">${VaultUser.getAccountSession() ? 'Signed in' : 'Not signed in'}</div>
+        <div style="font-size:.68rem;color:var(--text3)">${VaultUser.getAccountSession() ? 'Username: <strong style="color:var(--gold)">' + UI.escapeHTML(getUsername() || 'Account') + '</strong> · Sync enabled' : 'Sign in or create an account to sync across devices, join leaderboards and submit work for publication.'}</div>
       </div>
-      <button class="btn bsm" onclick="showUsernameModal()" style="color:var(--blue);border-color:var(--blue)">${getUsername()?'Change':'Set'}</button>
+      <button class="btn bsm" onclick="VaultUser.showAccountDialog()">${VaultUser.getAccountSession() ? 'Manage account' : 'Sign in / Create account'}</button>
     </div>
-    <div class="srow">
-      <div>
-        <div style="font-size:.8rem">🔑 User Key</div>
-        <div style="font-size:.68rem;color:var(--text3)">${getUserKey()?'Key linked — progress syncs across devices':'No key — link one to sync across devices'}</div>
-        ${getUserKey()?`<div style="font-size:.62rem;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;word-break:break-all">${getUserKey().slice(0,26)}…</div>`:''}
-      </div>
-      <button class="btn bsm" onclick="showUserKeyModal()" style="color:var(--purple3);border-color:var(--purple)">${getUserKey()?'Manage':'Link Key'}</button>
-    </div>
-    ${getUserKey()?`<div style="padding:7px 0;font-size:.68rem;color:var(--text3);border-top:1px solid var(--border);margin-top:2px">
-      💡 To sync on a new device: go to Settings → Link Key and paste your key.<br>To get your key: tap <strong style="color:var(--purple3)">Manage</strong> above then Copy.
-    </div>`:''}
   </div>
   <div class="sec">General</div>
   <div class="card" style="max-width:420px;margin-bottom:10px">
