@@ -184,3 +184,40 @@ test("username availability does not disclose another account key", async () => 
   assert.deepEqual(data, { available: false });
   assert.equal(JSON.stringify(data).includes("account-key"), false);
 });
+
+test("admin login does not accept the old shared password", async () => {
+  const env = makeEnv();
+  const response = await call("/auth", env, { pw: "test-admin" });
+  assert.equal(response.status, 400);
+});
+
+test("owner bootstrap promotes the linked account", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/bootstrap", env, {
+    pw: "test-admin",
+    userKey: "account-key"
+  });
+  assert.equal(response.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("SET role = 'owner'")));
+});
+
+test("owner can grant an account admin role", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/users?token=test-session", env, {
+    username: "student",
+    role: "admin"
+  });
+  assert.equal(response.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("SET role = ?") && update.values[0] === "admin"));
+});
+
+test("revision sync verifies the account username", async () => {
+  const env = makeEnv([{ username: "different-user" }]);
+  env.REVISION = { get: async () => null, put: async () => {} };
+  const response = await call("/revision/sync", env, {
+    userKey: "account-key",
+    username: "student",
+    cards: []
+  });
+  assert.equal(response.status, 403);
+});
