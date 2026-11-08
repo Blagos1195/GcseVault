@@ -501,6 +501,23 @@ export default {
       });
     }
 
+    // ── QUOTEVAULT UPDATE PENDING ─────────────────────────────────────────────
+    if (url.pathname === "/update-pending" && request.method === "POST") {
+      const body = await request.json();
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const id = String(body.id || "").trim();
+      const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
+      if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
+      const existing = await env.QUOTEVAULT.get(id, "json");
+      if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
+      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt };
+      delete updated.userKey;
+      await env.QUOTEVAULT.put(id, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
     // ── QUOTEVAULT UPDATE PUBLIC ──────────────────────────────────────────────
     if (url.pathname === "/update-public" && request.method === "POST") {
       const body = await request.json();
