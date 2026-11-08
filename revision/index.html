@@ -270,15 +270,18 @@ function syncActiveRevisionSet(){
   localStorage.setItem(revisionAccountSetsKey, JSON.stringify(state.accountSets));
   localStorage.setItem(revisionActiveSetKey, state.activeSetId);
 }
-function saveRevision(){
-  localStorage.setItem('revision_local_updated_at',new Date().toISOString());
+function revisionLocalUpdatedAtKey(){
+  return revisionUserKey() ? `revision_local_updated_at:${revisionUserKey()}` : 'revision_local_updated_at';
+}
+function saveRevision(remote=false){
+  if(!remote)localStorage.setItem(revisionLocalUpdatedAtKey(),new Date().toISOString());
   localStorage.setItem(REVISION_KEY,JSON.stringify(state.cards));
   localStorage.setItem(REVISION_PROGRESS_KEY,JSON.stringify(state.progress));
   localStorage.setItem('revision_xp',String(state.xp));
   localStorage.setItem('revision_streak',String(state.streak));
   localStorage.setItem('revision_last_review',state.lastReview);
   syncActiveRevisionSet();
-  syncRevisionSoon();
+  if(!remote)syncRevisionSoon();
 }
 function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
@@ -501,16 +504,19 @@ function applyRevisionRemoteData(data){
     syncedSet.streak = state.streak;
     syncedSet.lastReview = state.lastReview;
   }
-  saveRevision();
+  if(data.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),data.updatedAt);
+  saveRevision(true);
 }
 async function syncRevision(){
   if(!revisionUserKey()||!revisionUsername()||state.syncing||revisionSyncConflict)return;
   state.syncing=true;
   try{
+    const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
     const payload = {
       userKey: revisionUserKey(),
       username: revisionUsername(),
       expectedUpdatedAt: revisionRemoteUpdatedAt || '',
+      localUpdatedAt,
       cards: state.cards,
       progress: state.progress,
       accountSets: state.accountSets,
@@ -532,6 +538,7 @@ async function syncRevision(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const result=await response.json();
     revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
+    if(localStorage.getItem(revisionLocalUpdatedAtKey())===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),revisionRemoteUpdatedAt);
   }catch(error){
     state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
     state.accountMessageType='error';
@@ -565,7 +572,7 @@ async function loadRevision(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const payload=await response.json();
     if(payload.found&&payload.data){
-      const localUpdatedAt=localStorage.getItem('revision_local_updated_at')||'';
+      const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
       if(localUpdatedAt&&payload.data.updatedAt&&localUpdatedAt>payload.data.updatedAt){
         revisionRemoteUpdatedAt=payload.data.updatedAt;
         state.view='settings';
@@ -593,6 +600,9 @@ function awardRevisionXP(score){
   if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
 }
 async function createRevisionAccount(){
+  revisionRemoteUpdatedAt=null;
+  revisionSyncConflict=false;
+  revisionConflictData=null;
   const username=document.getElementById('revision-account-username')?.value.trim()||'';
   if(username.length<3||username.length>20||!/^[a-zA-Z0-9_-]+$/.test(username)){
     state.accountMessage='Use 3–20 letters, numbers, underscores, or hyphens for the username.';
@@ -609,6 +619,9 @@ async function createRevisionAccount(){
   }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
 }
 async function linkRevisionAccount(){
+  revisionRemoteUpdatedAt=null;
+  revisionSyncConflict=false;
+  revisionConflictData=null;
   const userKey=document.getElementById('revision-account-key')?.value.trim()||'';
   if(userKey.length<10){state.accountMessage='Enter the user key from your other device.';state.accountMessageType='error';renderRevision();return;}
   state.accountMessage='Checking the user key…';state.accountMessageType='success';renderRevision();
