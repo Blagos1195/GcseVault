@@ -13,11 +13,18 @@ function makeEnv(rows = []) {
           all: async () => ({ results: rows }),
           bind(...values) {
             return {
-              first: async () => rows[0] || null,
+              first: async () => {
+                if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
+                if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
+                if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
+                if (sql.includes("SELECT user_key FROM users WHERE user_key")) return { user_key: values[0] };
+                if (sql.includes("SELECT user_key FROM users WHERE role = 'owner'")) return null;
+                return rows[0] || null;
+              },
               all: async () => ({ results: rows }),
               run: async () => {
                 updates.push({ sql, values });
-                return { success: true };
+                return { success: true, meta: { changes: 1 } };
               }
             };
           }
