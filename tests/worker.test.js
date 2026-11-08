@@ -4,12 +4,15 @@ import worker from "../worker.js";
 
 function makeEnv(rows = []) {
   const updates = [];
+  const batchCalls = [];
   return {
     ADMIN_KEY: "test-admin",
     updates,
+    batchCalls,
     DB: {
       prepare(sql) {
         return {
+          sql,
           first: async () => null,
           all: async () => ({ results: rows }),
           bind(...values) {
@@ -22,6 +25,8 @@ function makeEnv(rows = []) {
                 if (sql.includes("SELECT user_key FROM users WHERE role = 'owner'")) return null;
                 return rows[0] || null;
               },
+              sql,
+              values,
               all: async () => ({ results: rows }),
               run: async () => {
                 updates.push({ sql, values });
@@ -30,6 +35,10 @@ function makeEnv(rows = []) {
             };
           }
         };
+      },
+      batch: async statements => {
+        batchCalls.push(statements.map(statement => ({ sql: statement.sql, values: statement.values })));
+        return statements.map(() => ({ success: true, meta: { changes: 1 } }));
       }
     },
     QUOTEVAULT: {
@@ -197,14 +206,27 @@ test("admin login does not accept the old shared password", async () => {
   assert.equal(response.status, 400);
 });
 
-test("owner bootstrap promotes the linked account", async () => {
+test("owner bootstrap permanently claims the one-time setup lock", async () => {
   const env = makeEnv();
   const response = await call("/admin/bootstrap", env, {
     pw: "test-admin",
     userKey: "account-key"
   });
   assert.equal(response.status, 200);
-  assert.ok(env.updates.some(update => update.sql.includes("SET role = 'owner'")));
+  assert.equal(env.batchCalls.length, 1);
+  assert.ok(env.batchCalls[0][0].sql.includes("INSERT OR IGNORE INTO admin_setup"));
+  assert.ok(env.batchCalls[0][1].sql.includes("SET role = 'owner'"));
+});
+
+test("a second account cannot reuse the one-time admin key", async () => {
+  const env = makeEnv();
+  env.DB.batch = async statements => statements.map(() => ({ success: true, meta: { changes: 0 } }));
+  const response = await call("/admin/bootstrap", env, {
+    pw: "test-admin",
+    userKey: "another-account-key"
+  });
+  assert.equal(response.status, 409);
+  assert.equal(env.batchCalls.length, 0);
 });
 
 test("owner can grant an account admin role", async () => {
