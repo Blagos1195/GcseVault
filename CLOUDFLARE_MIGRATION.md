@@ -29,6 +29,7 @@ Do not deploy the new Worker before applying the migrations. It expects the acco
 2. Open the Admin Panel.
 3. Expand **First owner setup** and enter the existing `ADMIN_KEY` secret once.
 4. Sign in using that account. The one-time setup key cannot create another owner after setup is complete.
+5. Remove the `ADMIN_KEY` secret from the Worker environment after successful setup. It is no longer needed.
 
 The owner can then grant or remove admin access from **Account permissions**. Admins can moderate submissions but cannot change account roles.
 
