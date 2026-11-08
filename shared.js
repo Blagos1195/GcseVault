@@ -273,6 +273,11 @@ const VaultUser = {
     return value;
   },
 
+  async readResponse(response) {
+    const raw = await response.text();
+    try { return JSON.parse(raw); } catch { return { error: raw || `HTTP ${response.status}` }; }
+  },
+
   getAccountSession() {
     return localStorage.getItem('vault_account_session') || null;
   },
@@ -291,7 +296,7 @@ const VaultUser = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userKey, password })
     });
-    const data = await response.json();
+    const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Could not set password.');
     this.setAccountSession(data.token);
     this.setUsername(data.username);
@@ -304,7 +309,7 @@ const VaultUser = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    const data = await response.json();
+    const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Invalid username or password.');
     this.setAccountSession(data.token);
     this.setKey(data.userKey);
@@ -320,7 +325,7 @@ const VaultUser = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userKey, password })
     });
-    const data = await response.json();
+    const data = await this.readResponse(response);
     if (!response.ok) throw new Error(data.error || data.message || 'Could not reset password.');
     this.setAccountSession(data.token);
     this.setUsername(data.username);
