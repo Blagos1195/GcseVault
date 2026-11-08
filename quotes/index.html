@@ -1210,7 +1210,7 @@ function showUserKeyModal(){
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bg" onclick="applyUserKey()">✓ Use This Key</button>
       ${k?`<button class="btn" style="color:var(--coral);border-color:var(--coral)" onclick="if(confirm('This will unlink your account from this device. Your local progress stays but will no longer sync. Continue?')){localStorage.removeItem('lb_userKey');localStorage.removeItem('qv_userKey');closeModal();toast('🔓 Key removed');render();}">Unlink Key</button>`:''}
-      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="VaultUser.showAccountDialog()">Password account</button><button class="btn" onclick="closeModal()">Cancel</button>
     </div>
   </div>`);
   setTimeout(()=>{const el=document.getElementById('uk-input');if(el)el.focus();},80);
