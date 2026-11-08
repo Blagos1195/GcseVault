@@ -39,6 +39,12 @@ function makeEnv(rows = []) {
     DV_PENDING: {
       delete: async () => {}
     },
+    REVISION: {
+      get: async () => null,
+      put: async () => {},
+      delete: async () => {},
+      list: async () => ({ keys: [], list_complete: true })
+    },
     THEMES: {
       put: async () => {},
       delete: async () => {},
@@ -250,4 +256,35 @@ test("theme storage rejects unknown accounts", async () => {
   const response = await call("/themes/list?userKey=unknown", env);
   assert.equal(response.status, 404);
   assert.equal(listed, false);
+});
+
+test("owner migration copies existing revision data into D1 without deleting KV", async () => {
+  const env = makeEnv();
+  let legacyDeleted = false;
+  env.REVISION.list = async () => ({ keys: [{ name: "user:account-key" }], list_complete: true });
+  env.REVISION.get = async () => ({ username: "student", updatedAt: "2026-11-08T12:00:00.000Z", cards: [] });
+  env.REVISION.delete = async () => { legacyDeleted = true; };
+  const response = await call("/admin/migrate-storage", env, {
+    phase: "revision",
+    limit: 100
+  }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.migrated, 1);
+  assert.equal(legacyDeleted, false);
+  assert.ok(env.updates.some(update => update.sql.includes("revision_sync_data")));
+});
+
+test("theme migration preserves account keys containing separators", async () => {
+  const env = makeEnv();
+  env.THEMES.list = async () => ({ keys: [{ name: "theme:user:old-account:dark_theme" }], list_complete: true });
+  env.THEMES.get = async () => ({ label: "Dark" });
+  const response = await call("/admin/migrate-storage", env, {
+    phase: "themes",
+    limit: 100
+  }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.migrated, 1);
+  assert.ok(env.updates.some(update => update.sql.includes("custom_themes") && update.values[0] === "user:old-account" && update.values[1] === "dark_theme"));
 });
