@@ -312,9 +312,23 @@ const VaultUser = {
     return data;
   },
 
+  async resetPassword(password) {
+    const userKey = this.getKey();
+    if (!userKey) throw new Error('Link your account key before resetting the password.');
+    const response = await fetch(`${this.WORKER_URL}/account/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not reset password.');
+    this.setAccountSession(data.token);
+    this.setUsername(data.username);
+    return data;
+  },
+
   async logoutAccount() {
-    const token = this.getAccountSession();
-    if (token) {
+    if (this.getAccountSession()) {
       await fetch(`${this.WORKER_URL}/account/logout`, { method: 'POST' }).catch(() => {});
     }
     localStorage.removeItem('vault_account_session');
@@ -332,6 +346,7 @@ const VaultUser = {
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn bg" id="vault-account-login">Sign in</button>
         ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
+        ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
         <button class="btn" onclick="closeModal()">Cancel</button>
       </div>
     </div>`);
@@ -350,6 +365,16 @@ const VaultUser = {
       } catch (e) { error.textContent = e.message; }
     };
     document.getElementById('vault-account-login').onclick = login;
+    const reset = document.getElementById('vault-account-reset');
+    if (reset) reset.onclick = async () => {
+      try {
+        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
+        await this.resetPassword(password.value);
+        window.closeModal();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) { error.textContent = e.message; }
+    };
     const setup = document.getElementById('vault-account-setup');
     if (setup) setup.onclick = async () => {
       try {
