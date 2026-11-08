@@ -1216,6 +1216,7 @@ export default {
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
+      const updatedAt = existingRow ? new Date(Math.max(Date.now(), Date.parse(currentUpdatedAt || 0) + 1)).toISOString() : new Date().toISOString();
       const data = {
         username,
         cards: Array.isArray(body.cards) ? body.cards.slice(0, 2000) : [],
@@ -1225,7 +1226,7 @@ export default {
         xp: Math.max(0, Math.min(1000000, Number(body.xp) || 0)),
         streak: Math.max(0, Math.min(10000, Number(body.streak) || 0)),
         lastReview: String(body.lastReview || ""),
-        updatedAt: new Date().toISOString()
+        updatedAt
       };
       let write;
       if (existingRow) {
@@ -1239,7 +1240,7 @@ export default {
       }
       if (write.meta && write.meta.changes === 0) {
         const latestRow = await env.DB.prepare(
-          "SELECT data_json FROM revision_sync_data WHERE user_key = ?"
+          "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
         ).bind(userKey).first();
         return new Response(JSON.stringify({ conflict: true, data: latestRow ? { ...JSON.parse(latestRow.data_json), updatedAt: latestRow.updated_at } : null }), {
           status: 409,
