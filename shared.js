@@ -784,6 +784,8 @@ const AdminManager = {
   items: [],
   users: [],
   loading: false,
+  migrating: false,
+  migrationStatus: '',
   error: '',
 
   getToken() {
@@ -870,6 +872,40 @@ const AdminManager = {
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
+  },
+
+  async migrateStorage() {
+    if (this.role !== 'owner' || this.migrating) return;
+    this.migrating = true;
+    this.migrationStatus = 'Preparing storage migration...';
+    this.error = '';
+    if (typeof window.render === 'function') window.render();
+    try {
+      for (const phase of ['revision', 'themes']) {
+        let cursor = null;
+        let processed = 0;
+        do {
+          const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
+            body: JSON.stringify({ phase, cursor, limit: 100 })
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          const result = await response.json();
+          processed += result.processed || 0;
+          cursor = result.cursor || null;
+          this.migrationStatus = `Migrating ${phase}: ${processed} records scanned...`;
+          if (typeof window.render === 'function') window.render();
+        } while (cursor);
+      }
+      this.migrationStatus = 'Migration complete. Original KV copies have been retained as backups.';
+    } catch (error) {
+      this.error = error.message;
+      this.migrationStatus = 'Migration paused. You can safely run it again.';
+    } finally {
+      this.migrating = false;
+      await this.refresh();
+    }
   },
 
   async setRole(username, role) {
@@ -1002,6 +1038,8 @@ const AdminManager = {
     }).join('');
     const userManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
       <div class="sec" style="margin-top:0">Account permissions</div>
+      <button class="btn bsm" onclick="AdminManager.migrateStorage()" ${this.migrating ? 'disabled' : ''}>${this.migrating ? 'Migrating...' : 'Migrate existing storage to D1'}</button>
+      ${this.migrationStatus ? `<div class="knowledge-meta" style="margin:7px 0">${UI.escapeHTML(this.migrationStatus)}</div>` : ''}
       ${this.users.map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${UI.escapeHTML(user.role)}</div></div>${user.role === 'owner' ? '<span class="tag tg">Owner</span>' : user.role === 'admin' ? `<button class="btn bsm br" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','user')">Remove admin</button>` : `<button class="btn bsm" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','admin')">Make admin</button>`}</div>`).join('') || '<div class="ps">No accounts found.</div>'}
     </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
