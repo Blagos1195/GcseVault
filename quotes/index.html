@@ -2813,6 +2813,7 @@ function checkDup(){
 }
 
 async function saveQuote(){
+  if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const t=(document.getElementById('a-t')?.value||'').trim();
   const c=(document.getElementById('a-c')?.value||'').trim();
   if(!t||!c){toast('Fill in quote text and character');return;}
@@ -2821,6 +2822,7 @@ async function saveQuote(){
   const tempId=Date.now().toString()+'-qv'+Math.random().toString(36).slice(2,6);
   const q={
     id:tempId,
+    userKey:VaultUser.getKey(),
     work:document.getElementById('a-w').value,
     char:c,loc:`${act}${sc?', '+sc:''}`.trim()||'Unknown',
     themes:(document.getElementById('a-th').value||'').split(',').map(t=>t.trim()).filter(Boolean),
