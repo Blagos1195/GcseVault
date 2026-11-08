@@ -12,17 +12,18 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
    `npx wrangler d1 migrations apply leaderboard --remote`
 
-3. Confirm both migrations completed:
+3. Confirm all tracked migrations completed:
 
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
    - `0003_one_time_admin_setup.sql`
+   - `0004_password_accounts.sql`
 
 4. Deploy the Worker:
 
    `npx wrangler deploy`
 
-Do not deploy the new Worker before applying the migrations. It expects the account role and storage tables to exist.
+Do not deploy the new Worker before applying all four migrations. It expects the account role, storage and password-session tables to exist.
 
 ## Initial owner setup
 
@@ -50,3 +51,9 @@ Do not delete the old KV namespaces or their records. Keep them until the migrat
 ## Verification still required
 
 The repository integration can update and test code, but it cannot access the live Cloudflare account, export its D1 database, enumerate production KV records, apply migrations, or deploy the Worker. Those production steps must be completed from an authenticated Wrangler session. The migration endpoint reports scanned and copied counts; compare those with the original namespace counts before considering the migration complete.
+
+## Password account rollout
+
+After the Worker and website updates are deployed together, existing users can open the account dialog from the account-key panel and choose **Set password for linked account**. They prove control of their existing account key once, then use username and password on other devices. The existing key remains a recovery credential and should be kept private. The Worker stores only a salted PBKDF2 password hash and hashed session tokens. Passwords cannot be viewed by administrators. This is not end-to-end encryption; account data remains readable to the Worker and database.
+
+Do not remove the existing user-key flow during the migration period. Users who have not yet set a password continue using their existing account key. Confirm the D1 migration and backup before deployment.
