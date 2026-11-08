@@ -251,6 +251,14 @@ test("admin sessions cannot be supplied in query strings", async () => {
 
 test("theme storage rejects unknown accounts", async () => {
   const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    if (sql === "SELECT user_key FROM users WHERE user_key = ?") {
+      return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => null }) };
+    }
+    return statement;
+  };
   let listed = false;
   env.THEMES.list = async () => { listed = true; return { keys: [] }; };
   const response = await call("/themes/list?userKey=unknown", env);
