@@ -3,7 +3,7 @@
 ## How accounts work
 
 - Users sign in with a username and password.
-- The Worker stores a PBKDF2-HMAC-SHA-256 password hash with 600,000 iterations and a unique random salt. It does not store plaintext passwords.
+- The browser derives a PBKDF2-HMAC-SHA-256 verifier with 600,000 iterations and a unique random salt. The Worker stores a SHA-256 hash of that verifier and the salt, not the plaintext password or a directly replayable verifier.
 - A successful login creates a cryptographically random 256-bit session token. D1 stores only the SHA-256 hash of that token.
 - Sessions expire after 30 days. Logging out revokes the current session.
 - The account's existing internal user key continues to link QuoteVault, DateVault, Revision, themes, leaderboard progress and moderation records.
@@ -13,7 +13,7 @@
 
 Users should choose a password that is unique to GCSE Vault. Reusing a password from another site is risky: if that other site is breached, attackers may try the same password here.
 
-Password hashing slows down offline guessing if the database is stolen, but it cannot make a weak or reused password safe. Login attempts are rate-limited by IP address and username.
+The PBKDF2 step slows offline guessing if the database is stolen, but it cannot make a weak or reused password safe. The extra server-side hash means a database dump does not directly provide the value accepted by the login endpoint. Login attempts are rate-limited by IP address and username.
 
 ## Account recovery
 
@@ -23,7 +23,7 @@ There is no email-based reset or support-assisted identity verification yet. If 
 
 ## What administrators can and cannot see
 
-- Administrators do not have a way to view users' passwords. Only password hashes and salts are stored.
+- Administrators do not have a way to view users' passwords. Only a server-side hash of the PBKDF2 verifier and its salt are stored.
 - This is not end-to-end encryption. Revision sets and other account data are processed by the Worker and stored in the database/KV in readable form.
 - A person with sufficient access to the Cloudflare Worker, database or deployment pipeline may be able to access account data or change the application to collect data.
 - This is a proportionate design for study progress and revision sets, not a system for sensitive personal, financial or medical information.
