@@ -662,53 +662,19 @@ function awardRevisionXP(score){
   const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
   if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
 }
-async function createRevisionAccount(){
-  revisionRemoteUpdatedAt=null;
-  revisionSyncConflict=false;
-  revisionConflictData=null;
-  const username=document.getElementById('revision-account-username')?.value.trim()||'';
-  if(username.length<3||username.length>20||!/^[a-zA-Z0-9_-]+$/.test(username)){
-    state.accountMessage='Use 3–20 letters, numbers, underscores, or hyphens for the username.';
-    state.accountMessageType='error';renderRevision();return;
-  }
-  state.accountMessage='Creating your shared account…';state.accountMessageType='success';renderRevision();
-  try{
-    const response=await fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})});
-    const data=await response.json();
-    if(!response.ok||!data.userKey)throw new Error(data.error||'Could not create account.');
-    captureRevisionSnapshot('');
-    const anonymousSnapshot=localStorage.getItem(revisionSnapshotKey('anonymous'));
-    VaultUser.setUsername(data.user?.username||username);VaultUser.setKey(data.userKey);
-    if(anonymousSnapshot)localStorage.setItem(revisionSnapshotKey(data.userKey),anonymousSnapshot);
-    restoreRevisionSnapshot(data.userKey);
-    revisionRemoteUpdatedAt=null;
-    state.accountMessage='Account created. Your revision sets are syncing.';state.accountMessageType='success';
-    await syncRevision();renderRevision();
-    if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();
-  }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
+function createRevisionAccount(){
+  VaultUser.showAccountDialog();
+  setTimeout(()=>{
+    const input=document.getElementById('vault-account-username');
+    if(input&&state.accountDraft.username)input.value=state.accountDraft.username;
+  },0);
 }
-async function linkRevisionAccount(){
-  revisionRemoteUpdatedAt=null;
-  revisionSyncConflict=false;
-  revisionConflictData=null;
-  const userKey=document.getElementById('revision-account-key')?.value.trim()||'';
-  if(userKey.length<10){state.accountMessage='Enter the user key from your other device.';state.accountMessageType='error';renderRevision();return;}
-  state.accountMessage='Checking the user key…';state.accountMessageType='success';renderRevision();
-  try{
-    const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(userKey)}`);
-    const data=await response.json();
-    if(!response.ok||!data.found||!data.user)throw new Error('That user key was not found. Check it and try again.');
-    clearTimeout(revisionSyncTimer);
-    captureRevisionSnapshot(revisionUserKey());
-    VaultUser.setKey(userKey);VaultUser.setUsername(data.user.username);
-    restoreRevisionSnapshot(userKey);
-    revisionRemoteUpdatedAt=null;
-    if(data.user.theme){await ThemeManager.loadServerCustomThemes('global');if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');}
-    state.accountMessage=`Linked to ${data.user.username}. Loading your saved revision sets…`;state.accountMessageType='success';
-    await loadRevision();
-    if(!revisionSyncConflict)state.accountMessage=`Linked to ${data.user.username}.`;
-    renderRevision();
-  }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
+function linkRevisionAccount(){
+  VaultUser.showAccountDialog();
+  setTimeout(()=>{
+    const input=document.getElementById('vault-account-old-key');
+    if(input&&state.accountDraft.userKey)input.value=state.accountDraft.userKey;
+  },0);
 }
 async function copyRevisionUserKey(){
   if(!revisionUserKey())return;
