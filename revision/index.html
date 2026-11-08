@@ -542,8 +542,9 @@ async function resolveRevisionSyncConflict(choice){
   if(choice==='remote'&&revisionConflictData){
     revisionRemoteUpdatedAt=revisionConflictData.updatedAt||null;
     revisionSyncConflict=false;
+    const remote=revisionConflictData;
     revisionConflictData=null;
-    applyRevisionRemoteData(revisionConflictData||{});
+    applyRevisionRemoteData(remote);
     state.accountMessage='The other device’s copy has been loaded.';
     state.accountMessageType='success';
     renderRevision();
@@ -567,6 +568,7 @@ async function loadRevision(){
       const localUpdatedAt=localStorage.getItem('revision_local_updated_at')||'';
       if(localUpdatedAt&&payload.data.updatedAt&&localUpdatedAt>payload.data.updatedAt){
         revisionRemoteUpdatedAt=payload.data.updatedAt;
+        state.view='settings';
         revisionConflictData=payload.data;
         revisionSyncConflict=true;
         state.accountMessage='This device has newer unsynced revision changes. Choose which copy to keep in Settings.';
