@@ -339,3 +339,105 @@ test("admin logout requires the session header", async () => {
   assert.equal(allowed.status, 200);
   assert.equal(deleted, true);
 });
+
+
+test("password account setup hashes passwords, creates sessions and protects account-key endpoints", async () => {
+  const env = makeEnv();
+  const account = {
+    user_key: "account-key",
+    username: "student",
+    role: "user",
+    qv_mastered: 0,
+    dv_mastered: 0,
+    qv_xp: 0,
+    dv_xp: 0,
+    qv_mastered_ids: "[]",
+    dv_mastered_ids: "[]",
+    qv_pending_ids: "[]",
+    dv_pending_ids: "[]",
+    qv_pending_data: "[]",
+    dv_pending_data: "[]",
+    qv_rejected_ids: "[]",
+    dv_rejected_ids: "[]",
+    theme: "default"
+  };
+  let credential = null;
+  const sessions = new Map();
+  const kv = new Map();
+  env.QUOTEVAULT.get = async key => kv.get(key) || null;
+  env.QUOTEVAULT.put = async (key, value) => kv.set(key, value);
+  env.QUOTEVAULT.delete = async key => kv.delete(key);
+  env.DB.prepare = sql => ({
+    bind(...values) {
+      return {
+        first: async () => {
+          if (sql.includes("SELECT user_key FROM users WHERE user_key")) return values[0] === account.user_key ? { user_key: account.user_key } : null;
+          if (sql.includes("SELECT user_key FROM account_credentials")) return credential ? { user_key: account.user_key } : null;
+          if (sql.includes("SELECT username, role FROM users")) return { username: account.username, role: account.role };
+          if (sql.includes("FROM users u JOIN account_credentials")) {
+            return credential && values[0].toLowerCase() === account.username.toLowerCase()
+              ? { ...account, password_hash: credential.password_hash, password_salt: credential.password_salt }
+              : null;
+          }
+          if (sql.includes("FROM account_sessions s JOIN users")) {
+            const session = sessions.get(values[0]);
+            return session && session.expires_at > values[1]
+              ? { user_key: account.user_key, username: account.username, role: account.role }
+              : null;
+          }
+          if (sql.includes("SELECT * FROM users WHERE user_key")) return account;
+          return null;
+        },
+        run: async () => {
+          if (sql.includes("INSERT INTO account_credentials")) {
+            credential = { password_hash: values[1], password_salt: values[2] };
+          }
+          if (sql.includes("INSERT INTO account_sessions")) {
+            sessions.set(values[0], { user_key: values[1], expires_at: values[3] });
+          }
+          if (sql.includes("DELETE FROM account_sessions")) sessions.clear();
+          return { success: true, meta: { changes: 1 } };
+        },
+        all: async () => ({ results: [] })
+      };
+    }
+  });
+
+  const setup = await call("/account/setup", env, {
+    userKey: account.user_key,
+    password: "a-unique-long-test-password"
+  });
+  const setupData = await setup.json();
+  assert.equal(setup.status, 200);
+  assert.equal(setupData.userKey, account.user_key);
+  assert.notEqual(credential.password_hash, "a-unique-long-test-password");
+  assert.equal(credential.password_hash.length, 64);
+
+  const denied = await call("/lb/get?userKey=account-key", env);
+  assert.equal(denied.status, 401);
+
+  const login = await call("/account/login", env, {
+    username: account.username,
+    password: "a-unique-long-test-password"
+  });
+  const loginData = await login.json();
+  assert.equal(login.status, 200);
+  assert.equal(loginData.userKey, account.user_key);
+
+  const session = await call("/account/session", env, null, {
+    "X-Account-Session": loginData.token
+  });
+  assert.equal(session.status, 200);
+  assert.equal((await session.json()).username, account.username);
+
+  const allowed = await call("/lb/get?userKey=account-key", env, null, {
+    "X-Account-Session": loginData.token
+  });
+  assert.equal(allowed.status, 200);
+
+  const wrongPassword = await call("/account/login", env, {
+    username: account.username,
+    password: "not-the-password"
+  });
+  assert.equal(wrongPassword.status, 401);
+});
