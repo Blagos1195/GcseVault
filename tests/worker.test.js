@@ -48,10 +48,10 @@ function makeEnv(rows = []) {
   };
 }
 
-async function call(path, env, body) {
+async function call(path, env, body, extraHeaders = {}) {
   const request = new Request("https://example.test" + path, {
     method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : {},
+    headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...extraHeaders },
     body: body ? JSON.stringify(body) : undefined
   });
   return worker.fetch(request, env);
@@ -204,10 +204,10 @@ test("owner bootstrap promotes the linked account", async () => {
 
 test("owner can grant an account admin role", async () => {
   const env = makeEnv();
-  const response = await call("/admin/users?token=test-session", env, {
+  const response = await call("/admin/users", env, {
     username: "student",
     role: "admin"
-  });
+  }, { "X-Session-Token": "test-session" });
   assert.equal(response.status, 200);
   assert.ok(env.updates.some(update => update.sql.includes("SET role = ?") && update.values[0] === "admin"));
 });
@@ -221,4 +221,34 @@ test("revision sync verifies the account username", async () => {
     cards: []
   });
   assert.equal(response.status, 403);
+});
+
+test("username conflicts never disclose the existing account key", async () => {
+  const env = makeEnv([{ user_key: "private-account-key" }]);
+  const response = await call("/lb/register", env, {
+    username: "student",
+    site: "qv",
+    mastered: 0,
+    xp: 0
+  });
+  const data = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(data.error, "Username already taken");
+  assert.equal("existingKey" in data, false);
+  assert.equal(JSON.stringify(data).includes("private-account-key"), false);
+});
+
+test("admin sessions cannot be supplied in query strings", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/users?token=test-session", env);
+  assert.equal(response.status, 401);
+});
+
+test("theme storage rejects unknown accounts", async () => {
+  const env = makeEnv();
+  let listed = false;
+  env.THEMES.list = async () => { listed = true; return { keys: [] }; };
+  const response = await call("/themes/list?userKey=unknown", env);
+  assert.equal(response.status, 404);
+  assert.equal(listed, false);
 });
