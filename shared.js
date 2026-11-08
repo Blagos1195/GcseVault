@@ -368,124 +368,119 @@ const VaultUser = {
 
   showAccountDialog() {
     if (typeof window.openModal !== 'function') return;
-    const linked = this.getKey();
-    window.openModal(`<div>
-      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
-      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">Studying and creating personal cards are free without an account. Sign in when you want to join leaderboards, sync across devices, or submit cards and notes for publication. If you have an older account, link it with its existing user key below. This keeps your existing username and progress. Do not register a second account.</div>
-      ${!linked ? '<div class="fg"><label for="vault-account-old-key">Older account user key</label><input id="vault-account-old-key" autocomplete="off" placeholder="Paste your existing user key"></div><div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use the key from your old device or account settings. Your key stays private.</div>' : ''}
-      <div class="fg"><label for="vault-account-username">Username</label><input id="vault-account-username" autocomplete="username" value="${this.getUsername() || ''}"></div>
-      <div class="fg"><label for="vault-account-password">Password</label><input id="vault-account-password" type="password" autocomplete="current-password" minlength="12"></div>
-      <div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">Use at least 12 characters when creating or changing your password.</div>
-      <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn bg" id="vault-account-login">Sign in</button>
-        ${!linked ? '<button class="btn" id="vault-account-create">Create account</button><button class="btn" id="vault-account-migrate">Link old account & set password</button>' : ''}
-        ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
-        ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
-        ${this.getAccountSession() ? '<button class="btn" id="vault-account-logout">Sign out</button>' : ''}
+    const linked = !!this.getKey();
+    let mode = linked && !this.getAccountSession() ? 'setup' : 'login';
+    const usernameValue = () => UI.escapeHTML(this.getUsername() || '');
+    const refresh = () => {
+      if (this.getAccountSession()) {
+        window.openModal(`<div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Signed in as <strong style="color:var(--gold)">${usernameValue()}</strong></div>
+          <button class="btn" id="vault-account-logout">Sign out</button>
+          <button class="btn" onclick="closeModal()">Close</button>
+        </div>`);
+        document.getElementById('vault-account-logout').onclick = async () => {
+          await this.logoutAccount();
+          window.closeModal();
+          if (typeof window.render === 'function') window.render();
+          if (typeof window.renderRevision === 'function') window.renderRevision();
+        };
+        return;
+      }
+      const titles = { login: 'Sign in', create: 'Create account', setup: 'Set password', reset: 'Reset password' };
+      const descriptions = {
+        login: 'Use your GCSE Vault username and password to sync progress, join leaderboards and submit work for publication.',
+        create: 'Create one account for QuoteVault, DateVault and Revision. Personal study cards remain free without an account.',
+        setup: 'Your existing account is linked on this device. Set a password to use it across all three sites.',
+        reset: 'Choose a new password for your existing account.'
+      };
+      const isSetup = mode === 'setup' || mode === 'reset';
+      window.openModal(`<div>
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px">${descriptions[mode]}</div>
+        <div class="fg">
+          <label for="vault-account-username">Username</label>
+          <input id="vault-account-username" autocomplete="username" value="${usernameValue()}" ${isSetup?'readonly':''}>
+        </div>
+        <div class="fg">
+          <label for="vault-account-password">${mode === 'login' ? 'Password' : 'New password'}</label>
+          <input id="vault-account-password" type="password" autocomplete="${mode === 'login'?'current-password':'new-password'}" minlength="12">
+        </div>
+        <div style="font-size:.7rem;color:var(--text3);margin:-4px 0 10px">${mode === 'login'?'':'Use at least 12 characters.'}</div>
+        <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
+        <button class="btn bg" id="vault-account-submit">${titles[mode]}</button>
+        ${mode === 'login' ? '<button class="btn" id="vault-account-toggle">Create an account</button>' : mode === 'create' ? '<button class="btn" id="vault-account-toggle">Already have an account? Sign in</button>' : ''}
+        ${!linked && (mode === 'login' || mode === 'create') ? '<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--text3);font-size:.72rem">Have an older account? Recover it with your user key</summary><div class="fg" style="margin-top:9px"><label for="vault-account-old-key">Existing user key</label><input id="vault-account-old-key" autocomplete="off" placeholder="Paste your old user key"></div><button class="btn" id="vault-account-recover">Recover existing account</button></details>' : ''}
         <button class="btn" onclick="closeModal()">Cancel</button>
-      </div>
-    </div>`);
-    const username = document.getElementById('vault-account-username');
-    const password = document.getElementById('vault-account-password');
-    const error = document.getElementById('vault-account-error');
-    const login = async () => {
-      try {
-        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
-        await this.login(username.value.trim(), password.value);
+      </div>`);
+      const username = document.getElementById('vault-account-username');
+      const password = document.getElementById('vault-account-password');
+      const error = document.getElementById('vault-account-error');
+      const finish = async () => {
         window.closeModal();
         if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
         if (typeof window.loadRevision === 'function') await window.loadRevision();
         if (typeof window.render === 'function') window.render();
         if (typeof window.renderRevision === 'function') window.renderRevision();
-      } catch (e) { error.textContent = e.message; }
-    };
-    document.getElementById('vault-account-login').onclick = login;
-    const create = document.getElementById('vault-account-create');
-    if (create) create.onclick = async () => {
-      try {
+      };
+      const submit = document.getElementById('vault-account-submit');
+      submit.onclick = async () => {
         const name = username.value.trim();
-        if (!/^[a-zA-Z0-9_-]{3,20}$/.test(name)) throw new Error('Choose a username of 3–20 letters, numbers, _ or -.');
-        if (password.value.length < 12) throw new Error('Choose a password of at least 12 characters.');
-        create.disabled = true;
-        create.textContent = 'Creating account…';
-        const response = await fetch(`${this.WORKER_URL}/lb/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: name, site: 'qv', mastered: 0, xp: 0, mastered_ids: [], pending_ids: [], pending_data: [] })
-        });
-        const account = await this.readResponse(response);
-        if (!response.ok || !account.userKey) throw new Error(account.error || 'Could not create account.');
-        this.setKey(account.userKey);
-        this.setUsername(account.user?.username || name);
-        await this.setupPassword(password.value);
-        window.closeModal();
-        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
-        if (typeof window.loadRevision === 'function') await window.loadRevision();
-        if (typeof window.render === 'function') window.render();
-        if (typeof window.renderRevision === 'function') window.renderRevision();
-      } catch (e) {
-        error.textContent = e.message;
-        create.disabled = false;
-        create.textContent = 'Create account';
-      }
+        try {
+          if (password.value.length < 12) throw new Error('Use a password of at least 12 characters.');
+          submit.disabled = true;
+          if (mode === 'login') {
+            await this.login(name, password.value);
+          } else if (mode === 'create') {
+            if (!/^[a-zA-Z0-9_-]{3,20}$/.test(name)) throw new Error('Choose a username of 3–20 letters, numbers, _ or -.');
+            const response = await fetch(`${this.WORKER_URL}/lb/register`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: name, site: 'qv', mastered: 0, xp: 0, mastered_ids: [], pending_ids: [], pending_data: [] })
+            });
+            const account = await this.readResponse(response);
+            if (!response.ok || !account.userKey) throw new Error(account.error || 'Could not create account.');
+            this.setKey(account.userKey);
+            this.setUsername(account.user?.username || name);
+            await this.setupPassword(password.value);
+          } else if (mode === 'setup') {
+            await this.setupPassword(password.value);
+          } else {
+            await this.resetPassword(password.value);
+          }
+          await finish();
+        } catch (e) {
+          error.textContent = e.message;
+          submit.disabled = false;
+        }
+      };
+      const toggle = document.getElementById('vault-account-toggle');
+      if (toggle) toggle.onclick = () => {
+        mode = mode === 'create' ? 'login' : 'create';
+        refresh();
+      };
+      const recover = document.getElementById('vault-account-recover');
+      if (recover) recover.onclick = async () => {
+        const key = document.getElementById('vault-account-old-key').value.trim();
+        try {
+          if (key.length < 10) throw new Error('Enter the user key from your old account.');
+          recover.disabled = true;
+          const response = await fetch(`${this.WORKER_URL}/lb/get?userKey=${encodeURIComponent(key)}`);
+          const account = await this.readResponse(response);
+          if (!response.ok || !account.found || !account.user) throw new Error('That user key was not found.');
+          this.setKey(key);
+          this.setUsername(account.user.username);
+          const challenge = await fetch(`${this.WORKER_URL}/account/challenge?username=${encodeURIComponent(account.user.username)}`);
+          mode = challenge.ok ? 'reset' : 'setup';
+          refresh();
+        } catch (e) {
+          error.textContent = e.message;
+          recover.disabled = false;
+        }
+      };
     };
-    const migrate = document.getElementById('vault-account-migrate');
-    if (migrate) migrate.onclick = async () => {
-      const key = document.getElementById('vault-account-old-key').value.trim();
-      try {
-        if (key.length < 10) throw new Error('Paste the user key from your existing account.');
-        if (password.value.length < 12) throw new Error('Choose a password of at least 12 characters.');
-        migrate.disabled = true;
-        migrate.textContent = 'Checking existing account…';
-        const response = await fetch(`${this.WORKER_URL}/lb/get?userKey=${encodeURIComponent(key)}`);
-        const account = await this.readResponse(response);
-        if (!response.ok || !account.found || !account.user) throw new Error('That key was not found. Check it and try again.');
-        this.setKey(key);
-        this.setUsername(account.user.username);
-        username.value = account.user.username;
-        migrate.textContent = 'Setting password…';
-        await this.setupPassword(password.value);
-        window.closeModal();
-        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
-        if (typeof window.loadRevision === 'function') await window.loadRevision();
-        if (typeof window.render === 'function') window.render();
-        if (typeof window.renderRevision === 'function') window.renderRevision();
-      } catch (e) {
-        error.textContent = e.message;
-        migrate.disabled = false;
-        migrate.textContent = 'Link old account & set password';
-      }
-    };
-    const logout = document.getElementById('vault-account-logout');
-    if (logout) logout.onclick = async () => {
-      await this.logoutAccount();
-      window.closeModal();
-      if (typeof window.render === 'function') window.render();
-      if (typeof window.renderRevision === 'function') window.renderRevision();
-    };
-    const reset = document.getElementById('vault-account-reset');
-    if (reset) reset.onclick = async () => {
-      try {
-        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
-        await this.resetPassword(password.value);
-        window.closeModal();
-        if (typeof window.render === 'function') window.render();
-        if (typeof window.renderRevision === 'function') window.renderRevision();
-      } catch (e) { error.textContent = e.message; }
-    };
-    const setup = document.getElementById('vault-account-setup');
-    if (setup) setup.onclick = async () => {
-      try {
-        if (password.value.length < 12) throw new Error('Use at least 12 characters.');
-        await this.setupPassword(password.value);
-        window.closeModal();
-        if (typeof window.render === 'function') window.render();
-        if (typeof window.renderRevision === 'function') window.renderRevision();
-      } catch (e) { error.textContent = e.message; }
-    };
+    refresh();
   },
-
   getProfile() {
     return {
       username: this.getUsername(),
