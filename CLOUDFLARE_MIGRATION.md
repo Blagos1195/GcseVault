@@ -16,6 +16,7 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
+   - `0003_one_time_admin_setup.sql`
 
 4. Deploy the Worker:
 
@@ -28,7 +29,7 @@ Do not deploy the new Worker before applying the migrations. It expects the acco
 1. Open GCSE Vault and link the account that should own administration.
 2. Open the Admin Panel.
 3. Expand **First owner setup** and enter the existing `ADMIN_KEY` secret once.
-4. Sign in using that account. The one-time setup key cannot create another owner after setup is complete.
+4. Sign in using that account. A permanent D1 setup lock is claimed atomically with the owner promotion. The same key is rejected for every later account, even if the owner role is changed manually. The setup lock is not removed when an account's role changes.
 5. Remove the `ADMIN_KEY` secret from the Worker environment after successful setup. It is no longer needed.
 
 The owner can then grant or remove admin access from **Account permissions**. Admins can moderate submissions but cannot change account roles.
