@@ -369,7 +369,7 @@ const VaultUser = {
   showAccountDialog() {
     if (typeof window.openModal !== 'function') return;
     const linked = !!this.getKey();
-    let mode = linked && !this.getAccountSession() ? 'setup' : 'login';
+    let mode = 'login';
     const usernameValue = () => UI.escapeHTML(this.getUsername() || '');
     const refresh = () => {
       if (this.getAccountSession()) {
