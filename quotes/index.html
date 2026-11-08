@@ -1054,6 +1054,8 @@ async function lbUpdate(){
     if(r.ok) {
       const d = await r.json();
       if(d.userKey && d.userKey !== k) setUserKey(d.userKey);
+    } else if(r.status===401) {
+      VaultUser.showAccountDialog();
     }
   } catch(e) { /* non-fatal */ }
 }
