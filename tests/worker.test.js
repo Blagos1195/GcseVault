@@ -156,3 +156,24 @@ test("custom theme keys reject separators", async () => {
   assert.equal(response.status, 400);
   assert.equal(saved, false);
 });
+
+test("username availability allows the account owner to keep their own name", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+
+  const response = await call("/lb/username-available?username=student&userKey=account-key", env);
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(data, { available: true });
+});
+
+test("username availability does not disclose another account key", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+
+  const response = await call("/lb/username-available?username=student&userKey=other-key", env);
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(data, { available: false });
+  assert.equal(JSON.stringify(data).includes("account-key"), false);
+});
