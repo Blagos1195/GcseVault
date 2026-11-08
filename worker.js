@@ -6,7 +6,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key"
+      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token"
     };
 
     if (request.method === "OPTIONS") {
@@ -79,6 +79,14 @@ export default {
       const token = crypto.randomUUID() + crypto.randomUUID();
       await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/auth/session" && request.method === "GET") {
+      const user = await getSessionUser(url, request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      return new Response(JSON.stringify({ username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
