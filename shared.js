@@ -1215,8 +1215,8 @@ const AdminManager = {
     const item = this.items[index];
     if (!item) return;
     const routes = {
-      quote: { approve: '/approve', reject: '/reject' },
-      date: { approve: '/dv/approve', reject: '/dv/reject' },
+      quote: { approve: '/approve', reject: '/reject', edit: '/update-pending' },
+      date: { approve: '/dv/approve', reject: '/dv/reject', edit: '/dv/update-pending' },
       feedback: { delete: '/feedback/delete' },
       'revision-note': { approve: '/revision/public/approve', reject: '/revision/public/reject', edit: '/revision/public/update', delete: '/revision/public/admin-delete' }
     };
@@ -1225,10 +1225,28 @@ const AdminManager = {
     try {
       const body = { id: item.id };
       if (action === 'edit') {
-        const title = window.prompt('Edit public note title:', item.title || '');
-        if (!title) return;
-        const subject = window.prompt('Edit subject:', item.subject || 'General') || item.subject || 'General';
-        body.note = { title, subject, level: item.level || '', cards: item.cards || [] };
+        const editable = { ...item };
+        delete editable._source;
+        delete editable._kind;
+        delete editable._pending;
+        const raw = window.prompt('Edit the complete submission as JSON:', JSON.stringify(editable, null, 2));
+        if (raw === null) return;
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error('Invalid JSON. No changes were saved.');
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          throw new Error('The submission must be a JSON object.');
+        }
+        data.id = item.id;
+        if (item.submittedAt) data.submittedAt = item.submittedAt;
+        if (item._kind === 'revision-note') {
+          body.note = data;
+        } else {
+          body.data = data;
+        }
       }
       const response = await fetch(`${WORKER_API}${path}`, {
         method: 'POST',
@@ -1278,18 +1296,24 @@ const AdminManager = {
       const detail = item._kind === 'quote'
         ? `${item.char || ''} · ${item.work || ''} · ${item.loc || ''}`
         : item._kind === 'date' ? `${item.year || ''} · ${item.topic || ''}` : item._kind === 'revision-note' ? `${item.cards?.length || 0} cards · ${item.subject || ''} · ${item.level || ''}` : item.description;
+      const reviewControls = item._kind === 'revision-note' && !item._pending ? '' : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`;
       const controls = item._kind === 'feedback'
         ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
-        : item._kind === 'revision-note'
-          ? `${item._pending ? `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>` : ''}<button class="btn bsm" onclick="AdminManager.action(${index}, 'edit')">✏ Edit</button><button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>`
-        : `<button class="btn bsm" onclick="AdminManager.action(${index}, 'approve')">✅ Approve</button>
-          <button class="btn bsm br" onclick="AdminManager.action(${index}, 'reject')">❌ Reject</button>`;
+        : `${reviewControls}<button class="btn bsm" onclick="AdminManager.action(${index}, 'edit')">✏ Edit full data</button>${item._kind === 'revision-note' ? `<button class="btn bsm br" onclick="AdminManager.action(${index}, 'delete')">🗑 Delete</button>` : ''}`;
+      const submittedData = { ...item };
+      delete submittedData._source;
+      delete submittedData._kind;
+      delete submittedData._pending;
       return `<div class="card" style="margin-bottom:8px;border-left:3px solid var(--amber)">
         <div class="tag tg">${UI.escapeHTML(item._source)}</div>
         <div style="font-weight:600;margin-top:5px">${UI.escapeHTML(title || 'Untitled')}</div>
         <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${UI.escapeHTML(detail || '')}</div>
         <div style="font-size:.62rem;color:var(--text3);margin-top:5px">${UI.escapeHTML(item.submittedAt || item.timestamp || '')}</div>
-        <div style="display:flex;gap:6px;margin-top:8px">${controls}</div>
+        <details style="margin-top:9px">
+          <summary style="cursor:pointer;font-size:.72rem;color:var(--text2)">View all submitted data</summary>
+          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;font-size:.68rem;background:var(--bg2);padding:9px;border-radius:7px;margin-top:7px">${UI.escapeHTML(JSON.stringify(submittedData, null, 2))}</pre>
+        </details>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${controls}</div>
       </div>`;
     }).join('');
     const userManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
