@@ -3167,7 +3167,7 @@ function rSett(){
     ${customCards?`<div style="font-size:.63rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Your themes</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px">${customCards}</div>`:''}
     <button class="btn" style="color:var(--purple3);border-color:var(--purple)" onclick="openThemeBuilder('')">🎨 Create Custom Theme</button>
-    ${getUserKey()?`<button class="btn bsm" style="color:var(--teal2);border-color:var(--teal);margin-left:4px" onclick="loadServerCustomThemes().then(()=>render()).then(()=>toast('☁️ Themes synced'))">☁️ Sync</button>`:''}
+    ${VaultUser.getAccountSession()?`<button class="btn bsm" style="color:var(--teal2);border-color:var(--teal);margin-left:4px" onclick="loadServerCustomThemes().then(()=>render()).then(()=>toast('☁️ Themes synced'))">☁️ Sync</button>`:''}
   </div>
 
   <div class="sec">Account</div>
