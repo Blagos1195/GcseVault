@@ -3316,24 +3316,6 @@ async function loadCloudQuotes(){
 
 function rAdmin(){
   return AdminManager.render();
-  /*
-  if(!_adminAuth){
-    return`<div>
-    ${backBtn()}
-    <div class="pt">Admin Panel</div>
-    <div class="ps">Password-protected · manage quote submissions from all devices</div>
-    <div class="card" style="max-width:360px">
-      <div class="fg"><label>Password</label>
-        <input type="password" id="adm-pw" placeholder="Enter admin password"
-          onkeydown="if(event.key==='Enter')adminLogin()">
-      </div>
-      <button class="btn bg" onclick="adminLogin()" style="margin-top:2px">🔐 Login</button>
-      <div id="adm-err" style="margin-top:8px"></div>
-    </div>
-    </div>`;
-  }
-  return rAdminPanel();
-  */
 }
 
 async function adminLogin(){await AdminManager.login();}
