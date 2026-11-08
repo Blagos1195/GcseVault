@@ -756,12 +756,11 @@ function hasAdminSession() {
 async function apiRequest(path, options = {}) {
   const token = getAdminToken();
   const url = new URL(path, `${WORKER_API}/`);
-  if (token) url.searchParams.set('token', token);
-
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'X-Session-Token': token } : {}),
       ...(options.headers || {})
     }
   });
@@ -866,16 +865,18 @@ const AdminManager = {
 
   async request(path) {
     const token = this.getToken();
-    const response = await fetch(`${WORKER_API}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`);
+    const response = await fetch(`${WORKER_API}${path}`, {
+      headers: { 'X-Session-Token': token }
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   },
 
   async setRole(username, role) {
     try {
-      const response = await fetch(`${WORKER_API}/admin/users?token=${encodeURIComponent(this.getToken())}`, {
+      const response = await fetch(`${WORKER_API}/admin/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
         body: JSON.stringify({ username, role })
       });
       if (!response.ok) throw new Error(response.status === 404 ? 'Account not found.' : `HTTP ${response.status}`);
@@ -941,9 +942,9 @@ const AdminManager = {
         const subject = window.prompt('Edit subject:', item.subject || 'General') || item.subject || 'General';
         body.note = { title, subject, level: item.level || '', cards: item.cards || [] };
       }
-      const response = await fetch(`${WORKER_API}${path}?token=${encodeURIComponent(this.getToken())}`, {
+      const response = await fetch(`${WORKER_API}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
         body: JSON.stringify(body)
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
