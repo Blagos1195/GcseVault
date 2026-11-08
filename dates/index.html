@@ -1033,61 +1033,6 @@ function dismissRejectedFacts(remove){
   closeModal();save();render();
 }
 
-// ── User Key modal ──
-function showUserKeyModal(){
-  const k=getUserKey()||'';
-  openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🔑 Account / User Key</div>
-    <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
-      Your User Key links your progress across multiple devices.<br>
-      <span style="color:var(--text3)">Copy it on this device, paste it on another — your mastered dates and XP will sync automatically.</span>
-    </div>
-    ${k?`
-    <div style="font-size:.68rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Your current key</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
-      <input type="text" id="uk-display" value="${k}" readonly style="font-family:'DM Mono',monospace;font-size:.72rem;background:var(--bg3);color:var(--text2);flex:1">
-      <button class="btn bsm" onclick="navigator.clipboard.writeText('${k}').then(()=>toast('📋 Key copied!'))" style="color:var(--teal);border-color:var(--teal);white-space:nowrap">📋 Copy</button>
-    </div>`:''}
-    <div style="font-size:.68rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">${k?'Enter a different key (from another device)':'Enter your key from another device'}</div>
-    <div class="fg">
-      <input type="text" id="uk-input" placeholder="Paste user key here…" style="font-family:'DM Mono',monospace;font-size:.72rem">
-    </div>
-    <div id="uk-err" style="font-size:.72rem;margin-bottom:8px"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bg" onclick="applyUserKey()">✓ Use This Key</button>
-      ${k?`<button class="btn" style="color:var(--coral);border-color:var(--coral)" onclick="if(confirm('This will unlink your account from this device. Your local progress stays but will no longer sync. Continue?')){localStorage.removeItem('lb_userKey');localStorage.removeItem('qv_userKey');closeModal();toast('🔓 Key removed');render();}">Unlink Key</button>`:''}
-      <button class="btn" onclick="VaultUser.showAccountDialog()">Password account</button><button class="btn" onclick="closeModal()">Cancel</button>
-    </div>
-  </div>`);
-  setTimeout(()=>{const el=document.getElementById('uk-input');if(el)el.focus();},80);
-}
-
-async function applyUserKey(){
-  const inp=document.getElementById('uk-input');
-  if(!inp)return;
-  const v=inp.value.trim();
-  if(!v){document.getElementById('uk-err').innerHTML=`<span style="color:var(--coral)">Please paste a key</span>`;return;}
-  if(v.length<10){document.getElementById('uk-err').innerHTML=`<span style="color:var(--coral)">That doesn't look like a valid key</span>`;return;}
-  const errEl=document.getElementById('uk-err');
-  errEl.innerHTML=`<span style="color:var(--blue)">⏳ Looking up key…</span>`;
-  try{
-    const r=await fetch(WORKER_URL+'/lb/get?userKey='+encodeURIComponent(v));
-    const d=await r.json();
-    if(!d.found){
-      errEl.innerHTML=`<span style="color:var(--coral)">Key not found — double-check and try again</span>`;
-      return;
-    }
-    setUserKey(v);
-    if(d.user?.username)setUsername(d.user.username);
-    closeModal();
-    toast('🔑 Key linked! Syncing your progress…',2500);
-    await syncFromWorker();
-    render();
-  }catch(e){
-    errEl.innerHTML=`<span style="color:var(--coral)">Connection error — check your internet</span>`;
-  }
-}
-
 function onMastery(){
   const u=getUsername();
   if(!u){
