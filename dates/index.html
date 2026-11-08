@@ -3174,8 +3174,8 @@ function rSett(){
   <div class="card" style="max-width:420px;margin-bottom:10px">
     <div class="srow">
       <div>
-        <div style="font-size:.8rem">${VaultUser.getAccountSession() ? 'Signed in' : 'Not signed in'}</div>
-        <div style="font-size:.68rem;color:var(--text3)">${VaultUser.getAccountSession() ? 'Username: <strong style="color:var(--gold)">' + UI.escapeHTML(getUsername() || 'Account') + '</strong> · Sync enabled' : 'Sign in or create an account to sync across devices, join leaderboards and submit work for publication.'}</div>
+        <div style="font-size:.8rem">${VaultUser.getAccountSession() ? 'Signed in' : VaultUser.getKey() ? 'Existing account linked' : 'Not signed in'}</div>
+        <div style="font-size:.68rem;color:var(--text3)">${VaultUser.getAccountSession() ? 'Username: <strong style="color:var(--gold)">' + UI.escapeHTML(getUsername() || 'Account') + '</strong> · Sync enabled' : VaultUser.getKey() ? 'Set a password to enable account sync across devices.' : 'Sign in or create an account to sync across devices, join leaderboards and submit work for publication.'}</div>
       </div>
       <button class="btn bsm" onclick="VaultUser.showAccountDialog()">${VaultUser.getAccountSession() ? 'Manage account' : 'Sign in / Create account'}</button>
     </div>
