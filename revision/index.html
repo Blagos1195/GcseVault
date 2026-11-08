@@ -291,6 +291,52 @@ function saveRevision(remote=false){
   syncActiveRevisionSet();
   if(!remote)syncRevisionSoon();
 }
+function revisionSnapshotKey(userKey){
+  return `revision_local_snapshot:${userKey||'anonymous'}`;
+}
+function captureRevisionSnapshot(userKey=revisionUserKey()){
+  const updatedAt=userKey
+    ? localStorage.getItem(revisionLocalUpdatedAtKey())||''
+    : localStorage.getItem('revision_local_updated_at')||'';
+  if(userKey&&updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),updatedAt);
+  localStorage.setItem('revision_local_updated_at_migrated','1');
+  const snapshot={
+    accountSets:state.accountSets,
+    activeSetId:state.activeSetId,
+    cards:state.cards,
+    progress:state.progress,
+    xp:state.xp,
+    streak:state.streak,
+    lastReview:state.lastReview,
+    updatedAt
+  };
+  localStorage.setItem(revisionSnapshotKey(userKey),JSON.stringify(snapshot));
+}
+function restoreRevisionSnapshot(userKey){
+  let snapshot=null;
+  try{snapshot=JSON.parse(localStorage.getItem(revisionSnapshotKey(userKey))||'null');}catch{}
+  if(snapshot){
+    state.accountSets=Array.isArray(snapshot.accountSets)?snapshot.accountSets.map(set=>normalizeRevisionSet(set,DEFAULT_REVISION_SET_ID)):initialRevisionSets;
+    state.activeSetId=snapshot.activeSetId||state.accountSets[0]?.id||DEFAULT_REVISION_SET_ID;
+    state.cards=Array.isArray(snapshot.cards)?snapshot.cards:[];
+    state.progress=snapshot.progress&&typeof snapshot.progress==='object'?snapshot.progress:{};
+    state.xp=Number(snapshot.xp)||0;
+    state.streak=Number(snapshot.streak)||0;
+    state.lastReview=snapshot.lastReview||'';
+    if(snapshot.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),snapshot.updatedAt);
+    else localStorage.removeItem(revisionLocalUpdatedAtKey());
+  }else{
+    state.accountSets=[normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''},DEFAULT_REVISION_SET_ID)];
+    state.activeSetId=DEFAULT_REVISION_SET_ID;
+    state.cards=[];
+    state.progress={};
+    state.xp=0;
+    state.streak=0;
+    state.lastReview='';
+    localStorage.removeItem(revisionLocalUpdatedAtKey());
+  }
+  saveRevision(true);
+}
 function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
@@ -582,6 +628,7 @@ async function resolveRevisionSyncConflict(choice){
 }
 async function loadRevision(){
   if(!revisionUserKey())return;
+  if(!localStorage.getItem(revisionSnapshotKey(revisionUserKey())))captureRevisionSnapshot(revisionUserKey());
   try{
     const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
@@ -629,7 +676,12 @@ async function createRevisionAccount(){
     const response=await fetch(`${ThemeManager.WORKER_URL}/lb/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,site:'qv',mastered:0,xp:0,mastered_ids:[],pending_ids:[],pending_data:[],theme:localStorage.getItem('vt_theme')||'default'})});
     const data=await response.json();
     if(!response.ok||!data.userKey)throw new Error(data.error||'Could not create account.');
+    captureRevisionSnapshot('');
+    const anonymousSnapshot=localStorage.getItem(revisionSnapshotKey('anonymous'));
     VaultUser.setUsername(data.user?.username||username);VaultUser.setKey(data.userKey);
+    if(anonymousSnapshot)localStorage.setItem(revisionSnapshotKey(data.userKey),anonymousSnapshot);
+    restoreRevisionSnapshot(data.userKey);
+    revisionRemoteUpdatedAt=null;
     state.accountMessage='Account created. Your revision sets are syncing.';state.accountMessageType='success';
     await syncRevision();renderRevision();
   }catch(error){state.accountMessage=error.message||'Could not connect to the account service.';state.accountMessageType='error';renderRevision();}
@@ -645,7 +697,11 @@ async function linkRevisionAccount(){
     const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(userKey)}`);
     const data=await response.json();
     if(!response.ok||!data.found||!data.user)throw new Error('That user key was not found. Check it and try again.');
+    clearTimeout(revisionSyncTimer);
+    captureRevisionSnapshot(revisionUserKey());
     VaultUser.setKey(userKey);VaultUser.setUsername(data.user.username);
+    restoreRevisionSnapshot(userKey);
+    revisionRemoteUpdatedAt=null;
     if(data.user.theme){await ThemeManager.loadServerCustomThemes('global');if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');}
     state.accountMessage=`Linked to ${data.user.username}. Loading your saved revision sets…`;state.accountMessageType='success';
     await loadRevision();
