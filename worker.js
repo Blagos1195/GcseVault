@@ -16,7 +16,7 @@ export default {
     const ADMIN_KEY = env.ADMIN_KEY;
 
     async function getSessionUser(reqUrl, req, tokenOverride) {
-      const token = tokenOverride || reqUrl.searchParams.get("token") || req.headers.get("X-Session-Token");
+      const token = tokenOverride || req.headers.get("X-Session-Token");
       if (!token) return null;
       const stored = await env.QUOTEVAULT.get("session:" + token);
       if (!stored) return null;
@@ -901,6 +901,8 @@ export default {
       if (!userKey || theme === undefined) {
         return new Response("Missing fields", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
       try {
         await env.DB.prepare(
           `UPDATE users SET theme=?, updated_at=? WHERE user_key=?`
@@ -921,6 +923,10 @@ export default {
       if (!userKey) {
         return new Response("Missing userKey", { status: 400, headers: cors });
       }
+      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      if (!account) return new Response("Account not found", { status: 404, headers: cors });
+      const safeStreak = Math.max(0, Math.min(10000, Math.floor(Number(streak) || 0)));
+      const safeMaxStreak = Math.max(safeStreak, Math.min(10000, Math.floor(Number(max_streak) || 0)));
       try {
         await env.DB.prepare(
           `UPDATE users
@@ -928,7 +934,7 @@ export default {
                max_streak = CASE WHEN ? > COALESCE(max_streak, 0) THEN ? ELSE COALESCE(max_streak, 0) END,
                updated_at = ?
            WHERE user_key = ?`
-        ).bind(streak, max_streak, max_streak, new Date().toISOString(), userKey).run();
+        ).bind(safeStreak, safeMaxStreak, safeMaxStreak, new Date().toISOString(), userKey).run();
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...cors, "Content-Type": "application/json" }
         });
