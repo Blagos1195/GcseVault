@@ -884,6 +884,7 @@ const AdminManager = {
       for (const phase of ['revision', 'themes']) {
         let cursor = null;
         let processed = 0;
+        let migrated = 0;
         do {
           const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
             method: 'POST',
@@ -893,8 +894,9 @@ const AdminManager = {
           if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
           const result = await response.json();
           processed += result.processed || 0;
+          migrated += result.migrated || 0;
           cursor = result.cursor || null;
-          this.migrationStatus = `Migrating ${phase}: ${processed} records scanned...`;
+          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied...`;
           if (typeof window.render === 'function') window.render();
         } while (cursor);
       }
