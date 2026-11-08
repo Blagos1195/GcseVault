@@ -25,7 +25,7 @@
 - Custom themes use D1 as the primary store. KV remains a backup/mirror and is imported when needed.
 - An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records.
 - Admin access uses account roles: one owner can grant or remove admin access. Admins can moderate but cannot manage roles.
-- Admin sessions use random tokens in request headers, expire after eight hours, and are checked against the current account role on each request. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup.
+- Admin sessions use random tokens in request headers, expire after eight hours, and are checked against the current account role on each request. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup. A permanent D1 setup lock is claimed atomically with the first owner promotion, preventing reuse for another account even if roles are later altered.
 - Added worker regression tests, frontend JavaScript syntax checks, and a GitHub Actions test workflow.
 - Removed the local Wrangler account cache from the branch and added ignore rules for Wrangler and environment files.
 
