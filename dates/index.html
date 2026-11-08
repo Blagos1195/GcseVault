@@ -3325,26 +3325,8 @@ function exportCSV(){
 
 function rAdmin(){
   return AdminManager.render();
-  /*
-  if(!_adminAuth){
-    return`<div>
-    ${backBtn()}
-    <div class="pt">Admin Panel</div>
-    <div class="ps">Password-protected · manage fact submissions</div>
-    <div class="card" style="max-width:360px">
-      <form onsubmit="event.preventDefault();adminLogin()">
-        <div class="fg"><label>Password</label>
-          <input type="password" id="adm-pw" placeholder="Enter admin password" autocomplete="current-password">
-        </div>
-        <button type="submit" class="btn bg" style="margin-top:2px">🔐 Login</button>
-      </form>
-      <div id="adm-err" style="margin-top:8px"></div>
-    </div>
-    </div>`;
-  }
-  return rAdminPanel();
-  */
 }
+
 async function adminLogin(){await AdminManager.login();}
 function adminLogout(){AdminManager.logout();}
 async function adminLoadPending(){await AdminManager.refresh();}
