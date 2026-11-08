@@ -271,7 +271,15 @@ function syncActiveRevisionSet(){
   localStorage.setItem(revisionActiveSetKey, state.activeSetId);
 }
 function revisionLocalUpdatedAtKey(){
-  return revisionUserKey() ? `revision_local_updated_at:${revisionUserKey()}` : 'revision_local_updated_at';
+  const userKey=revisionUserKey();
+  if(!userKey)return 'revision_local_updated_at';
+  const key=`revision_local_updated_at:${userKey}`;
+  const legacy=localStorage.getItem('revision_local_updated_at');
+  if(!localStorage.getItem(key)&&legacy&&!localStorage.getItem('revision_local_updated_at_migrated')){
+    localStorage.setItem(key,legacy);
+    localStorage.setItem('revision_local_updated_at_migrated','1');
+  }
+  return key;
 }
 function saveRevision(remote=false){
   if(!remote)localStorage.setItem(revisionLocalUpdatedAtKey(),new Date().toISOString());
