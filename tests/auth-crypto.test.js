@@ -17,8 +17,7 @@ vm.runInNewContext(source, { window: browser, crypto: webcrypto, btoa: browser.b
 
 test("encrypted data round-trips and recovery key restores the encryption key", async () => {
   const crypto = browser.GcseVaultCrypto;
-  const salt = crypto.createSalt();
-  const key = await crypto.deriveKey("a-long-unique-test-password", salt);
+  const key = await crypto.createVaultKey();
   const original = { cards: [{ front: "Question", back: "Answer" }], progress: { xp: 42 } };
   const envelope = await crypto.encrypt(key, original);
   assert.equal(JSON.stringify(await crypto.decrypt(key, envelope)), JSON.stringify(original));
