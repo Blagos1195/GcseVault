@@ -36,7 +36,7 @@ export default {
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
-        "SELECT user_key FROM users WHERE role = 'owner' LIMIT 1"
+        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
       ).first();
       return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -50,17 +50,22 @@ export default {
       }
       const userKey = String(body.userKey || "").trim();
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
-      const existingOwner = await env.DB.prepare(
-        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') LIMIT 1"
-      ).first();
-      if (existingOwner) return new Response("Owner setup has already been completed", { status: 409, headers: cors });
       const account = await env.DB.prepare(
-        "SELECT user_key FROM users WHERE user_key = ?"
+        "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
       ).bind(userKey).first();
-      if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      await env.DB.prepare(
-        "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user'"
-      ).bind(userKey).run();
+      if (!account) return new Response("Account not found or not eligible for owner setup", { status: 404, headers: cors });
+      const usedAt = new Date().toISOString();
+      const results = await env.DB.batch([
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO admin_setup (id, user_key, used_at) SELECT 1, ?, ? WHERE NOT EXISTS (SELECT 1 FROM admin_setup WHERE id = 1) AND NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin')) AND EXISTS (SELECT 1 FROM users WHERE user_key = ? AND role = 'user')"
+        ).bind(userKey, usedAt, userKey),
+        env.DB.prepare(
+          "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user' AND EXISTS (SELECT 1 FROM admin_setup WHERE id = 1 AND user_key = ?)"
+        ).bind(userKey, userKey)
+      ]);
+      if (!results?.[0]?.meta?.changes || !results?.[1]?.meta?.changes) {
+        return new Response("Owner setup has already been completed", { status: 409, headers: cors });
+      }
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
