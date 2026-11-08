@@ -379,7 +379,7 @@ const VaultUser = {
       <div id="vault-account-error" style="font-size:.72rem;margin:8px 0;color:var(--coral)"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn bg" id="vault-account-login">Sign in</button>
-        ${!linked ? '<button class="btn" id="vault-account-migrate">Link old account & set password</button>' : ''}
+        ${!linked ? '<button class="btn" id="vault-account-create">Create account</button><button class="btn" id="vault-account-migrate">Link old account & set password</button>' : ''}
         ${linked && !this.getAccountSession() ? '<button class="btn" id="vault-account-setup">Set password for linked account</button>' : ''}
         ${linked ? '<button class="btn" id="vault-account-reset">Reset using account key</button>' : ''}
         ${this.getAccountSession() ? '<button class="btn" id="vault-account-logout">Sign out</button>' : ''}
@@ -401,6 +401,35 @@ const VaultUser = {
       } catch (e) { error.textContent = e.message; }
     };
     document.getElementById('vault-account-login').onclick = login;
+    const create = document.getElementById('vault-account-create');
+    if (create) create.onclick = async () => {
+      try {
+        const name = username.value.trim();
+        if (!/^[a-zA-Z0-9_-]{3,20}$/.test(name)) throw new Error('Choose a username of 3–20 letters, numbers, _ or -.');
+        if (password.value.length < 12) throw new Error('Choose a password of at least 12 characters.');
+        create.disabled = true;
+        create.textContent = 'Creating account…';
+        const response = await fetch(`${this.WORKER_URL}/lb/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: name, site: 'qv', mastered: 0, xp: 0, mastered_ids: [], pending_ids: [], pending_data: [] })
+        });
+        const account = await this.readResponse(response);
+        if (!response.ok || !account.userKey) throw new Error(account.error || 'Could not create account.');
+        this.setKey(account.userKey);
+        this.setUsername(account.user?.username || name);
+        await this.setupPassword(password.value);
+        window.closeModal();
+        if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
+        if (typeof window.loadRevision === 'function') await window.loadRevision();
+        if (typeof window.render === 'function') window.render();
+        if (typeof window.renderRevision === 'function') window.renderRevision();
+      } catch (e) {
+        error.textContent = e.message;
+        create.disabled = false;
+        create.textContent = 'Create account';
+      }
+    };
     const migrate = document.getElementById('vault-account-migrate');
     if (migrate) migrate.onclick = async () => {
       const key = document.getElementById('vault-account-old-key').value.trim();
