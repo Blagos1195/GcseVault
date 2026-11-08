@@ -935,7 +935,7 @@ const AdminManager = {
     const path = routes[item._kind]?.[action];
     if (!path) return;
     try {
-      const body = { id: item.id, token: this.getToken() };
+      const body = { id: item.id };
       if (action === 'edit') {
         const title = window.prompt('Edit public note title:', item.title || '');
         if (!title) return;
