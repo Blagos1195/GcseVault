@@ -1,46 +1,46 @@
 # GCSE Vault backend audit
 
-## Current data layout
+## Data layout
 
-| Data | Current location |
-|---|---|
-| QuoteVault and DateVault account stats, XP, mastery IDs, streaks and moderation metadata | D1 `users` table |
-| Revision accounts, sets, progress and revision leaderboard | `REVISION` KV namespace |
-| Public and pending revision notes | `REVISION` KV namespace |
-| Custom themes | `THEMES` KV namespace, with a browser local-storage copy |
-| QuoteVault and DateVault submissions and published content | Their existing KV namespaces |
-| Local revision sets, progress and study preferences | Browser local storage |
-| Local QuoteVault and DateVault practice progress | Browser local storage |
-
-This split is not automatically a design flaw. D1 is suited to structured account and leaderboard queries; KV currently stores larger revision documents and content. Moving everything into one database without measuring real record sizes and taking a live backup would add risk without proving a benefit.
+| Data | Current deployed location | Branch target after migration |
+|---|---|---|
+| QuoteVault and DateVault account stats, XP, mastery IDs, streaks and moderation metadata | D1 `users` table | D1 `users` table |
+| Revision accounts, sets, progress and revision leaderboard | `REVISION` KV namespace | D1 `revision_sync_data`, with KV retained as a backup/mirror |
+| Public and pending revision notes | `REVISION` KV namespace | `REVISION` KV namespace |
+| Custom themes | `THEMES` KV namespace and browser local storage | D1 `custom_themes`, with KV retained as a backup/mirror |
+| QuoteVault and DateVault submissions and published content | Existing KV namespaces | Existing KV namespaces |
+| Local revision sets, progress and study preferences | Browser local storage | Browser local storage, with account-specific local snapshots |
+| Local QuoteVault and DateVault practice progress | Browser local storage | Browser local storage |
 
 ## Changes in this branch
 
-- Public leaderboard responses no longer include account keys.
-- Username lookups return only whether a username exists and its public name, not the account key or private progress/submission data.
-- Leaderboard registration validates the site identifier and numeric statistics before using them.
-- QuoteVault rejection cleanup now selects the correct QuoteVault pending-ID column.
-- QuoteVault withdrawals now fail closed when an account key is supplied but the ownership record cannot be verified; users without a linked account retain the existing submission-ID withdrawal path. DateVault withdrawals require an account key and verify that the pending submission belongs to it. Database verification errors fail closed.
-- Custom theme keys reject separators rather than silently validating a transformed version of the key.
-- Added worker regression tests and a GitHub Actions test workflow.
-- Removed the local Wrangler account cache from the current tree and added ignore rules for Wrangler and environment files.
+- Public leaderboard and username lookup responses no longer disclose account keys or private account records.
+- New account keys are generated with cryptographically secure UUIDs.
+- Leaderboard registration validates the site identifier and numeric statistics.
+- QuoteVault rejection cleanup uses the correct QuoteVault pending-ID fields.
+- QuoteVault and DateVault withdrawals require an account key and verify that the submission belongs to that account.
+- Custom theme keys are validated and account ownership is checked before theme access.
+- Revision sync uses D1 with optimistic concurrency checks. Conflicts preserve the local copy and provide a choice to keep local or load remote data.
+- Revision local snapshots are kept separately per account when switching accounts, so one linked account does not silently replace another account's local workspace.
+- Custom themes use D1 as the primary store. KV remains a backup/mirror and is imported when needed.
+- An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records.
+- Admin access uses account roles: one owner can grant or remove admin access. Admins can moderate but cannot manage roles.
+- Admin sessions use random tokens in request headers, expire after eight hours, and are checked against the current account role on each request. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup.
+- Added worker regression tests, frontend JavaScript syntax checks, and a GitHub Actions test workflow.
+- Removed the local Wrangler account cache from the branch and added ignore rules for Wrangler and environment files.
+
+## Important account security note
+
+GCSE Vault's existing account system uses a private user key as a bearer credential rather than a conventional username-and-password login. Anyone who obtains that key can act as that account. The admin panel exchanges the linked account key for a short-lived admin session; it does not turn the existing account system into password-based authentication. Keep account keys private. Historical versions exposed account keys through some public API responses, so old keys should not automatically be assumed uncompromised.
 
 ## Remaining work
 
-1. **Live data inventory and backup.** The repository connection can inspect source code but cannot query or export the deployed Cloudflare D1 and KV resources. No production data has been changed or migrated.
-2. **Revision sync conflict handling.** Revision edits are saved locally and asynchronously sent to KV. On load, remote data currently replaces local state when a remote record exists. Offline local edits can therefore be overwritten by an older remote copy. A versioned merge or conflict-resolution design is needed before changing storage.
-3. **Account-key rotation.** Account keys previously appeared in public API responses. They are no longer exposed by the current public endpoints, but historical copies may have been cached or scraped. A safe rotation/recovery mechanism should be designed before treating all existing keys as uncompromised.
-4. **Moderation consistency.** QuoteVault and DateVault approval/rejection currently update KV and D1 in separate operations, with some D1 cleanup failures swallowed. These paths need idempotent retry handling so partial failures are visible and recoverable.
-5. **End-to-end checks.** The worker tests cover the regressions fixed here. Browser-level tests across QuoteVault, DateVault and Revision, including multi-device and offline flows, are still needed.
+1. **Live data backup and migration.** The repository connection cannot query the deployed Cloudflare D1 or KV resources. The new D1 migrations have not been applied to production, and no production data has been changed or migrated.
+2. **Migration verification.** Export the live D1 database and relevant KV namespaces, record counts/checksums, apply the migrations, run the owner migration, and compare source and destination counts before relying on D1-only reads. Keep the KV copies until verification and cross-device testing are complete.
+3. **Moderation consistency.** QuoteVault and DateVault approval/rejection still update KV and D1 in separate operations. Some D1 cleanup errors are non-fatal. These paths need idempotent retry handling and visible recovery for partial failures.
+4. **End-to-end checks.** CI covers worker regressions and frontend syntax, but browser-level tests across QuoteVault, DateVault and Revision, especially offline and multi-device flows, are still required.
+5. **Production rollout.** The draft pull request is not merged and the Worker is not deployed. Do not deploy the branch before applying both D1 migrations.
 
-## Database migration decision
+## UI scope
 
-No database bindings or production data stores were changed in this branch. A D1 migration should only proceed after:
-
-- exporting the live D1 tables and every relevant KV namespace;
-- recording counts and checksums for the exported records;
-- confirming a target schema that handles large revision sets without exceeding D1 row limits;
-- running an idempotent backfill and verifying every source record against its destination;
-- switching reads only after verification, while retaining the old KV data for rollback.
-
-The existing UI, themes, revision content and user-facing features are intentionally unchanged.
+The existing QuoteVault, DateVault and Revision content, theme system, navigation and study features are retained. The admin access screen changes to account-based access and owner-controlled roles. No production database or KV records have been modified.
