@@ -787,6 +787,7 @@ const AdminManager = {
   migrating: false,
   migrationStatus: '',
   statusChecked: false,
+  statusChecking: false,
   ownerInitialized: true,
   error: '',
 
@@ -795,7 +796,8 @@ const AdminManager = {
   },
 
   async checkStatus() {
-    if (this.statusChecked) return;
+    if (this.statusChecked || this.statusChecking) return;
+    this.statusChecking = true;
     try {
       const response = await fetch(`${WORKER_API}/admin/status`);
       if (!response.ok) throw new Error('Status check failed');
@@ -804,6 +806,7 @@ const AdminManager = {
     } catch {
       this.ownerInitialized = true;
     } finally {
+      this.statusChecking = false;
       this.statusChecked = true;
       if (typeof window.render === 'function') window.render();
     }
@@ -856,6 +859,8 @@ const AdminManager = {
         body: JSON.stringify({ userKey, pw: password })
       });
       if (!response.ok) throw new Error(response.status === 409 ? 'Owner setup has already been completed.' : `HTTP ${response.status}`);
+      this.ownerInitialized = true;
+      this.statusChecked = true;
       await this.login();
     } catch (error) {
       this.error = error.message;
