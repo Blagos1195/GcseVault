@@ -15,8 +15,8 @@ export default {
 
     const ADMIN_KEY = env.ADMIN_KEY;
 
-    async function getSessionUser(reqUrl, req, tokenOverride) {
-      const token = tokenOverride || req.headers.get("X-Session-Token");
+    async function getSessionUser(reqUrl, req) {
+      const token = req.headers.get("X-Session-Token");
       if (!token) return null;
       const stored = await env.QUOTEVAULT.get("session:" + token);
       if (!stored) return null;
@@ -30,8 +30,8 @@ export default {
       return { ...user, token };
     }
 
-    async function isAuthorized(reqUrl, req, tokenOverride) {
-      return Boolean(await getSessionUser(reqUrl, req, tokenOverride));
+    async function isAuthorized(reqUrl, req) {
+      return Boolean(await getSessionUser(reqUrl, req));
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
@@ -225,8 +225,7 @@ export default {
     // ── QUOTEVAULT APPROVE ────────────────────────────────────────────────────
     if (url.pathname === "/approve" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -254,8 +253,7 @@ export default {
     // ── QUOTEVAULT REJECT ─────────────────────────────────────────────────────
     if (url.pathname === "/reject" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.QUOTEVAULT.delete(body.id);
 
@@ -280,8 +278,7 @@ export default {
     // ── QUOTEVAULT UPDATE PUBLIC ──────────────────────────────────────────────
     if (url.pathname === "/update-public" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -295,8 +292,7 @@ export default {
     // ── QUOTEVAULT DELETE PUBLIC ──────────────────────────────────────────────
     if (url.pathname === "/delete" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.PUBLIC_QUOTES.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
@@ -393,8 +389,7 @@ export default {
 
     if (url.pathname === "/dv/approve" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.DV_PENDING.get(body.id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
@@ -421,8 +416,7 @@ export default {
 
     if (url.pathname === "/dv/reject" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PENDING.delete(body.id);
 
@@ -446,8 +440,7 @@ export default {
 
     if (url.pathname === "/dv/update-pending" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PENDING.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -460,8 +453,7 @@ export default {
 
     if (url.pathname === "/dv/update-public" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PUBLIC.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
@@ -474,8 +466,7 @@ export default {
 
     if (url.pathname === "/dv/delete" && request.method === "POST") {
       const body = await request.json();
-      const tok = body.token || body.pw;
-      const ok = await isAuthorized(url, request, tok);
+      const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DV_PUBLIC.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
