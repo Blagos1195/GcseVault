@@ -420,6 +420,19 @@ export default {
       });
     }
 
+    if (url.pathname === "/lb/username-available" && request.method === "GET") {
+      const username = url.searchParams.get("username");
+      const userKey = url.searchParams.get("userKey");
+      if (!username) return new Response("Missing username", { status: 400, headers: cors });
+      const existing = await env.DB.prepare(
+        `SELECT user_key FROM users WHERE LOWER(username) = LOWER(?)`
+      ).bind(username.trim()).first();
+      const available = !existing || Boolean(userKey && existing.user_key === userKey);
+      return new Response(JSON.stringify({ available }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
     // GET /lb/get?userKey=X  or  /lb/get?username=X
     if (url.pathname === "/lb/get" && request.method === "GET") {
       const userKey  = url.searchParams.get("userKey");
