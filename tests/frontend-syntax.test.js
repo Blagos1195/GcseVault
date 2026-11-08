@@ -4,7 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const files = [
-  "shared.js",
+  "shared.js",\n  "auth-crypto.js",
   "quotes/index.html",
   "dates/index.html",
   "revision/index.html"
