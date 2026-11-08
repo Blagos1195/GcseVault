@@ -469,3 +469,43 @@ test("password account setup hashes passwords, creates sessions and protects acc
   });
   assert.equal(wrongPassword.status, 401);
 });
+
+
+test("legacy accounts cannot update leaderboard stats before password setup", async () => {
+  const env = makeEnv([{ user_key: "account-key", username: "student" }]);
+  const response = await call("/lb/register", env, {
+    userKey: "account-key",
+    username: "student",
+    site: "qv",
+    mastered: 0,
+    xp: 0
+  });
+  assert.equal(response.status, 401);
+});
+
+test("QuoteVault submissions require a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/submit", env, {
+    userKey: "account-key",
+    text: "A submitted quote"
+  });
+  assert.equal(response.status, 401);
+});
+
+test("DateVault submissions require a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/dv/submit", env, {
+    userKey: "account-key",
+    event: "A submitted fact"
+  });
+  assert.equal(response.status, 401);
+});
+
+test("Revision publication requires a password account", async () => {
+  const env = makeEnv([{ user_key: "account-key" }]);
+  const response = await call("/revision/public", env, {
+    userKey: "account-key",
+    note: { title: "Revision notes", cards: [] }
+  });
+  assert.equal(response.status, 401);
+});
