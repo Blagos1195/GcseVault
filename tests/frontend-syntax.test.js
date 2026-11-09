@@ -162,4 +162,8 @@ test("Revision sync retains private exam-practice data", () => {
   assert.match(revision, /practiceImport/);
   assert.match(revision, /practiceConnections/);
   assert.match(revision, /importPublicNote = async function/);
+  assert.match(revision, /revision-course-pack/);
+  assert.match(revision, /practiceResourcesView/);
+  assert.match(revision, /resources:Array\.isArray\(practice\.resources\)/);
+  assert.match(worker, /resources: Array\.isArray\(set\.practice\.resources\)/);
 });

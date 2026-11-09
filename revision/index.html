@@ -175,6 +175,7 @@ select option{background:var(--bg3)}
     <div class="ni active" data-view="overview"><span class="ni-icon">◈</span>Overview</div>
     <div class="ni" data-view="cards"><span class="ni-icon">▣</span>Flashcards</div>
     <div class="ni" data-view="library"><span class="ni-icon">⌕</span>Library</div>
+    <div class="ni" data-view="resources"><span class="ni-icon">▤</span>Course materials</div>
     <div class="ni" data-view="analytics"><span class="ni-icon">▤</span>Progress</div>
     <div class="ni" data-view="create"><span class="ni-icon">＋</span>New card</div>
     <div class="ni" data-view="graph"><span class="ni-icon">⌘</span>Knowledge graph</div>
@@ -898,7 +899,7 @@ function renderAI(){
 }
 function renderRevision(){
   document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
-  document.getElementById('page').innerHTML=state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
+  document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   document.getElementById('sidebar-stats').textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
   document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${state.cards.filter(card=>Number(state.progress[card.id]?.reviews)>0).length} reviewed`;
   if(state.view==='leaderboard')loadRevisionLeaderboard();
@@ -1067,13 +1068,13 @@ const practiceBaseNormalize = normalizeRevisionSet;
 normalizeRevisionSet = function(set, fallbackId) {
   const result = practiceBaseNormalize(set, fallbackId);
   const practice = set && set.practice && typeof set.practice === 'object' ? set.practice : {};
-  result.practice = {catalogues:practice.catalogues && typeof practice.catalogues === 'object' ? practice.catalogues : {}, attempts:Array.isArray(practice.attempts)?practice.attempts:[], mistakes:Array.isArray(practice.mistakes)?practice.mistakes:[], formulas:Array.isArray(practice.formulas)?practice.formulas:[]};
+  result.practice = {catalogues:practice.catalogues && typeof practice.catalogues === 'object' ? practice.catalogues : {}, attempts:Array.isArray(practice.attempts)?practice.attempts:[], mistakes:Array.isArray(practice.mistakes)?practice.mistakes:[], formulas:Array.isArray(practice.formulas)?practice.formulas:[], resources:Array.isArray(practice.resources)?practice.resources:[]};
   return result;
 };
 state.accountSets.forEach(set => { set.practice = normalizeRevisionSet(set, set.id).practice; });
 const practiceBaseSync = syncActiveRevisionSet;
 syncActiveRevisionSet = function() { practiceBaseSync(); const set=getActiveRevisionSet(); if(set&&!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[]}; };
-function practiceStore(){const set=getActiveRevisionSet();if(!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[]};return set.practice;}
+function practiceStore(){const set=getActiveRevisionSet();if(!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]};if(!Array.isArray(set.practice.resources))set.practice.resources=[];return set.practice;}
 function practiceTopics(){return Object.entries(practiceStore().catalogues).flatMap(([subjectId,c])=>(c.topics||[]).map(topic=>({...topic,subjectId,subject:c.subject,examBoard:c.examBoard})));}
 function practiceStats(topic){
  const p=practiceStore(), attempts=p.attempts.filter(a=>a.subjectId===topic.subjectId&&a.topicId===topic.id);
@@ -1110,19 +1111,40 @@ function practiceResolve(id){const m=practiceStore().mistakes.find(x=>x.id===id)
 function practiceImport(input){
  const file=input.files?.[0];if(!file)return;const reader=new FileReader();
  reader.onload=()=>{try{
-  const c=JSON.parse(String(reader.result||''));
-  if(c.type!=='revision-catalogue'||c.version!==1||!c.subject||!c.examBoard||!Array.isArray(c.topics)||c.topics.length>250)throw new Error('Unsupported subject catalogue.');
-  const ids=new Set(),topics=c.topics.map(t=>{const id=String(t.id||'').trim(),name=String(t.name||'').trim();if(!id||!name||ids.has(id)||!Array.isArray(t.subtopics))throw new Error('Every topic needs a unique ID, name and subtopic list.');ids.add(id);return{id,name,year:String(t.year||''),area:String(t.area||''),subtopics:t.subtopics.map(String).slice(0,100)};});
-  const id=String(c.id||normalizeTopic(c.examBoard+' '+c.subject).replace(/\s+/g,'-')).slice(0,100);
-  practiceStore().catalogues[id]={id,subject:String(c.subject).slice(0,100),examBoard:String(c.examBoard).slice(0,80),qualification:String(c.qualification||'').slice(0,100),source:String(c.source||'').slice(0,300),optionalModule:c.optionalModule||null,topics,updatedAt:Date.now()};
-  saveRevision();state.setMessage='Imported '+topics.length+' topics for '+c.subject+'.';renderRevision();
- }catch(e){state.setMessage=e.message||'Could not import catalogue.';renderRevision();}};
+  const c=JSON.parse(String(reader.result||'')),p=practiceStore();
+  if(c.type==='revision-catalogue'&&c.version===1){
+   if(!c.subject||!c.examBoard||!Array.isArray(c.topics)||c.topics.length>250)throw new Error('Unsupported subject catalogue.');
+   const ids=new Set(),topics=c.topics.map(t=>{const id=String(t.id||'').trim(),name=String(t.name||'').trim();if(!id||!name||ids.has(id)||!Array.isArray(t.subtopics))throw new Error('Every topic needs a unique ID, name and subtopic list.');ids.add(id);return{id,name,year:String(t.year||''),area:String(t.area||''),subtopics:t.subtopics.map(String).slice(0,100)};});
+   const id=String(c.id||normalizeTopic(c.examBoard+' '+c.subject).replace(/\s+/g,'-')).slice(0,100);
+   p.catalogues[id]={id,subject:String(c.subject).slice(0,100),examBoard:String(c.examBoard).slice(0,80),qualification:String(c.qualification||'').slice(0,100),source:String(c.source||'').slice(0,300),optionalModule:c.optionalModule||null,topics,updatedAt:Date.now()};
+   saveRevision();state.setMessage='Imported '+topics.length+' topics for '+c.subject+'.';renderRevision();return;
+  }
+  if(c.type!=='revision-course-pack'||c.version!==1||!c.subject||!c.examBoard||!Array.isArray(c.cards)||!Array.isArray(c.resources)||c.cards.length>1000||c.resources.length>500)throw new Error('Unsupported course pack format.');
+  const subject=String(c.subject).slice(0,100),catalogueId=String(c.catalogueId||normalizeTopic(c.examBoard+' '+subject).replace(/\s+/g,'-')).slice(0,100),catalogue=p.catalogues[catalogueId];
+  if(!catalogue)throw new Error('Import the matching subject catalogue first.');
+  const topicById=new Map(catalogue.topics.map(t=>[t.id,t])),existing=new Set(state.cards.map(card=>(String(card.subject)+'|'+String(card.title)).toLowerCase()));
+  const incoming=c.cards.filter(card=>card&&(card.front||card.title)&&(card.back||card.answer)),idMap=new Map(incoming.map((card,index)=>[String(card.id||index),'cp'+Date.now()+Math.random().toString(36).slice(2,8)+index]));
+  const imported=incoming.filter(card=>!existing.has((subject+'|'+String(card.front||card.title)).toLowerCase())).map(card=>{
+   const topic=topicById.get(String(card.topicId||''));if(!topic)throw new Error('A flashcard refers to an unknown topic: '+String(card.topicId||''));
+   return{id:idMap.get(String(card.id||incoming.indexOf(card))),subject,topic:topic.name,title:String(card.front||card.title).slice(0,400),answer:String(card.back||card.answer).slice(0,1200),source:String(card.source||c.source||'Course pack').slice(0,300),links:(Array.isArray(card.links)?card.links.map(id=>idMap.get(String(id))).filter(Boolean):[]),difficulty:Math.max(1,Math.min(5,Number(card.difficulty)||2))};
+  });
+  const resources=c.resources.map((item,index)=>{
+   const topic=topicById.get(String(item.topicId||''));if(!topic)throw new Error('A resource refers to an unknown topic: '+String(item.topicId||''));
+   return{id:'cr'+Date.now()+Math.random().toString(36).slice(2,7)+index,subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
+  }).filter(item=>item.content);
+  p.resources.push(...resources);p.resources=p.resources.slice(-500);state.cards.push(...imported);
+  saveRevision();state.setMessage='Imported '+imported.length+' flashcards and '+resources.length+' learning resources for '+subject+'.';state.view='resources';renderRevision();
+ }catch(e){state.setMessage=e.message||'Could not import resource file.';renderRevision();}};
  reader.readAsText(file);
+}
+function practiceResourcesView(){
+ const resources=practiceStore().resources||[],subjects=[...new Set(resources.map(item=>item.subject))];
+ return '<div style="max-width:1000px;margin:0 auto"><div class="pt">Course materials</div><div class="ps">Notes, worked examples, practical guidance and other imported resources for this revision set.</div>'+ (resources.length?subjects.map(subject=>'<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">'+practiceEsc(subject)+'</div>'+resources.filter(item=>item.subject===subject).map(item=>'<details class="knowledge-item"><summary class="knowledge-title">'+practiceEsc(item.title)+' <span class="tag tb">'+practiceEsc(item.kind)+'</span><div class="knowledge-meta">'+practiceEsc(item.topic)+'</div></summary><div style="white-space:pre-wrap;font-size:.78rem;line-height:1.65;margin-top:10px">'+practiceEsc(item.content)+'</div><div class="knowledge-meta" style="margin-top:8px">Source: '+practiceEsc(item.source)+'</div></details>').join('')+'</div>').join(''):'<div class="card">No course materials imported yet. Import a course pack from Settings after its matching subject catalogue.</div>')+'</div>';
 }
 function practiceRemove(id){if(!confirm('Remove this subject and its associated practice history?'))return;const p=practiceStore();delete p.catalogues[id];p.attempts=p.attempts.filter(x=>x.subjectId!==id);p.mistakes=p.mistakes.filter(x=>x.subjectId!==id);saveRevision();renderRevision();}
 function practiceSettings(){
  const entries=Object.entries(practiceStore().catalogues);
- return '<div class="card" style="margin-top:10px"><div class="sec">Private subject catalogues</div><div class="ps">Upload one JSON file per subject. It is stored in this revision set and synced to your account, not assigned to other users.</div><label class="btn" for="revision-practice-file">Upload subject JSON</label><input id="revision-practice-file" type="file" accept=".json,application/json" hidden onchange="practiceImport(this)"/><div class="knowledge-list">'+entries.map(([id,c])=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(c.subject)+'</div><div class="knowledge-meta">'+practiceEsc(c.examBoard)+' · '+c.topics.length+' topics · '+c.topics.reduce((n,t)=>n+t.subtopics.length,0)+' subtopics</div></div><button class="btn bsm br" onclick="practiceRemove(\''+practiceEsc(id)+'\')">Remove</button></div>').join('')+'</div></div>';
+ return '<div class="card" style="margin-top:10px"><div class="sec">Subject catalogues and course packs</div><div class="ps">Catalogues define topics. Course packs add actual notes, worked examples, practical guidance, equations and flashcards. Imports stay private to this revision set.</div><label class="btn" for="revision-practice-file">Import JSON resource file</label><input id="revision-practice-file" type="file" accept=".json,application/json" hidden onchange="practiceImport(this)"/><div class="knowledge-list">'+entries.map(([id,c])=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(c.subject)+'</div><div class="knowledge-meta">'+practiceEsc(c.examBoard)+' · '+c.topics.length+' topics · '+c.topics.reduce((n,t)=>n+t.subtopics.length,0)+' subtopics</div></div><button class="btn bsm br" onclick="practiceRemove(\''+practiceEsc(id)+'\')">Remove</button></div>').join('')+'</div><div class="knowledge-meta" style="margin-top:10px">'+practiceStore().resources.length+' imported learning resources in this set.</div><button class="btn" style="margin-top:8px" onclick="state.view=\'resources\';renderRevision()">Open course materials</button></div>';
 }
 function practiceAnalytics(){
  const p=practiceStore(),topics=practiceTopics().map(t=>({...t,stats:practiceStats(t)})).sort((a,b)=>b.stats.score-a.stats.score);
