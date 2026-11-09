@@ -347,7 +347,7 @@ test("admin authentication requires a valid account session for the same user", 
     if (!sql.includes("FROM account_sessions s JOIN users")) return statement;
     return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }) };
   };
-  const allowed = await call("/auth", env, { userKey: "admin-key" }, { "X-Account-Session": "valid-account-token" });
+  const allowed = await call("/auth", env, { userKey: "admin-key" }, { "X-Account-Session": "a".repeat(64) });
   assert.equal(allowed.status, 200);
   assert.equal(issued, true);
 });
@@ -356,7 +356,7 @@ test("AI login requires account authentication and explicit permission", async (
   const env = makeEnv();
   const denied = await call("/ai/auth", env, {});
   assert.equal(denied.status, 401);
-  const token = "valid-account-token";
+  const token = "a".repeat(64);
   const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const tokenHash = Buffer.from(digest).toString("hex");
   const prepare = env.DB.prepare.bind(env.DB);
@@ -733,9 +733,11 @@ test("owner migration counts existing D1 records separately from newly copied re
   });
   env.DB.prepare = sql => ({
     bind: () => ({
-      first: async () => sql.includes("SELECT user_key, username, role FROM users")
-        ? { user_key: "admin-key", username: "owner", role: "owner" }
-        : null,
+      first: async () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+        ? { user_key: "admin-key" }
+        : sql.includes("SELECT user_key, username, role FROM users")
+          ? { user_key: "admin-key", username: "owner", role: "owner" }
+          : null,
       all: async () => ({ results: [] }),
       run: async () => ({ success: true, meta: { changes: 0 } })
     })
