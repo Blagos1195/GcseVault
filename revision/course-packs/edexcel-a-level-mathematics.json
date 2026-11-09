@@ -13,7 +13,10 @@
       "topicId": "algebraic-expressions",
       "front": "State the index laws for multiplication and division.",
       "back": "For a≠0: a^m×a^n=a^(m+n); a^m÷a^n=a^(m−n).",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "quadratics-1"
+      ]
     },
     {
       "id": "algebraic-expressions-2",
@@ -41,7 +44,12 @@
       "topicId": "quadratics",
       "front": "What does the discriminant b²−4ac tell you?",
       "back": "Δ>0: two distinct real roots; Δ=0: one repeated real root; Δ<0: no real roots.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "algebraic-expressions-1",
+        "equations-inequalities-1",
+        "graphs-transformations-1"
+      ]
     },
     {
       "id": "quadratics-2",
@@ -69,7 +77,10 @@
       "topicId": "equations-inequalities",
       "front": "What happens to an inequality when you multiply by a negative number?",
       "back": "Reverse the inequality sign.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "quadratics-1"
+      ]
     },
     {
       "id": "equations-inequalities-2",
@@ -97,7 +108,11 @@
       "topicId": "graphs-transformations",
       "front": "Describe y=f(x)+a.",
       "back": "Translate the graph of y=f(x) vertically by a units: up if a>0, down if a<0.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "quadratics-1",
+        "coordinate-geometry-1"
+      ]
     },
     {
       "id": "graphs-transformations-2",
@@ -125,7 +140,11 @@
       "topicId": "coordinate-geometry",
       "front": "Find the gradient between (x₁,y₁) and (x₂,y₂).",
       "back": "m=(y₂−y₁)/(x₂−x₁), provided x₂≠x₁.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "graphs-transformations-1",
+        "functions-graphs-1"
+      ]
     },
     {
       "id": "coordinate-geometry-2",
@@ -181,7 +200,10 @@
       "topicId": "binomial-expansion",
       "front": "State the general term in (a+b)^n.",
       "back": "T_(r+1)=nCr·a^(n−r)·b^r, for r=0,…,n.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "sequences-series-1"
+      ]
     },
     {
       "id": "binomial-expansion-2",
@@ -209,7 +231,12 @@
       "topicId": "trigonometry",
       "front": "State the sine rule.",
       "back": "a/sin A=b/sin B=c/sin C, with each side opposite its corresponding angle.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "radians-1",
+        "advanced-trigonometry-1",
+        "parametric-equations-1"
+      ]
     },
     {
       "id": "trigonometry-2",
@@ -237,7 +264,12 @@
       "topicId": "vectors",
       "front": "How do you find vector AB from position vectors a and b?",
       "back": "AB=b−a.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "three-dimensional-vectors-1",
+        "forces-motion-1",
+        "projectiles-1"
+      ]
     },
     {
       "id": "vectors-2",
@@ -265,7 +297,12 @@
       "topicId": "differentiation",
       "front": "State the power rule for differentiation.",
       "back": "d(x^n)/dx=nx^(n−1).",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "advanced-differentiation-1",
+        "integration-1",
+        "variable-acceleration-1"
+      ]
     },
     {
       "id": "differentiation-2",
@@ -293,7 +330,12 @@
       "topicId": "integration",
       "front": "State the power rule for integration.",
       "back": "∫x^n dx=x^(n+1)/(n+1)+C, for n≠−1.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "differentiation-1",
+        "advanced-integration-1",
+        "further-kinematics-1"
+      ]
     },
     {
       "id": "integration-2",
@@ -321,7 +363,10 @@
       "topicId": "exponentials-logarithms",
       "front": "State three logarithm laws.",
       "back": "log_a(xy)=log_a x+log_a y; log_a(x/y)=log_a x−log_a y; log_a(x^n)=n log_a x.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "sequences-series-1"
+      ]
     },
     {
       "id": "exponentials-logarithms-2",
@@ -349,7 +394,10 @@
       "topicId": "functions-graphs",
       "front": "What is the domain of a function?",
       "back": "The set of input values for which the function is defined.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "coordinate-geometry-1"
+      ]
     },
     {
       "id": "functions-graphs-2",
@@ -377,7 +425,11 @@
       "topicId": "sequences-series",
       "front": "State the nth term of an arithmetic sequence.",
       "back": "u_n=a+(n−1)d.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "binomial-expansion-1",
+        "exponentials-logarithms-1"
+      ]
     },
     {
       "id": "sequences-series-2",
@@ -405,7 +457,10 @@
       "topicId": "radians",
       "front": "How is an angle in radians defined?",
       "back": "θ=s/r, where s is arc length and r is radius.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
     },
     {
       "id": "radians-2",
@@ -433,7 +488,10 @@
       "topicId": "advanced-trigonometry",
       "front": "State sin(A±B).",
       "back": "sin(A±B)=sinA cosB ± cosA sinB.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
     },
     {
       "id": "advanced-trigonometry-2",
@@ -461,7 +519,10 @@
       "topicId": "parametric-equations",
       "front": "How do you find dy/dx for parametric equations?",
       "back": "dy/dx=(dy/dt)/(dx/dt), provided dx/dt is non-zero.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
     },
     {
       "id": "parametric-equations-2",
@@ -489,7 +550,10 @@
       "topicId": "advanced-differentiation",
       "front": "State the chain rule.",
       "back": "If y=f(u) and u=g(x), dy/dx=(dy/du)(du/dx).",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "differentiation-1"
+      ]
     },
     {
       "id": "advanced-differentiation-2",
@@ -545,7 +609,10 @@
       "topicId": "advanced-integration",
       "front": "State integration by parts.",
       "back": "∫u dv/dx dx=uv−∫v du/dx dx.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "integration-1"
+      ]
     },
     {
       "id": "advanced-integration-2",
@@ -573,7 +640,10 @@
       "topicId": "three-dimensional-vectors",
       "front": "State the 3D scalar product.",
       "back": "a·b=a_xb_x+a_yb_y+a_zb_z=|a||b|cosθ.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "vectors-1"
+      ]
     },
     {
       "id": "three-dimensional-vectors-2",
@@ -713,7 +783,12 @@
       "topicId": "probability",
       "front": "State the addition rule for two events.",
       "back": "P(A∪B)=P(A)+P(B)−P(A∩B).",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "binomial-distribution-1",
+        "normal-distribution-1",
+        "hypothesis-testing-1"
+      ]
     },
     {
       "id": "probability-2",
@@ -741,7 +816,11 @@
       "topicId": "binomial-distribution",
       "front": "State the conditions for a binomial model.",
       "back": "Fixed number n of independent trials; two outcomes per trial; constant probability p of success.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "normal-distribution-1"
+      ]
     },
     {
       "id": "binomial-distribution-2",
@@ -769,7 +848,11 @@
       "topicId": "hypothesis-testing",
       "front": "What is the null hypothesis?",
       "back": "A statement about a population parameter, usually representing no change or a specified value, tested as the starting assumption.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "normal-distribution-1"
+      ]
     },
     {
       "id": "hypothesis-testing-2",
@@ -797,7 +880,12 @@
       "topicId": "normal-distribution",
       "front": "What do μ and σ represent in X~N(μ,σ²)?",
       "back": "μ is the mean and σ is the standard deviation; the second parameter is the variance.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "binomial-distribution-1",
+        "hypothesis-testing-1"
+      ]
     },
     {
       "id": "normal-distribution-2",
@@ -853,7 +941,12 @@
       "topicId": "constant-acceleration",
       "front": "State the four SUVAT equations.",
       "back": "v=u+at; s=ut+½at²; v²=u²+2as; s=½(u+v)t.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "forces-motion-1",
+        "projectiles-1",
+        "further-kinematics-1"
+      ]
     },
     {
       "id": "constant-acceleration-2",
@@ -881,7 +974,12 @@
       "topicId": "forces-motion",
       "front": "State Newton's second law for constant mass.",
       "back": "The resultant force on a body equals mass multiplied by acceleration: ΣF=ma.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "vectors-1",
+        "constant-acceleration-1",
+        "moments-1"
+      ]
     },
     {
       "id": "forces-motion-2",
@@ -909,7 +1007,10 @@
       "topicId": "variable-acceleration",
       "front": "State acceleration in differential form.",
       "back": "a=dv/dt=d²s/dt².",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "differentiation-1"
+      ]
     },
     {
       "id": "variable-acceleration-2",
@@ -937,7 +1038,11 @@
       "topicId": "moments",
       "front": "State the moment formula.",
       "back": "Moment=force×perpendicular distance from pivot to line of action, in N m.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "forces-motion-1",
+        "friction-1"
+      ]
     },
     {
       "id": "moments-2",
@@ -965,7 +1070,10 @@
       "topicId": "friction",
       "front": "State the limiting-friction equation.",
       "back": "F=μR, where μ is the coefficient of friction and R is the normal reaction.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "moments-1"
+      ]
     },
     {
       "id": "friction-2",
@@ -993,7 +1101,11 @@
       "topicId": "projectiles",
       "front": "What is the horizontal acceleration of an ideal projectile?",
       "back": "Zero, if air resistance is neglected.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "vectors-1",
+        "constant-acceleration-1"
+      ]
     },
     {
       "id": "projectiles-2",
@@ -1049,7 +1161,11 @@
       "topicId": "further-kinematics",
       "front": "State the relationships between displacement, velocity and acceleration.",
       "back": "v=ds/dt and a=dv/dt=d²s/dt².",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "integration-1",
+        "constant-acceleration-1"
+      ]
     },
     {
       "id": "further-kinematics-2",
@@ -1339,6 +1455,192 @@
       "title": "Core notes and methods",
       "content": "For motion in a straight line, v=ds/dt and a=dv/dt. Integrating velocity gives displacement; integrating speed gives distance. If velocity changes sign, split the interval at turning points to calculate total distance. Use derivative and integral relationships with initial conditions, and attach correct units to each quantity.\n\nSpecification coverage: State the relationships between displacement, velocity and acceleration.; How do you find a turning time?; How do you calculate total distance over an interval?; What are the units of s, v and a?",
       "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "formula-1",
+      "topicId": "quadratics",
+      "name": "Quadratic formula",
+      "expression": "x = (−b ± √(b²−4ac))/(2a)",
+      "units": "a, b, c are coefficients; x is a root",
+      "conditions": "For ax²+bx+c=0, a≠0"
+    },
+    {
+      "id": "formula-2",
+      "topicId": "quadratics",
+      "name": "Discriminant",
+      "expression": "Δ = b²−4ac",
+      "units": "Coefficient values as above",
+      "conditions": "Δ>0 two real roots; Δ=0 repeated; Δ<0 no real roots"
+    },
+    {
+      "id": "formula-3",
+      "topicId": "trigonometry",
+      "name": "Sine rule",
+      "expression": "a/sin A = b/sin B = c/sin C",
+      "units": "Sides a,b,c opposite angles A,B,C",
+      "conditions": "Triangle geometry"
+    },
+    {
+      "id": "formula-4",
+      "topicId": "trigonometry",
+      "name": "Cosine rule",
+      "expression": "c² = a²+b²−2ab cos C",
+      "units": "Sides and included angle",
+      "conditions": "Triangle geometry"
+    },
+    {
+      "id": "formula-5",
+      "topicId": "trigonometry",
+      "name": "Triangle area",
+      "expression": "Area = ½ab sin C",
+      "units": "a,b in same length unit",
+      "conditions": "C is included angle"
+    },
+    {
+      "id": "formula-6",
+      "topicId": "radians",
+      "name": "Arc length",
+      "expression": "s = rθ",
+      "units": "s,r in length units; θ in radians",
+      "conditions": "Radians only"
+    },
+    {
+      "id": "formula-7",
+      "topicId": "radians",
+      "name": "Sector area",
+      "expression": "A = ½r²θ",
+      "units": "r in length units; θ in radians",
+      "conditions": "Radians only"
+    },
+    {
+      "id": "formula-8",
+      "topicId": "differentiation",
+      "name": "Power rule",
+      "expression": "d(xⁿ)/dx = nxⁿ⁻¹",
+      "units": "x variable",
+      "conditions": "Differentiate term by term"
+    },
+    {
+      "id": "formula-9",
+      "topicId": "integration",
+      "name": "Power rule",
+      "expression": "∫xⁿ dx = xⁿ⁺¹/(n+1)+C",
+      "units": "n≠−1",
+      "conditions": "Indefinite integration"
+    },
+    {
+      "id": "formula-10",
+      "topicId": "advanced-differentiation",
+      "name": "Chain rule",
+      "expression": "dy/dx = (dy/du)(du/dx)",
+      "units": "Derivatives with respect to stated variables",
+      "conditions": "Composite functions"
+    },
+    {
+      "id": "formula-11",
+      "topicId": "advanced-differentiation",
+      "name": "Product rule",
+      "expression": "(uv)' = u'v+uv'",
+      "units": "u and v differentiable",
+      "conditions": "Product of functions"
+    },
+    {
+      "id": "formula-12",
+      "topicId": "advanced-differentiation",
+      "name": "Quotient rule",
+      "expression": "(u/v)' = (vu'−uv')/v²",
+      "units": "v≠0",
+      "conditions": "Quotient of functions"
+    },
+    {
+      "id": "formula-13",
+      "topicId": "advanced-integration",
+      "name": "Integration by parts",
+      "expression": "∫u dv/dx dx = uv−∫v du/dx dx",
+      "units": "Choose u and v appropriately",
+      "conditions": ""
+    },
+    {
+      "id": "formula-14",
+      "topicId": "numerical-methods",
+      "name": "Newton-Raphson iteration",
+      "expression": "xₙ₊₁ = xₙ−f(xₙ)/f'(xₙ)",
+      "units": "f'(xₙ)≠0",
+      "conditions": "Numerical root approximation"
+    },
+    {
+      "id": "formula-15",
+      "topicId": "sequences-series",
+      "name": "Arithmetic nth term",
+      "expression": "uₙ = a+(n−1)d",
+      "units": "a first term; d common difference",
+      "conditions": ""
+    },
+    {
+      "id": "formula-16",
+      "topicId": "sequences-series",
+      "name": "Geometric nth term",
+      "expression": "uₙ = arⁿ⁻¹",
+      "units": "a first term; r common ratio",
+      "conditions": ""
+    },
+    {
+      "id": "formula-17",
+      "topicId": "sequences-series",
+      "name": "Geometric sum to infinity",
+      "expression": "S∞ = a/(1−r)",
+      "units": "a first term; r common ratio",
+      "conditions": "Only when |r|<1"
+    },
+    {
+      "id": "formula-18",
+      "topicId": "probability",
+      "name": "Conditional probability",
+      "expression": "P(A|B)=P(A∩B)/P(B)",
+      "units": "P(B)>0",
+      "conditions": ""
+    },
+    {
+      "id": "formula-19",
+      "topicId": "binomial-distribution",
+      "name": "Binomial mean and variance",
+      "expression": "E(X)=np; Var(X)=np(1−p)",
+      "units": "X~B(n,p)",
+      "conditions": ""
+    },
+    {
+      "id": "formula-20",
+      "topicId": "normal-distribution",
+      "name": "Standardisation",
+      "expression": "Z=(X−μ)/σ",
+      "units": "μ mean; σ standard deviation",
+      "conditions": "X normal"
+    },
+    {
+      "id": "formula-21",
+      "topicId": "constant-acceleration",
+      "name": "SUVAT",
+      "expression": "v=u+at; s=ut+½at²; v²=u²+2as; s=½(u+v)t",
+      "units": "SI units",
+      "conditions": "Constant acceleration"
+    },
+    {
+      "id": "formula-22",
+      "topicId": "forces-motion",
+      "name": "Newton's second law",
+      "expression": "ΣF = ma",
+      "units": "N, kg, m s⁻²",
+      "conditions": "Constant mass"
+    },
+    {
+      "id": "formula-23",
+      "topicId": "moments",
+      "name": "Moment",
+      "expression": "M = Fd",
+      "units": "N m; d perpendicular distance",
+      "conditions": "About a chosen pivot"
     }
   ]
 }
