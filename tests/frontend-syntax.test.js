@@ -124,3 +124,42 @@ test("temporary account session verification failures preserve the stored token"
   await assert.rejects(context.__VaultUser.validateAccountSession(), /Temporarily unavailable/);
   assert.equal(context.__VaultUser.getAccountSession(), "temporary-failure-token");
 });
+
+
+test("A-level practice catalogues cover the configured subjects", () => {
+  const catalogues = [
+    ["revision/catalogues/edexcel-a-level-mathematics.json", "Mathematics", "Pearson Edexcel"],
+    ["revision/catalogues/aqa-a-level-physics-core.json", "Physics", "AQA"],
+    ["revision/catalogues/aqa-a-level-chemistry.json", "Chemistry", "AQA"]
+  ].map(([path, subject, examBoard]) => {
+    const data = JSON.parse(fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8"));
+    assert.equal(data.type, "revision-catalogue");
+    assert.equal(data.version, 1);
+    assert.equal(data.subject, subject);
+    assert.equal(data.examBoard, examBoard);
+    assert.ok(data.topics.length > 0);
+    const ids = new Set();
+    for (const topic of data.topics) {
+      assert.ok(topic.id && topic.name);
+      assert.ok(!ids.has(topic.id), `Duplicate topic ID: ${topic.id}`);
+      ids.add(topic.id);
+      assert.ok(Array.isArray(topic.subtopics));
+      assert.ok(topic.subtopics.every(item => typeof item === "string" && item.length));
+    }
+    return data;
+  });
+  assert.ok(catalogues[0].topics.length >= 30);
+  assert.equal(catalogues[1].optionalModule.status, "unconfirmed");
+  assert.ok(catalogues[2].topics.length >= 20);
+});
+
+test("Revision sync retains private exam-practice data", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  assert.match(worker, /practice:\s*set\s*&&\s*set\.practice/);
+  assert.match(worker, /formulas:\s*Array\.isArray\(set\.practice\.formulas\)/);
+  assert.match(revision, /practiceRecommend/);
+  assert.match(revision, /practiceImport/);
+  assert.match(revision, /practiceConnections/);
+  assert.match(revision, /importPublicNote = async function/);
+});
