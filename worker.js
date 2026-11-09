@@ -314,6 +314,7 @@ export default {
       const prefix = phase === "revision" ? "user:" : phase === "revision-leaderboard" ? "leaderboard:" : "theme:";
       const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
       let migrated = 0;
+      let alreadyPresent = 0;
       let skipped = 0;
       for (const item of page.keys) {
         const value = await binding.get(item.name, "json");
@@ -326,7 +327,8 @@ export default {
           const result = await env.DB.prepare(
             "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
           ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
-          migrated += result.meta?.changes ? 1 : 0;
+          if (result.meta?.changes) migrated++;
+          else alreadyPresent++;
         } else if (phase === "themes") {
           const remainder = item.name.slice("theme:".length);
           const separator = remainder.lastIndexOf(":");
@@ -343,7 +345,8 @@ export default {
           const result = await env.DB.prepare(
             "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
           ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
-          migrated += result.meta?.changes ? 1 : 0;
+          if (result.meta?.changes) migrated++;
+          else alreadyPresent++;
         } else {
           const userKey = String(value.userKey || item.name.slice("leaderboard:".length)).trim();
           const username = String(value.username || "").trim().slice(0, 20);
@@ -356,13 +359,15 @@ export default {
           const result = await env.DB.prepare(
             "INSERT OR IGNORE INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?)"
           ).bind(userKey, username, Math.floor(xp), Math.floor(streak), String(value.updatedAt || new Date().toISOString())).run();
-          migrated += result.meta?.changes ? 1 : 0;
+          if (result.meta?.changes) migrated++;
+          else alreadyPresent++;
         }
       }
       return new Response(JSON.stringify({
         phase,
         processed: page.keys.length,
         migrated,
+        alreadyPresent,
         skipped,
         complete: page.list_complete,
         cursor: page.list_complete ? null : page.cursor
