@@ -1,0 +1,77 @@
+{
+  "type": "revision-catalogue",
+  "version": 1,
+  "id": "edexcel-a-level-mathematics",
+  "subject": "Mathematics",
+  "examBoard": "Pearson Edexcel",
+  "qualification": "A-level Mathematics (9MA0)",
+  "source": "AGS Mathematics curriculum and Pearson Edexcel A-level Mathematics topic structure",
+  "topics": [
+    {
+      "id": "maths-01",
+      "name": "Pure Mathematics",
+      "year": "Year 12",
+      "area": "Pure Mathematics",
+      "subtopics": [
+        "Algebraic expressions",
+        "Indices and surds",
+        "Expanding and factorising",
+        "Algebraic fractions",
+        "Quadratics",
+        "Equations and inequalities",
+        "Graphs and transformations",
+        "Coordinate geometry",
+        "Circles",
+        "Algebraic methods and proof",
+        "Binomial expansion",
+        "Trigonometry",
+        "Vectors",
+        "Differentiation",
+        "Integration",
+        "Exponentials and logarithms",
+        "Functions and graphs",
+        "Sequences and series",
+        "Radians",
+        "Parametric equations",
+        "Advanced differentiation",
+        "Numerical methods",
+        "Differential equations",
+        "3D vectors"
+      ]
+    },
+    {
+      "id": "maths-02",
+      "name": "Statistics",
+      "year": "Year 12",
+      "area": "Statistics",
+      "subtopics": [
+        "Data collection and sampling",
+        "Measures of location and spread",
+        "Representations of data",
+        "Correlation and regression",
+        "Probability",
+        "Binomial distribution",
+        "Hypothesis testing",
+        "Conditional probability",
+        "Normal distribution"
+      ]
+    },
+    {
+      "id": "maths-03",
+      "name": "Mechanics",
+      "year": "Year 13",
+      "area": "Mechanics",
+      "subtopics": [
+        "Modelling in mechanics",
+        "Constant acceleration",
+        "Forces and motion",
+        "Variable acceleration",
+        "Moments and centres of mass",
+        "Friction",
+        "Projectiles",
+        "Applications of forces",
+        "Further kinematics"
+      ]
+    }
+  ]
+}

@@ -1417,7 +1417,13 @@ export default {
             published: Boolean(set && set.published),
             syllabus: Array.isArray(set && set.syllabus) ? set.syllabus.slice(0, 200) : [],
             syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === "object" ? set.syllabusDone : {},
-            reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog.slice(-5000) : []
+            reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog.slice(-5000) : [],
+            practice: set && set.practice && typeof set.practice === "object" ? {
+              catalogues: Object.fromEntries(Object.entries(set.practice.catalogues || {}).slice(0, 8)),
+              attempts: Array.isArray(set.practice.attempts) ? set.practice.attempts.slice(-1000) : [],
+              mistakes: Array.isArray(set.practice.mistakes) ? set.practice.mistakes.slice(-1000) : [],
+              formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : []
+            } : { catalogues: {}, attempts: [], mistakes: [], formulas: [] }
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();

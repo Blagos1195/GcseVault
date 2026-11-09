@@ -1062,6 +1062,85 @@ if (revisionQuickCreate) {
   });
 }
 
+
+const practiceBaseNormalize = normalizeRevisionSet;
+normalizeRevisionSet = function(set, fallbackId) {
+  const result = practiceBaseNormalize(set, fallbackId);
+  const practice = set && set.practice && typeof set.practice === 'object' ? set.practice : {};
+  result.practice = {catalogues:practice.catalogues && typeof practice.catalogues === 'object' ? practice.catalogues : {}, attempts:Array.isArray(practice.attempts)?practice.attempts:[], mistakes:Array.isArray(practice.mistakes)?practice.mistakes:[], formulas:Array.isArray(practice.formulas)?practice.formulas:[]};
+  return result;
+};
+state.accountSets.forEach(set => { set.practice = normalizeRevisionSet(set, set.id).practice; });
+const practiceBaseSync = syncActiveRevisionSet;
+syncActiveRevisionSet = function() { practiceBaseSync(); const set=getActiveRevisionSet(); if(set&&!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[]}; };
+function practiceStore(){const set=getActiveRevisionSet();if(!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[]};return set.practice;}
+function practiceTopics(){return Object.entries(practiceStore().catalogues).flatMap(([subjectId,c])=>(c.topics||[]).map(topic=>({...topic,subjectId,subject:c.subject,examBoard:c.examBoard})));}
+function practiceStats(topic){
+ const p=practiceStore(), attempts=p.attempts.filter(a=>a.subjectId===topic.subjectId&&a.topicId===topic.id);
+ const marks=attempts.reduce((n,a)=>n+Number(a.marks||0),0),max=attempts.reduce((n,a)=>n+Number(a.maxMarks||0),0);
+ const lastAttempt=attempts.reduce((n,a)=>Math.max(n,Number(a.at)||0),0);
+ const cards=state.cards.filter(c=>normalizeTopic(c.topic)===normalizeTopic(topic.name)||normalizeTopic(c.topic).includes(normalizeTopic(topic.name)));
+ const reviews=cards.reduce((n,c)=>n+Number(state.progress[c.id]?.reviews||0),0),correct=cards.reduce((n,c)=>n+Number(state.progress[c.id]?.correct||0),0);
+ const lastCard=cards.reduce((n,c)=>Math.max(n,Number(state.progress[c.id]?.lastReviewed)||0),0),last=Math.max(lastAttempt,lastCard);
+ const mistakes=p.mistakes.filter(m=>m.subjectId===topic.subjectId&&m.topicId===topic.id&&!m.resolved).length;
+ const accuracy=max?marks/max:null,weak=accuracy===null?.45:1-accuracy,stale=last?Math.min(1,(Date.now()-last)/(21*86400000)):1;
+ const recall=reviews?1-correct/reviews:.35,score=weak*.4+stale*.25+(attempts.length?0:.15)+recall*.1+Math.min(1,mistakes/3)*.1;
+ return {attempts:attempts.length,marks,max,accuracy,last,mistakes,score,cards:cards.length};
+}
+function practiceEsc(v){return escapeRevision(String(v??''));}
+function practiceSubjectOptions(){return Object.entries(practiceStore().catalogues).map(([id,c])=>'<option value="'+practiceEsc(id)+'">'+practiceEsc(c.subject)+' · '+practiceEsc(c.examBoard)+'</option>').join('');}
+function practiceTopicOptions(subject){return (practiceStore().catalogues[subject]?.topics||[]).map(t=>'<option value="'+practiceEsc(t.id)+'">'+practiceEsc(t.name)+'</option>').join('');}
+function practiceRecommend(){
+ const topics=practiceTopics().map(t=>({...t,stats:practiceStats(t)})).sort((a,b)=>b.stats.score-a.stats.score).slice(0,8);
+ if(!Object.keys(practiceStore().catalogues).length)return '<div class="card" style="margin-top:10px"><div class="sec">Exam practice recommendations</div><div class="ps">Upload a private subject catalogue in Settings to get recommendations based on your practice results, flashcard recall and mistakes.</div><button class="btn bp" onclick="state.view=\'settings\';renderRevision()">Upload subjects</button></div>';
+ return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities update from exam marks, flashcard recall, practice recency and unresolved mistakes.</div><div class="knowledge-list">'+topics.map((t,i)=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(t.name)+'</div><div class="knowledge-meta">'+practiceEsc(t.subject)+' · '+(t.stats.accuracy===null?'No exam results':Math.round(t.stats.accuracy*100)+'% exam accuracy')+' · '+t.stats.mistakes+' open mistakes · '+(t.stats.last?Math.floor((Date.now()-t.stats.last)/86400000)+' days since practice':'Not practised yet')+'</div></div><button class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(t.subjectId)+'\',\''+practiceEsc(t.id)+'\')">Select</button></div>').join('')+'</div><div class="sec">Log an exam attempt</div><div class="g2"><div class="fg"><label>Subject</label><select id="practice-subject" onchange="document.getElementById(\'practice-topic\').innerHTML=practiceTopicOptions(this.value)">'+practiceSubjectOptions()+'</select></div><div class="fg"><label>Topic</label><select id="practice-topic">'+practiceTopicOptions(Object.keys(practiceStore().catalogues)[0])+'</select></div><div class="fg"><label>Marks achieved</label><input id="practice-marks" type="number" min="0" step="1"></div><div class="fg"><label>Total marks</label><input id="practice-max" type="number" min="1" step="1"></div><div class="fg"><label>Question source (optional)</label><input id="practice-source" maxlength="160"></div></div><div class="fg"><label>Mistakes / things to revisit (optional)</label><textarea id="practice-notes" rows="2" maxlength="1200"></textarea></div><button class="btn bp" onclick="practiceRecord()">Save attempt</button></div>';
+}
+function practiceSelectTopic(subjectId,topicId){practiceStore().selectedTopic={subjectId,topicId};saveRevision();state.setMessage='Topic selected. Use the linked flashcards and find exam questions for this topic.';renderRevision();}
+function practiceRecord(){
+ const subjectId=document.getElementById('practice-subject')?.value,topicId=document.getElementById('practice-topic')?.value;
+ const marks=Number(document.getElementById('practice-marks')?.value),maxMarks=Number(document.getElementById('practice-max')?.value);
+ const notes=String(document.getElementById('practice-notes')?.value||'').trim().slice(0,1200),source=String(document.getElementById('practice-source')?.value||'').trim().slice(0,160);
+ const topic=practiceTopics().find(t=>t.subjectId===subjectId&&t.id===topicId);
+ if(!topic||!Number.isFinite(marks)||!Number.isFinite(maxMarks)||maxMarks<=0||marks<0||marks>maxMarks){state.setMessage='Enter a topic and valid marks before saving.';renderRevision();return;}
+ const p=practiceStore();p.attempts.push({id:'pa-'+Date.now(),subjectId,topicId,topic:topic.name,marks,maxMarks,notes,source,at:Date.now()});p.attempts=p.attempts.slice(-1000);
+ if(notes){p.mistakes.push({id:'pm-'+Date.now(),subjectId,topicId,topic:topic.name,description:notes,at:Date.now(),resolved:false});p.mistakes=p.mistakes.slice(-1000);}
+ saveRevision();state.setMessage='Saved '+marks+'/'+maxMarks+' for '+topic.name+'.';renderRevision();
+}
+function practiceResolve(id){const m=practiceStore().mistakes.find(x=>x.id===id);if(m){m.resolved=true;m.resolvedAt=Date.now();saveRevision();renderRevision();}}
+function practiceImport(input){
+ const file=input.files?.[0];if(!file)return;const reader=new FileReader();
+ reader.onload=()=>{try{
+  const c=JSON.parse(String(reader.result||''));
+  if(c.type!=='revision-catalogue'||c.version!==1||!c.subject||!c.examBoard||!Array.isArray(c.topics)||c.topics.length>250)throw new Error('Unsupported subject catalogue.');
+  const ids=new Set(),topics=c.topics.map(t=>{const id=String(t.id||'').trim(),name=String(t.name||'').trim();if(!id||!name||ids.has(id)||!Array.isArray(t.subtopics))throw new Error('Every topic needs a unique ID, name and subtopic list.');ids.add(id);return{id,name,year:String(t.year||''),area:String(t.area||''),subtopics:t.subtopics.map(String).slice(0,100)};});
+  const id=String(c.id||normalizeTopic(c.examBoard+' '+c.subject).replace(/\s+/g,'-')).slice(0,100);
+  practiceStore().catalogues[id]={id,subject:String(c.subject).slice(0,100),examBoard:String(c.examBoard).slice(0,80),qualification:String(c.qualification||'').slice(0,100),source:String(c.source||'').slice(0,300),optionalModule:c.optionalModule||null,topics,updatedAt:Date.now()};
+  saveRevision();state.setMessage='Imported '+topics.length+' topics for '+c.subject+'.';renderRevision();
+ }catch(e){state.setMessage=e.message||'Could not import catalogue.';renderRevision();}};
+ reader.readAsText(file);
+}
+function practiceRemove(id){if(!confirm('Remove this subject and its associated practice history?'))return;const p=practiceStore();delete p.catalogues[id];p.attempts=p.attempts.filter(x=>x.subjectId!==id);p.mistakes=p.mistakes.filter(x=>x.subjectId!==id);saveRevision();renderRevision();}
+function practiceSettings(){
+ const entries=Object.entries(practiceStore().catalogues);
+ return '<div class="card" style="margin-top:10px"><div class="sec">Private subject catalogues</div><div class="ps">Upload one JSON file per subject. It is stored in this revision set and synced to your account, not assigned to other users.</div><label class="btn" for="revision-practice-file">Upload subject JSON</label><input id="revision-practice-file" type="file" accept=".json,application/json" hidden onchange="practiceImport(this)"/><div class="knowledge-list">'+entries.map(([id,c])=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(c.subject)+'</div><div class="knowledge-meta">'+practiceEsc(c.examBoard)+' · '+c.topics.length+' topics · '+c.topics.reduce((n,t)=>n+t.subtopics.length,0)+' subtopics</div></div><button class="btn bsm br" onclick="practiceRemove(\''+practiceEsc(id)+'\')">Remove</button></div>').join('')+'</div></div>';
+}
+function practiceAnalytics(){
+ const p=practiceStore(),topics=practiceTopics().map(t=>({...t,stats:practiceStats(t)})).sort((a,b)=>b.stats.score-a.stats.score);
+ const attempts=p.attempts.slice().sort((a,b)=>b.at-a.at),mistakes=p.mistakes.filter(m=>!m.resolved);
+ return '<div class="card" style="margin-top:10px"><div class="sec">Exam practice performance</div><div class="g3"><div class="scard"><div class="snum">'+attempts.length+'</div><div class="slbl">Attempts</div></div><div class="scard"><div class="snum">'+attempts.reduce((n,a)=>n+a.marks,0)+'/'+attempts.reduce((n,a)=>n+a.maxMarks,0)+'</div><div class="slbl">Marks recorded</div></div><div class="scard"><div class="snum">'+mistakes.length+'</div><div class="slbl">Open mistakes</div></div></div><div class="knowledge-list">'+topics.map(t=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(t.name)+'</div><div class="knowledge-meta">'+(t.stats.accuracy===null?'No exam attempts':Math.round(t.stats.accuracy*100)+'% across '+t.stats.attempts+' attempts')+' · '+t.stats.mistakes+' mistakes</div></div></div>').join('')+'</div>'+ (mistakes.length?'<div class="sec">Mistake notebook</div><div class="knowledge-list">'+mistakes.slice().sort((a,b)=>b.at-a.at).map(m=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(m.topic)+'</div><div class="knowledge-meta">'+practiceEsc(m.description)+'</div></div><button class="btn bsm" onclick="practiceResolve(\''+practiceEsc(m.id)+'\')">Resolved</button></div>').join('')+'</div>':'<div class="ps">No unresolved mistakes.</div>')+'</div>';
+}
+function practiceConnections(){
+ const counts={};state.cards.forEach(card=>(card.links||[]).forEach(id=>{const other=cardById(id);if(other&&card.topic!==other.topic){const key=other.topic||'Uncategorised';counts[key]=(counts[key]||0)+1;}}));
+ const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ return top.length?'<div class="card" style="margin-top:10px"><div class="sec">Connected concepts</div><div class="ps">Flashcard links now feed topic relationships, helping identify related material rather than serving only as lines on the graph.</div>'+top.map(([topic,count])=>'<div class="suggestion"><div><div class="suggestion-name">'+practiceEsc(topic)+'</div><div class="suggestion-reason">'+count+' concept connections</div></div></div>').join('')+'</div>':'';
+}
+const practiceOldOverview=renderOverview;
+renderOverview=function(){return practiceOldOverview()+practiceRecommend()+practiceConnections();};
+const practiceOldAnalytics=renderAnalytics;
+renderAnalytics=function(){return practiceOldAnalytics()+practiceAnalytics();};
+const practiceOldSettings=renderSettings;
+renderSettings=function(){return practiceOldSettings()+practiceSettings();};
+
 renderRevision();
 ThemeManager.initTheme('global');
 syncRevisionTheme();
