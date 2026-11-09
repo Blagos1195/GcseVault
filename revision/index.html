@@ -944,7 +944,7 @@ async function requestRevisionAI(){
   timer=setInterval(()=>showStatus(`Waiting for the AI response (${Math.floor((Date.now()-startedAt)/1000)}s). The model does not provide live progress.`),1000);
   try{
     const token=RevisionAIManager.getToken();
-    if(!token) throw new Error('Admin login expired. Please sign in again.');
+    if(!token) throw new Error('AI access session expired. Please sign in again.');
     const count=Math.max(5,Math.min(100,Number(document.getElementById('ai-count')?.value)||30));
     const mode=requestedMode;
     state.aiDraft.mode=mode;
@@ -957,7 +957,7 @@ async function requestRevisionAI(){
     const response=await fetch(`${ThemeManager.WORKER_URL}/generate`,{method:'POST',headers:{'Content-Type':'application/json','X-AI-Session':token},body:JSON.stringify({count,mode,existingCards,material}),signal:controller.signal});
     showStatus('Response received. Reading the study guide...');
     const data=await response.json();
-    if(!response.ok){if(response.status===401||response.status===403)RevisionAIManager.logout();throw new Error(data.error||`HTTP ${response.status}`);
+    if(!response.ok){if(response.status===401||response.status===403)RevisionAIManager.logout();throw new Error(data.error||`HTTP ${response.status}`);}
     state.aiResult=normalizeAIResult(data,existingCards.map(card=>card.id));
     state.aiNotice=mode==='links'?`Preview ready: ${state.aiResult.links.length} connections. Nothing has been changed yet.`:state.aiResult.flashcards.length?`Preview ready: ${state.aiResult.flashcards.length} flashcards and ${state.aiResult.links.length} links. Nothing has been saved yet.`:'No flashcards were returned. Add more topic notes or check that the requested action matches the content.';
     AdminManager.error='';
