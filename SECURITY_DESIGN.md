@@ -38,10 +38,10 @@ There is no email-based reset or support-assisted identity verification yet. If 
 ## Production rollout checklist
 
 1. Back up the live D1 database and relevant KV namespaces.
-2. Apply migrations 0001 through 0004 in order, checking the target database and migration history first.
+2. Check the target database's migration history, then apply every unapplied migration from 0001 through 0005 in order. Do not rerun migrations already recorded as applied.
 3. Deploy the Worker and website changes together.
 4. Test a new account, an existing account adding a password, login on a second device, logout, admin access, Revision sync and account recovery.
 5. Compare user and progress counts before and after. Keep the KV copies until the migration is verified.
 6. Do not delete old account keys or legacy data as part of this rollout.
 
-The branch and draft PR contain code changes only. No production database migration, Cloudflare secret change or deployment has been performed.
+The repository integration cannot inspect the live Cloudflare account. Confirm production migration history and deployment status directly before rollout; do not infer them from this document.
