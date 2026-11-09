@@ -1178,6 +1178,23 @@ importPublicNote = async function(id){
  saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();
 };
 
+
+function practiceStudyTopicCards(subjectId,topicId){
+ const topic=practiceTopics().find(t=>t.subjectId===subjectId&&t.id===topicId);if(!topic)return;
+ const ids=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name)||normalizeTopic(card.topic).includes(normalizeTopic(topic.name))).map(card=>card.id);
+ if(!ids.length){state.setMessage='No flashcards are tagged to this topic yet. You can still use the listed subtopics to find exam questions.';renderRevision();return;}
+ state.studyQueue=ids;state.studyIndex=0;state.studySessionActive=true;state.sessionReviewed=0;state.revealed=false;state.view='cards';renderRevision();
+}
+const practiceRecommendBaseDrill=practiceRecommend;
+practiceRecommend=function(){
+ const base=practiceRecommendBaseDrill(),selected=practiceStore().selectedTopic;
+ if(!selected)return base;
+ const topic=practiceTopics().find(t=>t.subjectId===selected.subjectId&&t.id===selected.topicId);
+ if(!topic)return base;
+ const stats=practiceStats(topic);
+ return base+'<div class="card" style="margin-top:10px"><div class="sec">Selected topic · '+practiceEsc(topic.name)+'</div><div class="knowledge-meta">'+practiceEsc(topic.subject)+' · '+practiceEsc(topic.examBoard)+' · '+(stats.accuracy===null?'No exam results yet':Math.round(stats.accuracy*100)+'% exam accuracy')+'</div><div class="sec">Subtopics to target</div><div class="knowledge-list">'+(topic.subtopics||[]).map(item=>'<div class="knowledge-item"><span class="knowledge-title">'+practiceEsc(item)+'</span></div>').join('')+'</div><div class="ps">Use these subtopics to choose focused questions from your exam-board materials or past papers. Record the marks above to improve future recommendations.</div><button class="btn" onclick="practiceStudyTopicCards(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Review related flashcards</button></div>';
+};
+
 renderRevision();
 ThemeManager.initTheme('global');
 syncRevisionTheme();
