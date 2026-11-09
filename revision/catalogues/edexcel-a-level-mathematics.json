@@ -8,69 +8,437 @@
   "source": "AGS Mathematics curriculum and Pearson Edexcel A-level Mathematics topic structure",
   "topics": [
     {
-      "id": "maths-01",
-      "name": "Pure Mathematics",
+      "id": "algebraic-expressions",
+      "name": "Algebraic expressions",
       "year": "Year 12",
-      "area": "Pure Mathematics",
+      "area": "Algebraic expressions",
       "subtopics": [
-        "Algebraic expressions",
-        "Indices and surds",
-        "Expanding and factorising",
-        "Algebraic fractions",
-        "Quadratics",
-        "Equations and inequalities",
-        "Graphs and transformations",
-        "Coordinate geometry",
-        "Circles",
-        "Algebraic methods and proof",
-        "Binomial expansion",
-        "Trigonometry",
-        "Vectors",
-        "Differentiation",
-        "Integration",
-        "Exponentials and logarithms",
-        "Functions and graphs",
-        "Sequences and series",
-        "Radians",
-        "Parametric equations",
-        "Advanced differentiation",
-        "Numerical methods",
-        "Differential equations",
-        "3D vectors"
+        "Indices",
+        "Surds",
+        "Expanding brackets",
+        "Factorising",
+        "Algebraic fractions"
       ]
     },
     {
-      "id": "maths-02",
-      "name": "Statistics",
+      "id": "quadratics",
+      "name": "Quadratics",
       "year": "Year 12",
-      "area": "Statistics",
+      "area": "Quadratics",
       "subtopics": [
-        "Data collection and sampling",
-        "Measures of location and spread",
-        "Representations of data",
-        "Correlation and regression",
-        "Probability",
-        "Binomial distribution",
-        "Hypothesis testing",
-        "Conditional probability",
-        "Normal distribution"
+        "Completing the square",
+        "Discriminants",
+        "Quadratic equations",
+        "Quadratic modelling"
       ]
     },
     {
-      "id": "maths-03",
-      "name": "Mechanics",
+      "id": "equations-inequalities",
+      "name": "Equations and inequalities",
+      "year": "Year 12",
+      "area": "Equations and inequalities",
+      "subtopics": [
+        "Simultaneous equations",
+        "Linear and quadratic inequalities",
+        "Modulus equations and inequalities"
+      ]
+    },
+    {
+      "id": "graphs-transformations",
+      "name": "Graphs and transformations",
+      "year": "Year 12",
+      "area": "Graphs and transformations",
+      "subtopics": [
+        "Sketching graphs",
+        "Translations and stretches",
+        "Reflections",
+        "Composite transformations"
+      ]
+    },
+    {
+      "id": "coordinate-geometry",
+      "name": "Coordinate geometry and circles",
+      "year": "Year 12",
+      "area": "Coordinate geometry and circles",
+      "subtopics": [
+        "Straight lines",
+        "Parallel and perpendicular lines",
+        "Circle equations",
+        "Geometric problems"
+      ]
+    },
+    {
+      "id": "algebraic-methods",
+      "name": "Algebraic methods and proof",
+      "year": "Year 12",
+      "area": "Algebraic methods and proof",
+      "subtopics": [
+        "Algebraic division",
+        "Factor theorem",
+        "Partial fractions",
+        "Mathematical proof"
+      ]
+    },
+    {
+      "id": "binomial-expansion",
+      "name": "Binomial expansion",
+      "year": "Year 12",
+      "area": "Binomial expansion",
+      "subtopics": [
+        "Positive integer powers",
+        "Fractional and negative powers",
+        "Approximations"
+      ]
+    },
+    {
+      "id": "trigonometry",
+      "name": "Trigonometry",
+      "year": "Year 12",
+      "area": "Trigonometry",
+      "subtopics": [
+        "Exact values",
+        "Trigonometric graphs",
+        "Identities",
+        "Equations",
+        "Sine and cosine rules"
+      ]
+    },
+    {
+      "id": "vectors",
+      "name": "Vectors",
+      "year": "Year 12",
+      "area": "Vectors",
+      "subtopics": [
+        "Vector arithmetic",
+        "Position vectors",
+        "Geometric proofs"
+      ]
+    },
+    {
+      "id": "differentiation",
+      "name": "Differentiation",
+      "year": "Year 12",
+      "area": "Differentiation",
+      "subtopics": [
+        "Differentiating powers",
+        "Tangents and normals",
+        "Stationary points",
+        "Rates of change"
+      ]
+    },
+    {
+      "id": "integration",
+      "name": "Integration",
+      "year": "Year 12",
+      "area": "Integration",
+      "subtopics": [
+        "Indefinite integration",
+        "Definite integration",
+        "Areas under curves",
+        "Areas between curves"
+      ]
+    },
+    {
+      "id": "exponentials-logarithms",
+      "name": "Exponentials and logarithms",
+      "year": "Year 12",
+      "area": "Exponentials and logarithms",
+      "subtopics": [
+        "Exponential functions",
+        "Logarithm laws",
+        "Solving exponential equations"
+      ]
+    },
+    {
+      "id": "functions-graphs",
+      "name": "Functions and graphs",
       "year": "Year 13",
-      "area": "Mechanics",
+      "area": "Functions and graphs",
       "subtopics": [
-        "Modelling in mechanics",
-        "Constant acceleration",
-        "Forces and motion",
-        "Variable acceleration",
-        "Moments and centres of mass",
-        "Friction",
-        "Projectiles",
-        "Applications of forces",
-        "Further kinematics"
+        "Domain and range",
+        "Composite functions",
+        "Inverse functions",
+        "Modulus functions"
+      ]
+    },
+    {
+      "id": "sequences-series",
+      "name": "Sequences and series",
+      "year": "Year 13",
+      "area": "Sequences and series",
+      "subtopics": [
+        "Arithmetic sequences",
+        "Geometric sequences",
+        "Sigma notation",
+        "Convergence"
+      ]
+    },
+    {
+      "id": "radians",
+      "name": "Radians",
+      "year": "Year 13",
+      "area": "Radians",
+      "subtopics": [
+        "Radian measure",
+        "Arc length",
+        "Sector area",
+        "Small-angle approximations"
+      ]
+    },
+    {
+      "id": "advanced-trigonometry",
+      "name": "Advanced trigonometry",
+      "year": "Year 13",
+      "area": "Advanced trigonometry",
+      "subtopics": [
+        "Compound-angle formulae",
+        "Double-angle formulae",
+        "R-formulae",
+        "Further identities"
+      ]
+    },
+    {
+      "id": "parametric-equations",
+      "name": "Parametric equations",
+      "year": "Year 13",
+      "area": "Parametric equations",
+      "subtopics": [
+        "Parametric curves",
+        "Differentiating parametrically",
+        "Tangents and normals"
+      ]
+    },
+    {
+      "id": "advanced-differentiation",
+      "name": "Advanced differentiation",
+      "year": "Year 13",
+      "area": "Advanced differentiation",
+      "subtopics": [
+        "Chain rule",
+        "Product rule",
+        "Quotient rule",
+        "Implicit differentiation"
+      ]
+    },
+    {
+      "id": "numerical-methods",
+      "name": "Numerical methods",
+      "year": "Year 13",
+      "area": "Numerical methods",
+      "subtopics": [
+        "Sign changes",
+        "Fixed-point iteration",
+        "Newton-Raphson method"
+      ]
+    },
+    {
+      "id": "advanced-integration",
+      "name": "Advanced integration and differential equations",
+      "year": "Year 13",
+      "area": "Advanced integration and differential equations",
+      "subtopics": [
+        "Integration by parts",
+        "Integration by substitution",
+        "Partial fractions",
+        "First-order differential equations"
+      ]
+    },
+    {
+      "id": "three-dimensional-vectors",
+      "name": "3D vectors",
+      "year": "Year 13",
+      "area": "3D vectors",
+      "subtopics": [
+        "3D vector equations",
+        "Scalar products",
+        "Angles between lines"
+      ]
+    },
+    {
+      "id": "data-collection",
+      "name": "Data collection and sampling",
+      "year": "Year 12",
+      "area": "Data collection and sampling",
+      "subtopics": [
+        "Populations and samples",
+        "Sampling methods",
+        "Bias"
+      ]
+    },
+    {
+      "id": "measures-spread",
+      "name": "Measures of location and spread",
+      "year": "Year 12",
+      "area": "Measures of location and spread",
+      "subtopics": [
+        "Mean and median",
+        "Variance and standard deviation",
+        "Quartiles and percentiles"
+      ]
+    },
+    {
+      "id": "data-presentation",
+      "name": "Representations of data",
+      "year": "Year 12",
+      "area": "Representations of data",
+      "subtopics": [
+        "Histograms",
+        "Cumulative frequency",
+        "Box plots"
+      ]
+    },
+    {
+      "id": "correlation-regression",
+      "name": "Correlation and linear regression",
+      "year": "Year 12",
+      "area": "Correlation and linear regression",
+      "subtopics": [
+        "Product moment correlation coefficient",
+        "Regression lines",
+        "Interpretation"
+      ]
+    },
+    {
+      "id": "probability",
+      "name": "Probability",
+      "year": "Year 12",
+      "area": "Probability",
+      "subtopics": [
+        "Mutually exclusive events",
+        "Independent events",
+        "Conditional probability"
+      ]
+    },
+    {
+      "id": "binomial-distribution",
+      "name": "Binomial distribution",
+      "year": "Year 12",
+      "area": "Binomial distribution",
+      "subtopics": [
+        "Binomial assumptions",
+        "Calculating probabilities",
+        "Mean and variance"
+      ]
+    },
+    {
+      "id": "hypothesis-testing",
+      "name": "Hypothesis testing",
+      "year": "Year 12",
+      "area": "Hypothesis testing",
+      "subtopics": [
+        "Null and alternative hypotheses",
+        "Critical values",
+        "Significance levels"
+      ]
+    },
+    {
+      "id": "normal-distribution",
+      "name": "Normal distribution",
+      "year": "Year 13",
+      "area": "Normal distribution",
+      "subtopics": [
+        "Standard normal distribution",
+        "Finding probabilities",
+        "Inverse normal calculations"
+      ]
+    },
+    {
+      "id": "mechanics-modelling",
+      "name": "Modelling in mechanics",
+      "year": "Year 12",
+      "area": "Modelling in mechanics",
+      "subtopics": [
+        "Particles",
+        "Forces",
+        "Modelling assumptions"
+      ]
+    },
+    {
+      "id": "constant-acceleration",
+      "name": "Constant acceleration",
+      "year": "Year 12",
+      "area": "Constant acceleration",
+      "subtopics": [
+        "SUVAT equations",
+        "Displacement-time graphs",
+        "Velocity-time graphs"
+      ]
+    },
+    {
+      "id": "forces-motion",
+      "name": "Forces and motion",
+      "year": "Year 12",
+      "area": "Forces and motion",
+      "subtopics": [
+        "Newton's laws",
+        "Connected particles",
+        "Resolving forces"
+      ]
+    },
+    {
+      "id": "variable-acceleration",
+      "name": "Variable acceleration",
+      "year": "Year 12",
+      "area": "Variable acceleration",
+      "subtopics": [
+        "Velocity as a function of time",
+        "Acceleration as a function of time",
+        "Displacement from velocity"
+      ]
+    },
+    {
+      "id": "moments",
+      "name": "Moments and centres of mass",
+      "year": "Year 13",
+      "area": "Moments and centres of mass",
+      "subtopics": [
+        "Moment of a force",
+        "Equilibrium",
+        "Centre of mass"
+      ]
+    },
+    {
+      "id": "friction",
+      "name": "Forces and friction",
+      "year": "Year 13",
+      "area": "Forces and friction",
+      "subtopics": [
+        "Coefficient of friction",
+        "Limiting friction",
+        "Inclined planes"
+      ]
+    },
+    {
+      "id": "projectiles",
+      "name": "Projectiles",
+      "year": "Year 13",
+      "area": "Projectiles",
+      "subtopics": [
+        "Horizontal and vertical motion",
+        "Time of flight",
+        "Range and maximum height"
+      ]
+    },
+    {
+      "id": "applications-forces",
+      "name": "Applications of forces",
+      "year": "Year 13",
+      "area": "Applications of forces",
+      "subtopics": [
+        "Inclined planes",
+        "Connected particles",
+        "Variable forces"
+      ]
+    },
+    {
+      "id": "further-kinematics",
+      "name": "Further kinematics",
+      "year": "Year 13",
+      "area": "Further kinematics",
+      "subtopics": [
+        "Differentiation in kinematics",
+        "Integration in kinematics",
+        "Displacement and distance"
       ]
     }
   ]
