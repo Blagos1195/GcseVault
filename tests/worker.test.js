@@ -653,7 +653,42 @@ test("owner migration reports malformed Revision leaderboard records as skipped"
   assert.equal(response.status, 200);
   assert.equal(data.processed, 1);
   assert.equal(data.migrated, 0);
+  assert.equal(data.alreadyPresent, 0);
   assert.equal(data.skipped, 1);
   assert.equal(data.complete, true);
   assert.equal(data.cursor, null);
+});
+
+test("owner migration counts existing D1 records separately from newly copied records", async () => {
+  const env = makeEnv();
+  env.REVISION.list = async () => ({
+    keys: [{ name: "leaderboard:account-key" }],
+    list_complete: true
+  });
+  env.REVISION.get = async () => ({
+    userKey: "account-key",
+    username: "student",
+    xp: 420,
+    streak: 3,
+    updatedAt: "2026-11-09T08:00:00.000Z"
+  });
+  env.DB.prepare = sql => ({
+    bind: () => ({
+      first: async () => null,
+      all: async () => ({ results: [] }),
+      run: async () => ({ success: true, meta: { changes: 0 } })
+    })
+  });
+
+  const response = await call("/admin/migrate-storage", env, {
+    phase: "revision-leaderboard",
+    limit: 100
+  }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(data.processed, 1);
+  assert.equal(data.migrated, 0);
+  assert.equal(data.alreadyPresent, 1);
+  assert.equal(data.skipped, 0);
 });
