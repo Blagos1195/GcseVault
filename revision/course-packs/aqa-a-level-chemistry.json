@@ -13,7 +13,11 @@
       "topicId": "chemistry-01",
       "front": "What defines isotopes of an element?",
       "back": "They have the same number of protons but different numbers of neutrons.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-05-1",
+        "chemistry-03-1"
+      ]
     },
     {
       "id": "chemistry-01-2",
@@ -55,7 +59,12 @@
       "topicId": "chemistry-02",
       "front": "State the Avogadro constant.",
       "back": "Approximately 6.02×10²³ mol⁻¹.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-19-1",
+        "chemistry-27-1"
+      ]
     },
     {
       "id": "chemistry-02-2",
@@ -111,7 +120,10 @@
       "topicId": "chemistry-03",
       "front": "What holds an ionic lattice together?",
       "back": "Strong electrostatic attraction between oppositely charged ions in all directions.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-01-1"
+      ]
     },
     {
       "id": "chemistry-03-2",
@@ -160,7 +172,10 @@
       "topicId": "chemistry-04",
       "front": "Define oxidation and reduction using electrons.",
       "back": "Oxidation is loss of electrons; reduction is gain of electrons.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-27-1"
+      ]
     },
     {
       "id": "chemistry-04-2",
@@ -188,7 +203,10 @@
       "topicId": "chemistry-05",
       "front": "Why does atomic radius generally decrease across Period 3?",
       "back": "Nuclear charge increases while shielding does not increase greatly, pulling electrons closer.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-01-1"
+      ]
     },
     {
       "id": "chemistry-05-2",
@@ -286,7 +304,12 @@
       "topicId": "chemistry-08",
       "front": "What is the sign of ΔH for an exothermic reaction?",
       "back": "Negative, because heat is released to the surroundings.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-22-1",
+        "chemistry-09-1"
+      ]
     },
     {
       "id": "chemistry-08-2",
@@ -328,7 +351,12 @@
       "topicId": "chemistry-09",
       "front": "State collision theory.",
       "back": "A reaction occurs when particles collide with sufficient energy and suitable orientation.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-16-1",
+        "chemistry-10-1"
+      ]
     },
     {
       "id": "chemistry-09-2",
@@ -363,7 +391,12 @@
       "topicId": "chemistry-10",
       "front": "What is dynamic equilibrium?",
       "back": "In a closed system, forward and reverse reaction rates are equal and concentrations remain constant.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-09-1",
+        "chemistry-19-1",
+        "chemistry-16-1"
+      ]
     },
     {
       "id": "chemistry-10-2",
@@ -405,7 +438,12 @@
       "topicId": "chemistry-11",
       "front": "What is the general formula for an acyclic alkane?",
       "back": "CnH₂n+₂.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-12-1",
+        "chemistry-13-1",
+        "chemistry-14-1"
+      ]
     },
     {
       "id": "chemistry-11-2",
@@ -440,7 +478,12 @@
       "topicId": "chemistry-12",
       "front": "What is a nucleophile?",
       "back": "An electron-pair donor that is attracted to an electron-deficient centre.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-13-1",
+        "chemistry-15-1"
+      ]
     },
     {
       "id": "chemistry-12-2",
@@ -475,7 +518,14 @@
       "topicId": "chemistry-13",
       "front": "Why are alkenes more reactive than alkanes?",
       "back": "The C=C contains a π bond with high electron density that is susceptible to electrophilic attack.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-12-1",
+        "chemistry-14-1",
+        "chemistry-23-1",
+        "chemistry-26-1"
+      ]
     },
     {
       "id": "chemistry-13-2",
@@ -510,7 +560,13 @@
       "topicId": "chemistry-14",
       "front": "What product forms when a primary alcohol is gently oxidised and distilled?",
       "back": "An aldehyde, which is distilled off to limit further oxidation.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-13-1",
+        "chemistry-15-1",
+        "chemistry-23-1"
+      ]
     },
     {
       "id": "chemistry-14-2",
@@ -545,7 +601,15 @@
       "topicId": "chemistry-15",
       "front": "What does a positive 2,4-DNPH test indicate?",
       "back": "A carbonyl group in an aldehyde or ketone; an orange precipitate forms.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-12-1",
+        "chemistry-14-1",
+        "chemistry-17-1",
+        "chemistry-18-1",
+        "chemistry-21-1",
+        "chemistry-24-1"
+      ]
     },
     {
       "id": "chemistry-15-2",
@@ -580,7 +644,11 @@
       "topicId": "chemistry-16",
       "front": "What does the order of reaction describe?",
       "back": "The power to which a reactant concentration is raised in the experimentally determined rate equation.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-09-1",
+        "chemistry-10-1"
+      ]
     },
     {
       "id": "chemistry-16-2",
@@ -622,7 +690,10 @@
       "topicId": "chemistry-17",
       "front": "What causes separation in chromatography?",
       "back": "Different affinities for the stationary and mobile phases cause substances to travel at different rates.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1"
+      ]
     },
     {
       "id": "chemistry-17-2",
@@ -657,7 +728,10 @@
       "topicId": "chemistry-18",
       "front": "What does the number of proton NMR signals indicate?",
       "back": "The number of distinct chemical environments of hydrogen atoms.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1"
+      ]
     },
     {
       "id": "chemistry-18-2",
@@ -692,7 +766,12 @@
       "topicId": "chemistry-19",
       "front": "Define a Brønsted–Lowry acid and base.",
       "back": "An acid donates a proton; a base accepts a proton.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-10-1",
+        "chemistry-27-1"
+      ]
     },
     {
       "id": "chemistry-19-2",
@@ -762,7 +841,11 @@
       "topicId": "chemistry-21",
       "front": "How do aldehydes and ketones differ structurally?",
       "back": "An aldehyde has a terminal –CHO group; a ketone has a carbonyl carbon bonded to two carbon groups.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1",
+        "chemistry-23-1"
+      ]
     },
     {
       "id": "chemistry-21-2",
@@ -797,7 +880,11 @@
       "topicId": "chemistry-22",
       "front": "State the Gibbs free-energy equation.",
       "back": "ΔG=ΔH−TΔS, with temperature in kelvin and consistent units.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-27-1"
+      ]
     },
     {
       "id": "chemistry-22-2",
@@ -825,7 +912,12 @@
       "topicId": "chemistry-23",
       "front": "What functional group defines a carboxylic acid?",
       "back": "The carboxyl group, –COOH.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-13-1",
+        "chemistry-14-1",
+        "chemistry-21-1"
+      ]
     },
     {
       "id": "chemistry-23-2",
@@ -860,7 +952,11 @@
       "topicId": "chemistry-24",
       "front": "Why are all C–C bonds in benzene the same length?",
       "back": "The six π electrons are delocalised around the ring, making all C–C bonds equivalent.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-25-1",
+        "chemistry-15-1"
+      ]
     },
     {
       "id": "chemistry-24-2",
@@ -895,7 +991,10 @@
       "topicId": "chemistry-25",
       "front": "Why are amines basic?",
       "back": "The nitrogen lone pair can accept a proton.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-24-1"
+      ]
     },
     {
       "id": "chemistry-25-2",
@@ -923,7 +1022,10 @@
       "topicId": "chemistry-26",
       "front": "What is a zwitterion?",
       "back": "A species with both a positive and a negative charge but an overall net charge of zero.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-13-1"
+      ]
     },
     {
       "id": "chemistry-26-2",
@@ -958,7 +1060,13 @@
       "topicId": "chemistry-27",
       "front": "What is the standard hydrogen electrode potential?",
       "back": "Defined as 0.00 V.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-19-1",
+        "chemistry-22-1",
+        "chemistry-04-1"
+      ]
     },
     {
       "id": "chemistry-27-2",
@@ -1318,6 +1426,144 @@
       "title": "Chemistry mathematical and practical exam checklist",
       "content": "Show the equation before substitution. Convert cm³ to dm³ and temperature to kelvin where required. Use balanced equations and limiting reagents. Keep unrounded values until the final answer, include units and sensible significant figures. For uncertainty questions, identify the measured quantities and combine percentage uncertainties appropriately. For practical evaluation, name a specific source of error, explain its effect on the result and give a realistic improvement that addresses it.",
       "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "formula-1",
+      "topicId": "chemistry-01",
+      "name": "Relative atomic mass",
+      "expression": "Aᵣ = Σ(isotopic mass × abundance)/100",
+      "units": "Relative mass",
+      "conditions": "Abundances as percentages"
+    },
+    {
+      "id": "formula-2",
+      "topicId": "chemistry-02",
+      "name": "Amount of substance",
+      "expression": "n = m/M",
+      "units": "mol, g, g mol⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-3",
+      "topicId": "chemistry-02",
+      "name": "Concentration",
+      "expression": "c = n/V",
+      "units": "mol dm⁻³; V in dm³",
+      "conditions": ""
+    },
+    {
+      "id": "formula-4",
+      "topicId": "chemistry-02",
+      "name": "Ideal gas equation",
+      "expression": "pV = nRT",
+      "units": "Pa, m³, mol, K",
+      "conditions": ""
+    },
+    {
+      "id": "formula-5",
+      "topicId": "chemistry-02",
+      "name": "Titration mole ratio",
+      "expression": "n₁/coefficient₁ = n₂/coefficient₂",
+      "units": "mol",
+      "conditions": "Use balanced equation"
+    },
+    {
+      "id": "formula-6",
+      "topicId": "chemistry-08",
+      "name": "Calorimetry",
+      "expression": "q = mcΔT",
+      "units": "J, g or kg, J g⁻¹ K⁻¹ or J kg⁻¹ K⁻¹",
+      "conditions": "Use consistent mass and heat capacity units"
+    },
+    {
+      "id": "formula-7",
+      "topicId": "chemistry-08",
+      "name": "Enthalpy from calorimetry",
+      "expression": "ΔH = −q/n",
+      "units": "kJ mol⁻¹ if q in kJ",
+      "conditions": "For heat released to solution"
+    },
+    {
+      "id": "formula-8",
+      "topicId": "chemistry-08",
+      "name": "Mean bond enthalpy estimate",
+      "expression": "ΔH ≈ Σ(bonds broken)−Σ(bonds formed)",
+      "units": "kJ mol⁻¹",
+      "conditions": "Approximate"
+    },
+    {
+      "id": "formula-9",
+      "topicId": "chemistry-10",
+      "name": "Equilibrium constant Kc",
+      "expression": "Kc = [C]^c[D]^d/[A]^a[B]^b",
+      "units": "Concentration units depend on expression",
+      "conditions": "For aA+bB ⇌ cC+dD"
+    },
+    {
+      "id": "formula-10",
+      "topicId": "chemistry-10",
+      "name": "Equilibrium constant Kp",
+      "expression": "Kp = (pC)^c(pD)^d/(pA)^a(pB)^b",
+      "units": "Partial pressures",
+      "conditions": "For gaseous equilibrium"
+    },
+    {
+      "id": "formula-11",
+      "topicId": "chemistry-16",
+      "name": "Rate equation",
+      "expression": "rate = k[A]^m[B]^n",
+      "units": "Units depend on overall order",
+      "conditions": "Orders determined experimentally"
+    },
+    {
+      "id": "formula-12",
+      "topicId": "chemistry-16",
+      "name": "Arrhenius equation",
+      "expression": "k = Ae^(−Ea/RT)",
+      "units": "T in K; Ea in J mol⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-13",
+      "topicId": "chemistry-19",
+      "name": "pH",
+      "expression": "pH = −log₁₀[H⁺]",
+      "units": "[H⁺] in mol dm⁻³",
+      "conditions": ""
+    },
+    {
+      "id": "formula-14",
+      "topicId": "chemistry-19",
+      "name": "Acid dissociation constant",
+      "expression": "Ka = [H⁺][A⁻]/[HA]",
+      "units": "Equilibrium concentrations",
+      "conditions": "HA ⇌ H⁺ + A⁻"
+    },
+    {
+      "id": "formula-15",
+      "topicId": "chemistry-19",
+      "name": "pKa",
+      "expression": "pKa = −log₁₀Ka",
+      "units": "Dimensionless",
+      "conditions": ""
+    },
+    {
+      "id": "formula-16",
+      "topicId": "chemistry-22",
+      "name": "Gibbs free energy",
+      "expression": "ΔG = ΔH−TΔS",
+      "units": "Use consistent energy units; T in K",
+      "conditions": "At constant temperature and pressure"
+    },
+    {
+      "id": "formula-17",
+      "topicId": "chemistry-27",
+      "name": "Cell EMF",
+      "expression": "E°cell = E°cathode−E°anode",
+      "units": "V",
+      "conditions": "Use standard reduction potentials"
     }
   ]
 }
