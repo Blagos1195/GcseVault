@@ -360,8 +360,14 @@ const VaultUser = {
   },
 
   async logoutAccount() {
-    if (this.getAccountSession()) {
-      await fetch(`${this.WORKER_URL}/account/logout`, { method: 'POST' }).catch(() => {});
+    const token = this.getAccountSession();
+    if (token) {
+      const response = await fetch(`${this.WORKER_URL}/account/logout`, {
+        method: 'POST',
+        headers: { 'X-Account-Session': token }
+      });
+      const data = await this.readResponse(response);
+      if (!response.ok) throw new Error(data.error || data.message || 'Could not sign out. Please try again.');
     }
     localStorage.removeItem('vault_account_session');
   },
