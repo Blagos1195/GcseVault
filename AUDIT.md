@@ -45,21 +45,30 @@ The repository now targets this layout. Production rollout is incomplete, so thi
 
 GCSE Vault's existing account system uses a private user key as a bearer credential rather than a conventional username-and-password login. Anyone who obtains that key can act as that account. Password accounts add a salted password hash and require a valid account session for the account-key endpoints covered by the Worker guard. The internal account key remains a recovery credential during the transition, so keep it private. Historical versions exposed account keys through some public API responses, so old keys should not automatically be assumed uncompromised. Passwords are not stored in plaintext and cannot be viewed by administrators. This is not end-to-end encryption: the Worker and database can still access account data.
 
+## Production rollout status
+
+The owner reports that `npx wrangler d1 migrations list leaderboard --remote` returned `No migrations to apply!`. This indicates Wrangler considers all five tracked migrations applied in the remote database. The repository connection cannot independently inspect Cloudflare's live migration history or database contents.
+
+Production backups have now been created and locally checked by the owner:
+- D1 export: `leaderboard-backup.sql` downloaded successfully (38,033 bytes).
+- `REVISION` KV: the key listing returned five keys; the bulk export is valid JSON and contains five string-valued entries.
+- `THEMES` KV: the key listing returned an empty array, so there were no values to export.
+- These backup files are untracked local files and must not be committed or uploaded publicly.
+
 ## Remaining work
 
-1. **Production state.** The owner reports that D1 migrations `0001` through `0004` are applied. Migration `0005_revision_leaderboard.sql` is expected to be the only unapplied migration. The repository connection cannot inspect Cloudflare's live migration history, D1 data or KV contents, so this report is not independently verified.
-2. **Backups and migration.** Before changing production, export the live D1 database and back up the relevant KV data. Confirm the migration history, apply only migrations not already recorded as applied, run the owner-controlled storage migration, and compare source and destination counts. Keep every KV copy until verification and cross-device testing pass.
-3. **Worker deployment.** The latest Worker code has not been confirmed deployed. Deploy it only after the required D1 migrations are confirmed applied.
-4. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
-5. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
-6. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
+1. **Worker deployment.** The latest Worker code has not been confirmed deployed. Deploy it only after confirming the D1 export and remote migration history remain available.
+2. **Owner setup and storage migration.** After deploying the Worker, complete first-owner setup, remove the `ADMIN_KEY` secret after successful setup, then run the owner-controlled storage migration. Compare scanned, migrated, already-present and skipped counts with the five original `REVISION` keys. The empty `THEMES` namespace should require no theme imports.
+3. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
+4. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
+5. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
 
 ## Latest repository verification
 
-- Latest application-code commit: `5024d08355c976f70fe271db22e95cea7f0c739c`.
-- GitHub Actions test run `42667435819` for that exact commit: successful, including the new regression test for the three-phase migration summary.
-- GitHub Pages build and deployment run `42667435288` for that exact commit: successful.
-- These results verify the repository tests and Pages deployment only. They do not verify the Cloudflare Worker deployment or production D1/KV migration.
+- Latest repository commit: `e7b91a1587170b9ab472b6b9f979f93579eafcc4`.
+- GitHub Actions test run `42667661045` for that exact commit: successful.
+- GitHub Pages build and deployment run `42667329513`: successful for application commit `d6c996e735f7a49171ae1be2c2bd3345c8067764`. The later `e7b91a1` commit only corrected migration documentation numbering.
+- These results verify repository tests and the Pages deployment only. They do not verify the Cloudflare Worker deployment or owner-controlled production data migration.
 
 ## UI scope
 
