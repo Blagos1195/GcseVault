@@ -13,7 +13,11 @@
       "topicId": "physics-01",
       "front": "What are the seven SI base units?",
       "back": "kilogram (kg), metre (m), second (s), ampere (A), kelvin (K), mole (mol) and candela (cd).",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-04-1",
+        "physics-05-1"
+      ]
     },
     {
       "id": "physics-01-2",
@@ -55,7 +59,11 @@
       "topicId": "physics-02",
       "front": "What is the difference between a hadron and a lepton?",
       "back": "Hadrons are made of quarks and experience the strong interaction; leptons are fundamental particles and do not experience the strong interaction.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-03-1",
+        "physics-08-1"
+      ]
     },
     {
       "id": "physics-02-2",
@@ -118,7 +126,11 @@
       "topicId": "physics-03",
       "front": "State the wave equation.",
       "back": "v=fλ, where v is wave speed, f frequency and λ wavelength.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-02-1",
+        "physics-06-1"
+      ]
     },
     {
       "id": "physics-03-2",
@@ -181,7 +193,11 @@
       "topicId": "physics-04",
       "front": "What is the difference between a scalar and a vector?",
       "back": "A scalar has magnitude only; a vector has magnitude and direction.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-06-1",
+        "physics-01-1"
+      ]
     },
     {
       "id": "physics-04-2",
@@ -244,7 +260,11 @@
       "topicId": "physics-05",
       "front": "Define electric current.",
       "back": "Rate of flow of charge: I=ΔQ/Δt.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-07-1",
+        "physics-01-1"
+      ]
     },
     {
       "id": "physics-05-2",
@@ -307,7 +327,12 @@
       "topicId": "physics-06",
       "front": "State centripetal acceleration in terms of speed and radius.",
       "back": "a=v²/r, directed towards the centre of the circular path.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-03-1",
+        "physics-04-1",
+        "physics-07-1"
+      ]
     },
     {
       "id": "physics-06-2",
@@ -377,7 +402,12 @@
       "topicId": "physics-07",
       "front": "Define gravitational field strength.",
       "back": "Force per unit mass on a small test mass: g=F/m.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-05-1",
+        "physics-06-1",
+        "physics-08-1"
+      ]
     },
     {
       "id": "physics-07-2",
@@ -447,7 +477,11 @@
       "topicId": "physics-08",
       "front": "What does radioactive decay being random mean?",
       "back": "It is impossible to predict when an individual nucleus will decay, but decay of a large sample follows a predictable statistical law.",
-      "difficulty": 3
+      "difficulty": 3,
+      "links": [
+        "physics-02-1",
+        "physics-07-1"
+      ]
     },
     {
       "id": "physics-08-2",
@@ -562,6 +596,331 @@
       "title": "Core notes and equations",
       "content": "Radioactive decay is random for individual nuclei but predictable statistically for a large sample. Activity A=λN and N=N₀e^(−λt); half-life t½=ln2/λ. Alpha, beta-minus and gamma emissions differ in ionising ability and penetration. Nuclear stability depends on neutron-to-proton balance and binding energy. Nuclear radius R=R₀A^(1/3). Mass defect Δm corresponds to binding energy E=Δmc². In fission a heavy nucleus splits; in fusion light nuclei combine. Both can release energy when products have greater binding energy per nucleon.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: What does radioactive decay being random mean?; State the decay equation.; How are activity and number of undecayed nuclei related?; State the relationship between half-life and decay constant.; Compare alpha, beta-minus and gamma radiation in ionising ability.; State the nuclear radius relationship.; What is mass defect?; State the mass-energy equivalence equation.; Why can fission or fusion release energy?",
       "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "required-practical",
+      "title": "Required practical 1: stationary waves on a string",
+      "content": "Investigate how frequency changes with vibrating length, tension and mass per unit length. Produce a stationary wave and identify the mode by counting loops and nodes. Change one variable at a time while controlling the others. For a stretched string, f=(1/2L)√(T/μ) for the fundamental; higher harmonics are integer multiples. Measure length carefully, use repeated readings and graph a linearised relationship. Keep the string and hanging masses securely arranged under teacher supervision.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "required-practical",
+      "title": "Required practical 2: Young's slits and diffraction grating",
+      "content": "For Young's double-slit experiment, measure fringe spacing across several fringes and use w=λD/s. Increase D or measure across multiple fringes to reduce percentage uncertainty. For a diffraction grating, measure diffraction angles and use d sinθ=nλ. Avoid parallax, keep the apparatus aligned and use a darkened environment where appropriate. Compare repeated readings and explain small-angle approximations where used.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-04",
+      "kind": "required-practical",
+      "title": "Required practical 3: determine g by free fall",
+      "content": "Measure the time taken for an object to fall a known vertical distance using suitable timing equipment, or use a light gate method. Repeat for several distances. From s=½gt², plot s against t²; the gradient is g/2. Minimise timing uncertainty by using automated timing and a consistent release mechanism. Consider air resistance, release delay and measurement of the fall distance.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-04",
+      "kind": "required-practical",
+      "title": "Required practical 4: determine Young modulus",
+      "content": "Measure the original length and diameter of a wire, applying a known load and measuring extension. Calculate cross-sectional area A=πd²/4 and use E=FL/(AΔL). Measure small diameter with a micrometer at several positions and orientations. Use a long wire and small extension measurement uncertainty; do not exceed the elastic limit. A load-extension graph can identify the linear region.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-05",
+      "kind": "required-practical",
+      "title": "Required practical 5: resistivity of a wire",
+      "content": "Measure wire length with a ruler and diameter using a micrometer at multiple positions, then calculate cross-sectional area. Set up an ammeter in series and voltmeter across the test length. Vary current safely and record paired V and I readings; use the gradient of V against I to find resistance. Calculate ρ=RA/L. Keep current low enough to limit heating and explain how diameter uncertainty affects area and resistivity.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-05",
+      "kind": "required-practical",
+      "title": "Required practical 6: EMF and internal resistance",
+      "content": "Measure terminal potential difference for a range of currents using a suitable circuit and variable load. Plot terminal pd V against current I. From V=ε−Ir, the y-intercept gives EMF ε and the magnitude of the gradient gives internal resistance r. Take readings promptly to reduce cell polarisation and heating, and avoid short-circuiting the cell.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-06",
+      "kind": "required-practical",
+      "title": "Required practical 7: simple harmonic motion",
+      "content": "For a mass-spring system, measure the time for many oscillations and divide by the number to find period T; repeat for several masses and compare T² with mass. For a pendulum, use a small angular displacement, measure length from pivot to centre of mass and time many oscillations. T=2π√(m/k) for a spring and T=2π√(l/g) for a simple pendulum. Use a fiducial marker and repeat readings.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-06",
+      "kind": "required-practical",
+      "title": "Required practical 8: Boyle's and Charles's laws",
+      "content": "For Boyle's law, vary gas volume at constant temperature and measure pressure; p is inversely proportional to V, so plot p against 1/V. For Charles's law, measure gas volume at constant pressure over a range of temperatures; V is proportional to absolute temperature, so use kelvin. Allow thermal equilibrium and control the variable stated as constant. Discuss dead volume and instrument calibration.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-07",
+      "kind": "required-practical",
+      "title": "Required practical 9: capacitor charge and discharge",
+      "content": "Use a resistor-capacitor circuit and record voltage or charge against time during charging and discharging. The time constant is τ=RC. For discharge, V=V₀e^(−t/RC); taking logs gives lnV=lnV₀−t/RC, so a plot of lnV against t has gradient −1/RC. Use suitable voltage measurements and repeat; account for meter input resistance and timing intervals.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-07",
+      "kind": "required-practical",
+      "title": "Required practical 10: force on a current-carrying wire",
+      "content": "Investigate how the magnetic force depends on current, wire length in the field and magnetic flux density. A wire in a perpendicular field experiences F=BIL. A balance can detect the equal and opposite force on the magnet arrangement. Reverse current or field to check direction, keep geometry fixed and vary one quantity at a time. Use current limits and teacher-approved apparatus.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-07",
+      "kind": "required-practical",
+      "title": "Required practical 11: magnetic flux linkage and search coil angle",
+      "content": "Use a search coil connected to an oscilloscope or suitable measuring circuit in a magnetic field. Vary the angle between the coil's normal and the field direction and record induced signal or flux linkage. Flux through one turn is Φ=BA cosθ; flux linkage is NΦ. Keep field strength, coil area and frequency constant, and define the angle convention clearly.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-08",
+      "kind": "required-practical",
+      "title": "Required practical 12: inverse-square law for gamma radiation",
+      "content": "Use only the sealed source and detector supplied and controlled by the teacher, following the school's radiation-safety procedure. Measure background count rate, then compare detector count rates at several distances while keeping source orientation and counting time consistent. Subtract background counts and plot corrected count rate against 1/r². Consider detector efficiency, source size, background fluctuations and scattering; maintain the prescribed distance and shielding controls.",
+      "source": "AQA 7408 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "physics-01",
+      "kind": "exam-methods",
+      "title": "Physics practical and data-analysis checklist",
+      "content": "Record raw data with units and instrument resolution. Repeat readings and calculate a mean where appropriate. Plot the dependent variable against the independent variable, label axes with units and draw a suitable best-fit line. Use gradient and intercept physically, including unit analysis. For uncertainty, identify absolute and percentage contributions, combine appropriately and explain whether a result is consistent with an accepted value. Improvements must target a named limitation, such as parallax, timing reaction, heat loss or sensor resolution.",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "formula-1",
+      "topicId": "physics-01",
+      "name": "Percentage uncertainty",
+      "expression": "(absolute uncertainty ÷ measured value) × 100%",
+      "units": "%",
+      "conditions": ""
+    },
+    {
+      "id": "formula-2",
+      "topicId": "physics-02",
+      "name": "Photon energy",
+      "expression": "E = hf",
+      "units": "J; h in J s; f in Hz",
+      "conditions": ""
+    },
+    {
+      "id": "formula-3",
+      "topicId": "physics-02",
+      "name": "de Broglie wavelength",
+      "expression": "λ = h/p",
+      "units": "m; p in kg m s⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-4",
+      "topicId": "physics-03",
+      "name": "Wave speed",
+      "expression": "v = fλ",
+      "units": "m s⁻¹, Hz, m",
+      "conditions": ""
+    },
+    {
+      "id": "formula-5",
+      "topicId": "physics-03",
+      "name": "Double-slit fringe spacing",
+      "expression": "w = λD/s",
+      "units": "w fringe spacing; D screen distance; s slit separation",
+      "conditions": "Small-angle approximation"
+    },
+    {
+      "id": "formula-6",
+      "topicId": "physics-04",
+      "name": "Newton's second law",
+      "expression": "ΣF = ma",
+      "units": "N, kg, m s⁻²",
+      "conditions": "Constant mass"
+    },
+    {
+      "id": "formula-7",
+      "topicId": "physics-04",
+      "name": "Momentum",
+      "expression": "p = mv",
+      "units": "kg m s⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-8",
+      "topicId": "physics-04",
+      "name": "Kinetic energy",
+      "expression": "Eₖ = ½mv²",
+      "units": "J, kg, m s⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-9",
+      "topicId": "physics-04",
+      "name": "Work done",
+      "expression": "W = Fs cosθ",
+      "units": "J; θ between force and displacement",
+      "conditions": "Constant force"
+    },
+    {
+      "id": "formula-10",
+      "topicId": "physics-04",
+      "name": "Young modulus",
+      "expression": "E = stress/strain = FL/(AΔL)",
+      "units": "Pa",
+      "conditions": "Linear elastic region"
+    },
+    {
+      "id": "formula-11",
+      "topicId": "physics-05",
+      "name": "Current",
+      "expression": "I = ΔQ/Δt",
+      "units": "A, C, s",
+      "conditions": ""
+    },
+    {
+      "id": "formula-12",
+      "topicId": "physics-05",
+      "name": "Ohm's law",
+      "expression": "V = IR",
+      "units": "V, A, Ω",
+      "conditions": "Constant temperature for ohmic conductor"
+    },
+    {
+      "id": "formula-13",
+      "topicId": "physics-05",
+      "name": "Resistivity",
+      "expression": "ρ = RA/L",
+      "units": "Ω m",
+      "conditions": "Uniform wire"
+    },
+    {
+      "id": "formula-14",
+      "topicId": "physics-05",
+      "name": "EMF and internal resistance",
+      "expression": "V = ε−Ir",
+      "units": "V, A, Ω",
+      "conditions": "Cell delivering current"
+    },
+    {
+      "id": "formula-15",
+      "topicId": "physics-06",
+      "name": "Centripetal acceleration",
+      "expression": "a = v²/r = ω²r",
+      "units": "m s⁻²",
+      "conditions": ""
+    },
+    {
+      "id": "formula-16",
+      "topicId": "physics-06",
+      "name": "SHM acceleration",
+      "expression": "a = −ω²x",
+      "units": "m s⁻²",
+      "conditions": "SHM"
+    },
+    {
+      "id": "formula-17",
+      "topicId": "physics-06",
+      "name": "Spring period",
+      "expression": "T = 2π√(m/k)",
+      "units": "s, kg, N m⁻¹",
+      "conditions": "Ideal mass-spring oscillator"
+    },
+    {
+      "id": "formula-18",
+      "topicId": "physics-06",
+      "name": "Specific heat capacity",
+      "expression": "Q = mcΔT",
+      "units": "J, kg, J kg⁻¹ K⁻¹",
+      "conditions": "No phase change"
+    },
+    {
+      "id": "formula-19",
+      "topicId": "physics-06",
+      "name": "Ideal gas equation",
+      "expression": "pV = nRT = NkT",
+      "units": "SI units",
+      "conditions": ""
+    },
+    {
+      "id": "formula-20",
+      "topicId": "physics-07",
+      "name": "Gravitational field strength",
+      "expression": "g = GM/r²",
+      "units": "N kg⁻¹",
+      "conditions": "Point mass/spherical mass outside body"
+    },
+    {
+      "id": "formula-21",
+      "topicId": "physics-07",
+      "name": "Electric field strength",
+      "expression": "E = F/Q",
+      "units": "N C⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-22",
+      "topicId": "physics-07",
+      "name": "Capacitance",
+      "expression": "C = Q/V",
+      "units": "F",
+      "conditions": ""
+    },
+    {
+      "id": "formula-23",
+      "topicId": "physics-07",
+      "name": "Capacitor energy",
+      "expression": "E = ½CV²",
+      "units": "J",
+      "conditions": ""
+    },
+    {
+      "id": "formula-24",
+      "topicId": "physics-07",
+      "name": "Magnetic force on wire",
+      "expression": "F = BIL sinθ",
+      "units": "N",
+      "conditions": "Straight wire in uniform field"
+    },
+    {
+      "id": "formula-25",
+      "topicId": "physics-07",
+      "name": "Magnetic flux linkage",
+      "expression": "NΦ = NBA cosθ",
+      "units": "Wb turns",
+      "conditions": "Uniform field through flat coil"
+    },
+    {
+      "id": "formula-26",
+      "topicId": "physics-08",
+      "name": "Radioactive decay",
+      "expression": "N = N₀e^(−λt)",
+      "units": "N nuclei; t in s",
+      "conditions": ""
+    },
+    {
+      "id": "formula-27",
+      "topicId": "physics-08",
+      "name": "Activity",
+      "expression": "A = λN",
+      "units": "Bq; λ in s⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-28",
+      "topicId": "physics-08",
+      "name": "Half-life",
+      "expression": "t½ = ln 2/λ",
+      "units": "s",
+      "conditions": ""
+    },
+    {
+      "id": "formula-29",
+      "topicId": "physics-08",
+      "name": "Mass-energy equivalence",
+      "expression": "ΔE = Δmc²",
+      "units": "J, kg",
+      "conditions": ""
     }
   ]
 }
