@@ -285,10 +285,10 @@ export default {
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
       const body = await request.json();
       const phase = body.phase;
-      if (!["revision", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
+      if (!["revision", "revision-leaderboard", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
       const limit = Math.max(1, Math.min(100, Math.floor(Number(body.limit) || 100)));
-      const binding = phase === "revision" ? env.REVISION : env.THEMES;
-      const prefix = phase === "revision" ? "user:" : "theme:";
+      const binding = phase === "themes" ? env.THEMES : env.REVISION;
+      const prefix = phase === "revision" ? "user:" : phase === "revision-leaderboard" ? "leaderboard:" : "theme:";
       const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
       let migrated = 0;
       let skipped = 0;
@@ -304,7 +304,7 @@ export default {
             "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
           ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
           migrated += result.meta?.changes ? 1 : 0;
-        } else {
+        } else if (phase === "themes") {
           const remainder = item.name.slice("theme:".length);
           const separator = remainder.lastIndexOf(":");
           if (separator < 1) {
@@ -320,6 +320,19 @@ export default {
           const result = await env.DB.prepare(
             "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
           ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
+          migrated += result.meta?.changes ? 1 : 0;
+        } else {
+          const userKey = String(value.userKey || item.name.slice("leaderboard:".length)).trim();
+          const username = String(value.username || "").trim().slice(0, 20);
+          const xp = Number(value.xp);
+          const streak = Number(value.streak);
+          if (!userKey || !username || !Number.isFinite(xp) || xp < 0 || !Number.isFinite(streak) || streak < 0) {
+            skipped++;
+            continue;
+          }
+          const result = await env.DB.prepare(
+            "INSERT OR IGNORE INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?)"
+          ).bind(userKey, username, Math.floor(xp), Math.floor(streak), String(value.updatedAt || new Date().toISOString())).run();
           migrated += result.meta?.changes ? 1 : 0;
         }
       }
@@ -1354,6 +1367,9 @@ export default {
           headers: { ...cors, "Content-Type": "application/json" }
         });
       }
+      await env.DB.prepare(
+        "INSERT INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_key) DO UPDATE SET username = excluded.username, xp = excluded.xp, streak = excluded.streak, updated_at = excluded.updated_at"
+      ).bind(userKey, username, data.xp, data.streak, data.updatedAt).run();
       try {
         await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
         await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
@@ -1362,18 +1378,10 @@ export default {
     }
 
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
-      const users = [];
-      let cursor;
-      do {
-        const page = await env.REVISION.list({ prefix: "leaderboard:", ...(cursor ? { cursor } : {}) });
-        for (const key of page.keys) {
-          const value = await env.REVISION.get(key.name, "json");
-          if (value) users.push(value);
-        }
-        cursor = page.list_complete ? null : page.cursor;
-      } while (cursor);
-      users.sort((a, b) => (b.xp || 0) - (a.xp || 0));
-      return new Response(JSON.stringify({ users: users.slice(0, 100) }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const { results } = await env.DB.prepare(
+        "SELECT username, xp, streak, updated_at AS updatedAt FROM revision_leaderboard ORDER BY xp DESC, updated_at DESC LIMIT 100"
+      ).all();
+      return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/revision/public" && request.method === "GET") {
