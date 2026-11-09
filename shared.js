@@ -1137,12 +1137,16 @@ const AdminManager = {
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
-      let skipped = 0;
+      let processedTotal = 0;
+      let migratedTotal = 0;
+      let alreadyPresentTotal = 0;
+      let skippedTotal = 0;
       for (const phase of ['revision', 'revision-leaderboard', 'themes']) {
         let cursor = null;
         let processed = 0;
         let migrated = 0;
         let alreadyPresent = 0;
+        let skipped = 0;
         do {
           const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
             method: 'POST',
@@ -1155,15 +1159,19 @@ const AdminManager = {
           migrated += result.migrated || 0;
           alreadyPresent += result.alreadyPresent || 0;
           skipped += result.skipped || 0;
+          processedTotal += result.processed || 0;
+          migratedTotal += result.migrated || 0;
+          alreadyPresentTotal += result.alreadyPresent || 0;
+          skippedTotal += result.skipped || 0;
           if (!result.complete && !result.cursor) throw new Error(`The ${phase} migration stopped without a continuation cursor.`);
           cursor = result.cursor || null;
-          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped...`;
+          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped. Total: ${processedTotal} scanned.`;
           if (typeof window.render === 'function') window.render();
         } while (cursor);
       }
-      this.migrationStatus = skipped
-        ? `Migration finished: ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.`
-        : `Migration complete: ${migrated} copied, ${alreadyPresent} already present, 0 skipped. Original KV copies remain available.`;
+      this.migrationStatus = skippedTotal
+        ? `Migration finished: ${migratedTotal} copied, ${alreadyPresentTotal} already present, ${skippedTotal} skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.`
+        : `Migration complete: ${migratedTotal} copied, ${alreadyPresentTotal} already present, 0 skipped. Original KV copies remain available.`;
     } catch (error) {
       this.error = error.message;
       this.migrationStatus = 'Migration paused. You can safely run it again.';
