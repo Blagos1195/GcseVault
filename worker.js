@@ -161,9 +161,8 @@ export default {
     }
 
     if (url.pathname === "/ai/logout" && request.method === "POST") {
-      const user = await getAIUser(request);
-      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete("ai-session:" + user.token);
+      const token = request.headers.get("X-AI-Session");
+      if (token) await env.QUOTEVAULT.delete("ai-session:" + token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
