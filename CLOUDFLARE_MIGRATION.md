@@ -12,7 +12,7 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
    `npx wrangler d1 migrations apply leaderboard --remote`
 
-3. Confirm all tracked migrations completed:
+3. Confirm all five tracked migrations completed:
 
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
@@ -24,7 +24,7 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
    `npx wrangler deploy`
 
-Do not deploy the new Worker before applying all four migrations. It expects the account role, storage and password-session tables to exist.
+Do not deploy the new Worker before applying all five migrations. It expects the account role, storage and password-session tables to exist.
 
 ## Initial owner setup
 
