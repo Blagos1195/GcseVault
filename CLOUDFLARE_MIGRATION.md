@@ -32,10 +32,6 @@ The owner reports that migrations `0001` through `0004` are already applied to p
 
 5. Confirm all five tracked migrations completed:
 
-   `npx wrangler d1 migrations apply leaderboard --remote`
-
-5. Confirm all five tracked migrations completed:
-
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
    - `0003_one_time_admin_setup.sql`
