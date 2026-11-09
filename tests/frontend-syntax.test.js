@@ -202,3 +202,22 @@ test("Revision sync retains private exam-practice data", () => {
   assert.match(revision, /resources:Array\.isArray\(practice\.resources\)/);
   assert.match(worker, /resources: Array\.isArray\(set\.practice\.resources\)/);
 });
+
+test("Amount of substance depth pack covers calculations and imports incrementally", () => {
+  const pack = JSON.parse(fs.readFileSync(new URL("../revision/course-packs/aqa-chemistry-amount-of-substance.json", import.meta.url), "utf8"));
+  assert.equal(pack.type, "revision-course-pack");
+  assert.equal(pack.catalogueId, "aqa-a-level-chemistry");
+  assert.ok(pack.cards.length >= 45);
+  assert.ok(pack.resources.length >= 8);
+  assert.ok(pack.formulas.length >= 10);
+  const cardIds = new Set(pack.cards.map(card => card.id));
+  assert.equal(cardIds.size, pack.cards.length);
+  assert.ok(pack.cards.every(card => card.topicId === "chemistry-02" && card.front && card.back));
+  assert.ok(pack.resources.every(resource => resource.topicId === "chemistry-02" && resource.content.length > 500));
+  assert.ok(pack.formulas.every(formula => formula.topicId === "chemistry-02" && formula.name && formula.expression));
+  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  assert.match(revision, /const resolveCardId=id=>idMap\.get/);
+  assert.match(revision, /mergeByKey\(p\.resources,resources,resourceKey\)/);
+  assert.match(revision, /mergeByKey\(p\.formulas,formulas,formulaKey\)/);
+  assert.match(revision, /Existing cards and review history were preserved/);
+});
