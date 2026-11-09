@@ -51,7 +51,7 @@ test("storage migration summary aggregates all phases", async () => {
     setTimeout,
     clearTimeout
   };
-  vm.runInNewContext(source + "\\nglobalThis.__AdminManager = AdminManager;", context);
+  vm.runInNewContext(source + "\nglobalThis.__AdminManager = AdminManager;", context);
   const manager = context.__AdminManager;
   manager.role = "owner";
   manager.refresh = async () => {};
