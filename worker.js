@@ -22,7 +22,11 @@ export default {
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
-      if (!session.userKey) return null;
+      if (!session.userKey || !session.accountTokenHash) return null;
+      const accountSession = await env.DB.prepare(
+        "SELECT user_key FROM account_sessions WHERE token_hash = ? AND expires_at > ?"
+      ).bind(session.accountTokenHash, new Date().toISOString()).first();
+      if (!accountSession || accountSession.user_key !== session.userKey) return null;
       const user = await env.DB.prepare(
         "SELECT user_key, username, role FROM users WHERE user_key = ?"
       ).bind(session.userKey).first();
@@ -41,7 +45,11 @@ export default {
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
-      if (!session.userKey) return null;
+      if (!session.userKey || !session.accountTokenHash) return null;
+      const accountSession = await env.DB.prepare(
+        "SELECT user_key FROM account_sessions WHERE token_hash = ? AND expires_at > ?"
+      ).bind(session.accountTokenHash, new Date().toISOString()).first();
+      if (!accountSession || accountSession.user_key !== session.userKey) return null;
       const user = await env.DB.prepare(
         "SELECT user_key, username, role, ai_access FROM users WHERE user_key = ?"
       ).bind(session.userKey).first();
@@ -122,7 +130,7 @@ export default {
         return new Response("This account does not have admin access", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey }), { expirationTtl: 28800 });
+      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -138,7 +146,7 @@ export default {
         return new Response("This account does not have AI access.", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("ai-session:" + token, JSON.stringify({ userKey: user.user_key }), { expirationTtl: 28800 });
+      await env.QUOTEVAULT.put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
