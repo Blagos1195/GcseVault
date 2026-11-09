@@ -58,3 +58,69 @@ test("storage migration summary aggregates all phases", async () => {
   await manager.migrateStorage();
   assert.equal(manager.migrationStatus, "Migration finished: 4 copied, 4 already present, 1 skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.");
 });
+
+
+test("revoked account sessions are cleared and cannot appear signed in", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultUser = {");
+  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  assert.ok(start >= 0 && end > start);
+  const storage = new Map([["vault_account_session", "revoked-token"]]);
+  const localStorage = {
+    getItem(key) { return storage.get(key) ?? null; },
+    setItem(key, value) { storage.set(key, value); },
+    removeItem(key) { storage.delete(key); }
+  };
+  const context = {
+    localStorage,
+    fetch: async () => ({ status: 401, ok: false }),
+    console
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__VaultUser = VaultUser;", context);
+  const user = context.__VaultUser;
+  assert.equal(await user.validateAccountSession(), false);
+  assert.equal(user.getAccountSession(), null);
+  storage.set("vault_account_session", "revoked-token");
+  await user.logoutAccount();
+  assert.equal(user.getAccountSession(), null);
+});
+
+test("valid account sessions refresh the stored username", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultUser = {");
+  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const storage = new Map([["vault_account_session", "valid-token"]]);
+  const localStorage = {
+    getItem(key) { return storage.get(key) ?? null; },
+    setItem(key, value) { storage.set(key, value); },
+    removeItem(key) { storage.delete(key); }
+  };
+  const context = {
+    localStorage,
+    fetch: async () => ({ status: 200, ok: true, text: async () => JSON.stringify({ username: "TestUser" }) }),
+    console
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__VaultUser = VaultUser;", context);
+  assert.equal(await context.__VaultUser.validateAccountSession(), true);
+  assert.equal(context.__VaultUser.getUsername(), "TestUser");
+});
+
+test("temporary account session verification failures preserve the stored token", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultUser = {");
+  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const storage = new Map([["vault_account_session", "temporary-failure-token"]]);
+  const localStorage = {
+    getItem(key) { return storage.get(key) ?? null; },
+    setItem(key, value) { storage.set(key, value); },
+    removeItem(key) { storage.delete(key); }
+  };
+  const context = {
+    localStorage,
+    fetch: async () => ({ status: 503, ok: false, text: async () => JSON.stringify({ error: "Temporarily unavailable" }) }),
+    console
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__VaultUser = VaultUser;", context);
+  await assert.rejects(context.__VaultUser.validateAccountSession(), /Temporarily unavailable/);
+  assert.equal(context.__VaultUser.getAccountSession(), "temporary-failure-token");
+});
