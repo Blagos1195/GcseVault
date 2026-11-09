@@ -526,3 +526,51 @@ test("Revision publication requires a password account", async () => {
   });
   assert.equal(response.status, 401);
 });
+
+
+test("Revision leaderboard reads from D1", async () => {
+  const env = makeEnv();
+  let query = "";
+  env.DB.prepare = sql => {
+    query = sql;
+    return { all: async () => ({ results: [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }] }) };
+  };
+  env.REVISION.list = async () => {
+    throw new Error("Revision leaderboard should not read KV");
+  };
+
+  const response = await call("/revision/leaderboard", env);
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.ok(query.includes("FROM revision_leaderboard"));
+  assert.deepEqual(data.users, [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }]);
+});
+
+test("owner migration copies legacy Revision leaderboard entries into D1 without deleting KV", async () => {
+  const env = makeEnv();
+  let legacyDeleted = false;
+  env.REVISION.list = async ({ prefix }) => {
+    assert.equal(prefix, "leaderboard:");
+    return { keys: [{ name: "leaderboard:account-key" }], list_complete: true };
+  };
+  env.REVISION.get = async () => ({
+    userKey: "account-key",
+    username: "student",
+    xp: 420,
+    streak: 3,
+    updatedAt: "2026-11-09T08:00:00.000Z"
+  });
+  env.REVISION.delete = async () => { legacyDeleted = true; };
+
+  const response = await call("/admin/migrate-storage", env, {
+    phase: "revision-leaderboard",
+    limit: 100
+  }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(data.migrated, 1);
+  assert.equal(legacyDeleted, false);
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT OR IGNORE INTO revision_leaderboard")));
+});

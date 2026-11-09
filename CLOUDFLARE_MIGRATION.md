@@ -18,6 +18,7 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
    - `0002_persistent_user_data.sql`
    - `0003_one_time_admin_setup.sql`
    - `0004_password_accounts.sql`
+   - `0005_revision_leaderboard.sql`
 
 4. Deploy the Worker:
 
@@ -42,9 +43,10 @@ While signed in as the owner, select **Migrate existing storage to D1** in the A
 The migration copies:
 
 - Revision sync records from the `REVISION` KV namespace.
+- Revision leaderboard records from the `REVISION` KV namespace.
 - Custom themes from the `THEMES` KV namespace.
 
-The Worker also imports a user's remaining legacy KV data when that user next loads revision data or custom themes. New writes go to D1 first and retain KV backup copies.
+The Worker also imports a user's remaining legacy KV data when that user next loads revision data or custom themes. Revision leaderboard reads now use D1; new leaderboard writes update D1 and retain KV backup copies. Custom themes also use D1 as the primary store and retain KV backup copies.
 
 Do not delete the old KV namespaces or their records. Keep them until the migrated D1 data has been checked against the original data and cross-device testing has passed.
 

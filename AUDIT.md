@@ -5,7 +5,8 @@
 | Data | Current deployed location | Branch target after migration |
 |---|---|---|
 | QuoteVault and DateVault account stats, XP, mastery IDs, streaks and moderation metadata | D1 `users` table | D1 `users` table |
-| Revision accounts, sets, progress and revision leaderboard | `REVISION` KV namespace | D1 `revision_sync_data`, with KV retained as a backup/mirror |
+| Revision accounts, sets and progress | D1 `revision_sync_data`, with legacy `REVISION` KV retained as a backup/mirror | D1 `revision_sync_data` |
+| Revision leaderboard | `REVISION` KV namespace | D1 `revision_leaderboard`, with KV retained as a backup/mirror |
 | Public and pending revision notes | `REVISION` KV namespace | `REVISION` KV namespace |
 | Custom themes | `THEMES` KV namespace and browser local storage | D1 `custom_themes`, with KV retained as a backup/mirror |
 | QuoteVault and DateVault submissions and published content | Existing KV namespaces | Existing KV namespaces |
@@ -21,6 +22,7 @@
 - QuoteVault and DateVault withdrawals require an account key and verify that the submission belongs to that account.
 - Custom theme keys are validated and account ownership is checked before theme access.
 - Revision sync uses D1 with optimistic concurrency checks. Conflicts preserve the local copy and provide a choice to keep local or load remote data.
+- Revision leaderboard reads and writes use D1 `revision_leaderboard`; an owner-controlled migration copies existing KV leaderboard records into D1 without deleting the KV backups.
 - Revision local snapshots are kept separately per account when switching accounts, so one linked account does not silently replace another account's local workspace.
 - Custom themes use D1 as the primary store. KV remains a backup/mirror and is imported when needed.
 - An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records.
