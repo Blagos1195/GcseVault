@@ -1137,11 +1137,11 @@ const AdminManager = {
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
+      let skipped = 0;
       for (const phase of ['revision', 'revision-leaderboard', 'themes']) {
         let cursor = null;
         let processed = 0;
         let migrated = 0;
-        let skipped = 0;
         do {
           const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
             method: 'POST',
