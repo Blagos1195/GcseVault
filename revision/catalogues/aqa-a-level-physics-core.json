@@ -1,0 +1,126 @@
+{
+  "type": "revision-catalogue",
+  "version": 1,
+  "id": "aqa-a-level-physics",
+  "subject": "Physics",
+  "examBoard": "AQA",
+  "qualification": "A-level Physics (7408)",
+  "source": "AQA A-level Physics specification; compulsory content only",
+  "optionalModule": {
+    "status": "unconfirmed",
+    "note": "No optional module has been assigned. Add the school's selected option later as a separate catalogue."
+  },
+  "topics": [
+    {
+      "id": "physics-01",
+      "name": "Measurements and their errors",
+      "year": "Year 12",
+      "area": "Measurements and their errors",
+      "subtopics": [
+        "SI units",
+        "Prefixes and standard form",
+        "Measurement uncertainty",
+        "Combining uncertainties"
+      ]
+    },
+    {
+      "id": "physics-02",
+      "name": "Particles and radiation",
+      "year": "Year 12",
+      "area": "Particles and radiation",
+      "subtopics": [
+        "Constituent particles",
+        "Hadrons and leptons",
+        "Quarks and antiquarks",
+        "Particle interactions",
+        "Classification of particles",
+        "Photoelectric effect",
+        "Wave-particle duality"
+      ]
+    },
+    {
+      "id": "physics-03",
+      "name": "Waves",
+      "year": "Year 12",
+      "area": "Waves",
+      "subtopics": [
+        "Progressive waves",
+        "Longitudinal and transverse waves",
+        "Superposition",
+        "Interference",
+        "Diffraction",
+        "Stationary waves"
+      ]
+    },
+    {
+      "id": "physics-04",
+      "name": "Mechanics and materials",
+      "year": "Year 12",
+      "area": "Mechanics and materials",
+      "subtopics": [
+        "Scalars and vectors",
+        "Displacement, velocity and acceleration",
+        "Projectile motion",
+        "Newton's laws",
+        "Momentum",
+        "Work, energy and power",
+        "Materials and stress and strain"
+      ]
+    },
+    {
+      "id": "physics-05",
+      "name": "Electricity",
+      "year": "Year 13",
+      "area": "Electricity",
+      "subtopics": [
+        "Current, potential difference and resistance",
+        "Resistivity",
+        "I-V characteristics",
+        "Circuits",
+        "Potential dividers",
+        "EMF and internal resistance"
+      ]
+    },
+    {
+      "id": "physics-06",
+      "name": "Further mechanics and thermal physics",
+      "year": "Year 13",
+      "area": "Further mechanics and thermal physics",
+      "subtopics": [
+        "Circular motion",
+        "Simple harmonic motion",
+        "Thermal energy transfer",
+        "Specific heat capacity",
+        "Specific latent heat",
+        "Ideal gases",
+        "Molecular kinetic theory"
+      ]
+    },
+    {
+      "id": "physics-07",
+      "name": "Fields and their consequences",
+      "year": "Year 13",
+      "area": "Fields and their consequences",
+      "subtopics": [
+        "Gravitational fields",
+        "Electric fields",
+        "Capacitance",
+        "Magnetic fields",
+        "Electromagnetic induction"
+      ]
+    },
+    {
+      "id": "physics-08",
+      "name": "Nuclear physics",
+      "year": "Year 13",
+      "area": "Nuclear physics",
+      "subtopics": [
+        "Radioactivity",
+        "Nuclear instability",
+        "Nuclear radius",
+        "Mass and energy",
+        "Fission and fusion"
+      ]
+    }
+  ]
+}

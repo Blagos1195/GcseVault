@@ -1,0 +1,325 @@
+{
+  "type": "revision-catalogue",
+  "version": 1,
+  "id": "aqa-a-level-chemistry",
+  "subject": "Chemistry",
+  "examBoard": "AQA",
+  "qualification": "A-level Chemistry (7405)",
+  "source": "AGS Chemistry curriculum and AQA A-level Chemistry specification",
+  "topics": [
+    {
+      "id": "chemistry-01",
+      "name": "Atomic structure",
+      "year": "Year 12",
+      "area": "Atomic structure",
+      "subtopics": [
+        "Protons, neutrons and electrons",
+        "Mass spectrometry",
+        "Electron configuration",
+        "First ionisation energy"
+      ]
+    },
+    {
+      "id": "chemistry-02",
+      "name": "Amount of substance",
+      "year": "Year 12",
+      "area": "Amount of substance",
+      "subtopics": [
+        "Relative formula mass",
+        "Moles and Avogadro constant",
+        "Empirical and molecular formulae",
+        "Concentration",
+        "Gas volumes",
+        "Titrations"
+      ]
+    },
+    {
+      "id": "chemistry-03",
+      "name": "Bonding",
+      "year": "Year 12",
+      "area": "Bonding",
+      "subtopics": [
+        "Ionic bonding",
+        "Covalent bonding",
+        "Metallic bonding",
+        "Shapes of molecules",
+        "Electronegativity",
+        "Intermolecular forces"
+      ]
+    },
+    {
+      "id": "chemistry-04",
+      "name": "Redox",
+      "year": "Year 12",
+      "area": "Redox",
+      "subtopics": [
+        "Oxidation states",
+        "Oxidation and reduction equations"
+      ]
+    },
+    {
+      "id": "chemistry-05",
+      "name": "Periodicity",
+      "year": "Year 12",
+      "area": "Periodicity",
+      "subtopics": [
+        "Period 3 elements and oxides",
+        "Trends in physical properties"
+      ]
+    },
+    {
+      "id": "chemistry-06",
+      "name": "Group 2",
+      "year": "Year 12",
+      "area": "Group 2",
+      "subtopics": [
+        "Reactions of Group 2 metals",
+        "Group 2 compounds and trends"
+      ]
+    },
+    {
+      "id": "chemistry-07",
+      "name": "Group 7",
+      "year": "Year 12",
+      "area": "Group 7",
+      "subtopics": [
+        "Reactivity trends",
+        "Displacement reactions",
+        "Halide ions and silver nitrate"
+      ]
+    },
+    {
+      "id": "chemistry-08",
+      "name": "Energetics",
+      "year": "Year 12",
+      "area": "Energetics",
+      "subtopics": [
+        "Enthalpy changes",
+        "Calorimetry",
+        "Hess's law",
+        "Mean bond enthalpy"
+      ]
+    },
+    {
+      "id": "chemistry-09",
+      "name": "Kinetics",
+      "year": "Year 12",
+      "area": "Kinetics",
+      "subtopics": [
+        "Collision theory",
+        "Maxwell-Boltzmann distributions",
+        "Factors affecting rate"
+      ]
+    },
+    {
+      "id": "chemistry-10",
+      "name": "Equilibria",
+      "year": "Year 12",
+      "area": "Equilibria",
+      "subtopics": [
+        "Dynamic equilibrium",
+        "Le Chatelier's principle",
+        "Equilibrium constants Kc and Kp"
+      ]
+    },
+    {
+      "id": "chemistry-11",
+      "name": "Alkanes",
+      "year": "Year 12",
+      "area": "Alkanes",
+      "subtopics": [
+        "Structure and nomenclature",
+        "Combustion",
+        "Free-radical substitution"
+      ]
+    },
+    {
+      "id": "chemistry-12",
+      "name": "Halogenoalkanes",
+      "year": "Year 12",
+      "area": "Halogenoalkanes",
+      "subtopics": [
+        "Nucleophilic substitution",
+        "Elimination",
+        "Rates of hydrolysis"
+      ]
+    },
+    {
+      "id": "chemistry-13",
+      "name": "Alkenes",
+      "year": "Year 12",
+      "area": "Alkenes",
+      "subtopics": [
+        "Electrophilic addition",
+        "Addition polymers"
+      ]
+    },
+    {
+      "id": "chemistry-14",
+      "name": "Alcohols",
+      "year": "Year 12",
+      "area": "Alcohols",
+      "subtopics": [
+        "Oxidation",
+        "Dehydration",
+        "Esterification"
+      ]
+    },
+    {
+      "id": "chemistry-15",
+      "name": "Organic analysis",
+      "year": "Year 13",
+      "area": "Organic analysis",
+      "subtopics": [
+        "Functional group tests",
+        "Mass spectrometry",
+        "Infrared spectroscopy"
+      ]
+    },
+    {
+      "id": "chemistry-16",
+      "name": "Rate equations",
+      "year": "Year 13",
+      "area": "Rate equations",
+      "subtopics": [
+        "Orders of reaction",
+        "Rate constants",
+        "Rate-determining steps",
+        "Arrhenius equation"
+      ]
+    },
+    {
+      "id": "chemistry-17",
+      "name": "Chromatography",
+      "year": "Year 13",
+      "area": "Chromatography",
+      "subtopics": [
+        "Thin-layer chromatography",
+        "Gas chromatography",
+        "Retention times"
+      ]
+    },
+    {
+      "id": "chemistry-18",
+      "name": "NMR",
+      "year": "Year 13",
+      "area": "NMR",
+      "subtopics": [
+        "Proton NMR",
+        "Carbon-13 NMR",
+        "Chemical shifts",
+        "Integration and splitting"
+      ]
+    },
+    {
+      "id": "chemistry-19",
+      "name": "Acids and bases",
+      "year": "Year 13",
+      "area": "Acids and bases",
+      "subtopics": [
+        "Brønsted-Lowry theory",
+        "pH and Ka",
+        "Buffer solutions",
+        "Titration curves"
+      ]
+    },
+    {
+      "id": "chemistry-20",
+      "name": "Optical isomerism",
+      "year": "Year 13",
+      "area": "Optical isomerism",
+      "subtopics": [
+        "Chirality",
+        "Enantiomers"
+      ]
+    },
+    {
+      "id": "chemistry-21",
+      "name": "Carbonyls",
+      "year": "Year 13",
+      "area": "Carbonyls",
+      "subtopics": [
+        "Aldehydes and ketones",
+        "Nucleophilic addition",
+        "Oxidation and reduction"
+      ]
+    },
+    {
+      "id": "chemistry-22",
+      "name": "Thermodynamics",
+      "year": "Year 13",
+      "area": "Thermodynamics",
+      "subtopics": [
+        "Entropy",
+        "Gibbs free energy"
+      ]
+    },
+    {
+      "id": "chemistry-23",
+      "name": "Carboxylic acids and derivatives",
+      "year": "Year 13",
+      "area": "Carboxylic acids and derivatives",
+      "subtopics": [
+        "Carboxylic acid reactions",
+        "Esters",
+        "Acyl chlorides"
+      ]
+    },
+    {
+      "id": "chemistry-24",
+      "name": "Aromatic chemistry",
+      "year": "Year 13",
+      "area": "Aromatic chemistry",
+      "subtopics": [
+        "Benzene structure",
+        "Electrophilic substitution",
+        "Phenols"
+      ]
+    },
+    {
+      "id": "chemistry-25",
+      "name": "Amines",
+      "year": "Year 13",
+      "area": "Amines",
+      "subtopics": [
+        "Basicity",
+        "Preparation and reactions"
+      ]
+    },
+    {
+      "id": "chemistry-26",
+      "name": "Amino acids, DNA and polymers",
+      "year": "Year 13",
+      "area": "Amino acids, DNA and polymers",
+      "subtopics": [
+        "Amino acids",
+        "Peptides and proteins",
+        "DNA",
+        "Addition and condensation polymers"
+      ]
+    },
+    {
+      "id": "chemistry-27",
+      "name": "Electrochemical cells",
+      "year": "Year 13",
+      "area": "Electrochemical cells",
+      "subtopics": [
+        "Electrode potentials",
+        "Cell EMF",
+        "Feasibility of reactions"
+      ]
+    },
+    {
+      "id": "chemistry-28",
+      "name": "Transition metals and aqueous ions",
+      "year": "Year 13",
+      "area": "Transition metals and aqueous ions",
+      "subtopics": [
+        "Transition metal properties",
+        "Complex ions",
+        "Ligand substitution",
+        "Redox reactions of ions"
+      ]
+    }
+  ]
+}
