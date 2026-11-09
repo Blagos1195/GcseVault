@@ -288,6 +288,23 @@ const VaultUser = {
     return value;
   },
 
+  async validateAccountSession() {
+    const token = this.getAccountSession();
+    if (!token) return false;
+    const response = await fetch(`${this.WORKER_URL}/account/session`, {
+      headers: { 'X-Account-Session': token }
+    });
+    if (response.status === 401) {
+      if (this.getAccountSession() === token) localStorage.removeItem('vault_account_session');
+      return false;
+    }
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not verify your account session.');
+    if (this.getAccountSession() !== token) return false;
+    if (data.username) this.setUsername(data.username);
+    return true;
+  },
+
   async createPasswordCredentials(password) {
     if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
       throw new Error('Use a password between 12 and 128 characters.');
@@ -366,10 +383,12 @@ const VaultUser = {
         method: 'POST',
         headers: { 'X-Account-Session': token }
       });
-      const data = await this.readResponse(response);
-      if (!response.ok) throw new Error(data.error || data.message || 'Could not sign out. Please try again.');
+      if (response.status !== 401) {
+        const data = await this.readResponse(response);
+        if (!response.ok) throw new Error(data.error || data.message || 'Could not sign out. Please try again.');
+      }
     }
-    localStorage.removeItem('vault_account_session');
+    if (!token || this.getAccountSession() === token) localStorage.removeItem('vault_account_session');
   },
 
   showAccountDialog() {
@@ -377,21 +396,38 @@ const VaultUser = {
     const linked = !!this.getKey();
     let mode = 'login';
     const usernameValue = () => UI.escapeHTML(this.getUsername() || '');
-    const refresh = () => {
-      if (this.getAccountSession()) {
-        window.openModal(`<div>
-          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
-          <div style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Signed in as <strong style="color:var(--gold)">${usernameValue()}</strong></div>
-          <button class="btn" id="vault-account-logout">Sign out</button>
-          <button class="btn" onclick="closeModal()">Close</button>
-        </div>`);
-        document.getElementById('vault-account-logout').onclick = async () => {
-          await this.logoutAccount();
-          window.closeModal();
-          if (typeof window.render === 'function') window.render();
-          if (typeof window.renderRevision === 'function') window.renderRevision();
-        };
-        return;
+    const refresh = async () => {
+      const token = this.getAccountSession();
+      if (token) {
+        try {
+          if (await this.validateAccountSession() && this.getAccountSession() === token) {
+            window.openModal(`<div>
+              <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
+              <div style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Signed in as <strong style="color:var(--gold)">${usernameValue()}</strong></div>
+              <button class="btn" id="vault-account-logout">Sign out</button>
+              <button class="btn" onclick="closeModal()">Close</button>
+            </div>`);
+            document.getElementById('vault-account-logout').onclick = async () => {
+              const button = document.getElementById('vault-account-logout');
+              button.disabled = true;
+              try {
+                await this.logoutAccount();
+                window.closeModal();
+                if (typeof window.render === 'function') window.render();
+                if (typeof window.renderRevision === 'function') window.renderRevision();
+              } catch (error) {
+                button.disabled = false;
+                const message = document.createElement('div');
+                message.style.cssText = 'font-size:.72rem;margin:8px 0;color:var(--coral)';
+                message.textContent = error.message;
+                button.before(message);
+              }
+            };
+            return;
+          }
+        } catch (error) {
+          console.warn('Account session verification failed:', error);
+        }
       }
       const titles = { login: 'Sign in', create: 'Create account', setup: 'Set password', reset: 'Reset password' };
       const descriptions = {
@@ -571,6 +607,15 @@ if (!window.__vaultAccountFetchWrapped) {
     return nativeFetch(input, init);
   };
   window.__vaultAccountFetchWrapped = true;
+}
+
+if (VaultUser.getAccountSession()) {
+  VaultUser.validateAccountSession().then(valid => {
+    if (!valid) {
+      if (typeof window.render === 'function') window.render();
+      if (typeof window.renderRevision === 'function') window.renderRevision();
+    }
+  }).catch(error => console.warn('Account session verification failed:', error));
 }
 
 const ThemeManager = {
