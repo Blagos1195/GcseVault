@@ -1449,7 +1449,11 @@ export default {
                 id: String(item.id || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
                 name: String(item.name || "").slice(0, 120), expression: String(item.expression || "").slice(0, 300), units: String(item.units || "").slice(0, 160), conditions: String(item.conditions || "").slice(0, 300)
               })) : [],
-            } : { catalogues: {}, attempts: [], mistakes: [], formulas: [] }
+               resources: Array.isArray(set.practice.resources) ? set.practice.resources.slice(-500).map(item => ({
+                 id: String(item.id || "").slice(0, 100), subject: String(item.subject || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
+                 topic: String(item.topic || "").slice(0, 160), kind: String(item.kind || "notes").slice(0, 40), title: String(item.title || "").slice(0, 180), content: String(item.content || "").slice(0, 12000), source: String(item.source || "").slice(0, 300)
+               })) : [],
+            } : { catalogues: {}, attempts: [], mistakes: [], formulas: [], resources: [] }
           }))
         : [];
       const activeSetId = String(body.activeSetId || accountSets[0]?.id || "default").trim();
