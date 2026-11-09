@@ -104,3 +104,23 @@ test("valid account sessions refresh the stored username", async () => {
   assert.equal(await context.__VaultUser.validateAccountSession(), true);
   assert.equal(context.__VaultUser.getUsername(), "TestUser");
 });
+
+test("temporary account session verification failures preserve the stored token", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultUser = {");
+  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const storage = new Map([["vault_account_session", "temporary-failure-token"]]);
+  const localStorage = {
+    getItem(key) { return storage.get(key) ?? null; },
+    setItem(key, value) { storage.set(key, value); },
+    removeItem(key) { storage.delete(key); }
+  };
+  const context = {
+    localStorage,
+    fetch: async () => ({ status: 503, ok: false, text: async () => JSON.stringify({ error: "Temporarily unavailable" }) }),
+    console
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__VaultUser = VaultUser;", context);
+  await assert.rejects(context.__VaultUser.validateAccountSession(), /Temporarily unavailable/);
+  assert.equal(context.__VaultUser.getAccountSession(), "temporary-failure-token");
+});
