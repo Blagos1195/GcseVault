@@ -37,6 +37,7 @@ function makeEnv(rows = []) {
             return {
               first: async () => {
                 if (sql.includes("FROM account_credentials")) return null;
+                if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
                 if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
                 if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
@@ -61,7 +62,7 @@ function makeEnv(rows = []) {
       }
     },
     QUOTEVAULT: {
-      get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null,
+      get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null,
       delete: async () => {}
     },
     DV_PENDING: {
