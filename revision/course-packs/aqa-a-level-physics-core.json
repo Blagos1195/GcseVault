@@ -1,0 +1,567 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-a-level-physics-core-pack",
+  "catalogueId": "aqa-a-level-physics",
+  "subject": "Physics",
+  "examBoard": "AQA",
+  "qualification": "A-level Physics (7408), core sections 3.1–3.8 only; optional module not included",
+  "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded — https://www.aqa.org.uk/subjects/physics/a-level/physics-7408/specification",
+  "cards": [
+    {
+      "id": "physics-01-1",
+      "topicId": "physics-01",
+      "front": "What are the seven SI base units?",
+      "back": "kilogram (kg), metre (m), second (s), ampere (A), kelvin (K), mole (mol) and candela (cd).",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-01-2",
+      "topicId": "physics-01",
+      "front": "How do you combine percentage uncertainties for multiplication or division?",
+      "back": "Add the percentage uncertainties of the measured quantities.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-01-3",
+      "topicId": "physics-01",
+      "front": "How does a power affect percentage uncertainty?",
+      "back": "For y=xⁿ, percentage uncertainty in y is |n| times the percentage uncertainty in x.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-01-4",
+      "topicId": "physics-01",
+      "front": "What is the difference between random and systematic error?",
+      "back": "Random error causes scatter between readings; systematic error shifts readings consistently, for example due to zero error or calibration.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-01-5",
+      "topicId": "physics-01",
+      "front": "A length is 20.0±0.2 cm. What is its percentage uncertainty?",
+      "back": "(0.2/20.0)×100=1.0%.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-01-6",
+      "topicId": "physics-01",
+      "front": "Why should raw readings not be rounded too early?",
+      "back": "Premature rounding introduces avoidable numerical error; keep guard digits and round the final result appropriately.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-1",
+      "topicId": "physics-02",
+      "front": "What is the difference between a hadron and a lepton?",
+      "back": "Hadrons are made of quarks and experience the strong interaction; leptons are fundamental particles and do not experience the strong interaction.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-2",
+      "topicId": "physics-02",
+      "front": "What is a baryon and give an example?",
+      "back": "A hadron made of three quarks; a proton (uud) and neutron (udd) are examples.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-3",
+      "topicId": "physics-02",
+      "front": "What is a meson?",
+      "back": "A hadron consisting of a quark and an antiquark.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-4",
+      "topicId": "physics-02",
+      "front": "What is the quark composition of a proton and neutron?",
+      "back": "Proton: uud. Neutron: udd.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-5",
+      "topicId": "physics-02",
+      "front": "What is the charge of an up quark and a down quark?",
+      "back": "Up: +2/3 e. Down: −1/3 e.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-6",
+      "topicId": "physics-02",
+      "front": "State the photon energy equation.",
+      "back": "E=hf, where h is Planck's constant and f is frequency.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-7",
+      "topicId": "physics-02",
+      "front": "What does the threshold frequency represent in the photoelectric effect?",
+      "back": "The minimum frequency needed for photons to eject electrons from a particular material.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-8",
+      "topicId": "physics-02",
+      "front": "State the de Broglie wavelength equation.",
+      "back": "λ=h/p, where p is momentum.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-02-9",
+      "topicId": "physics-02",
+      "front": "How does increasing light intensity affect photoelectric emission above threshold?",
+      "back": "It increases the number of emitted electrons per second, but not the maximum kinetic energy of each electron.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-1",
+      "topicId": "physics-03",
+      "front": "State the wave equation.",
+      "back": "v=fλ, where v is wave speed, f frequency and λ wavelength.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-2",
+      "topicId": "physics-03",
+      "front": "Distinguish transverse and longitudinal waves.",
+      "back": "Transverse oscillations are perpendicular to propagation; longitudinal oscillations are parallel.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-3",
+      "topicId": "physics-03",
+      "front": "What is a coherent pair of sources?",
+      "back": "Sources with the same frequency and a constant phase difference.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-4",
+      "topicId": "physics-03",
+      "front": "What path difference gives constructive interference?",
+      "back": "nλ, where n is an integer.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-5",
+      "topicId": "physics-03",
+      "front": "What path difference gives destructive interference?",
+      "back": "(n+½)λ, where n is an integer.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-6",
+      "topicId": "physics-03",
+      "front": "When is diffraction most pronounced?",
+      "back": "When the aperture or obstacle size is similar to the wavelength.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-7",
+      "topicId": "physics-03",
+      "front": "What is a node on a stationary wave?",
+      "back": "A point that remains at zero displacement.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-8",
+      "topicId": "physics-03",
+      "front": "What is an antinode?",
+      "back": "A point of maximum oscillation amplitude on a stationary wave.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-03-9",
+      "topicId": "physics-03",
+      "front": "How are stationary waves formed?",
+      "back": "By superposition of two waves of the same frequency and similar amplitude travelling in opposite directions.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-1",
+      "topicId": "physics-04",
+      "front": "What is the difference between a scalar and a vector?",
+      "back": "A scalar has magnitude only; a vector has magnitude and direction.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-2",
+      "topicId": "physics-04",
+      "front": "State Newton's second law in momentum form.",
+      "back": "Resultant force equals rate of change of momentum: F=Δp/Δt (or dp/dt).",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-3",
+      "topicId": "physics-04",
+      "front": "State the momentum equation.",
+      "back": "p=mv.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-4",
+      "topicId": "physics-04",
+      "front": "What is impulse?",
+      "back": "Change in momentum; for constant force, impulse=FΔt.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-5",
+      "topicId": "physics-04",
+      "front": "State the work done equation for a constant force.",
+      "back": "W=Fs cosθ, where θ is the angle between force and displacement.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-6",
+      "topicId": "physics-04",
+      "front": "State kinetic energy and power equations.",
+      "back": "Ek=½mv²; power P=E/t or P=Fv when force and velocity are parallel.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-7",
+      "topicId": "physics-04",
+      "front": "Define stress and strain.",
+      "back": "Stress=force/cross-sectional area; strain=extension/original length.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-8",
+      "topicId": "physics-04",
+      "front": "Define Young modulus.",
+      "back": "Young modulus=stress/strain, within the linear elastic region.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-04-9",
+      "topicId": "physics-04",
+      "front": "What does the area under a force-extension graph represent?",
+      "back": "Work done in extending the material; elastic energy stored if deformation is elastic.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-1",
+      "topicId": "physics-05",
+      "front": "Define electric current.",
+      "back": "Rate of flow of charge: I=ΔQ/Δt.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-2",
+      "topicId": "physics-05",
+      "front": "Define potential difference.",
+      "back": "Energy transferred per unit charge: V=W/Q.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-3",
+      "topicId": "physics-05",
+      "front": "State Ohm's law.",
+      "back": "For a conductor at constant temperature, current is directly proportional to potential difference: V=IR.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-4",
+      "topicId": "physics-05",
+      "front": "State the resistivity equation.",
+      "back": "ρ=RA/L, where A is cross-sectional area and L is length.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-5",
+      "topicId": "physics-05",
+      "front": "How do resistors combine in series?",
+      "back": "The same current flows through each; total resistance is the sum.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-6",
+      "topicId": "physics-05",
+      "front": "How do resistors combine in parallel?",
+      "back": "The same potential difference is across each branch; reciprocal resistances add.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-7",
+      "topicId": "physics-05",
+      "front": "State the potential-divider equation for output across R₂.",
+      "back": "Vout=Vin×R₂/(R₁+R₂).",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-8",
+      "topicId": "physics-05",
+      "front": "Distinguish EMF from terminal potential difference.",
+      "back": "EMF is energy supplied per unit charge by the source; terminal pd is the energy transferred per unit charge to the external circuit.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-05-9",
+      "topicId": "physics-05",
+      "front": "State the terminal pd equation for a source delivering current.",
+      "back": "V=ε−Ir, where ε is EMF and r internal resistance.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-1",
+      "topicId": "physics-06",
+      "front": "State centripetal acceleration in terms of speed and radius.",
+      "back": "a=v²/r, directed towards the centre of the circular path.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-2",
+      "topicId": "physics-06",
+      "front": "State the centripetal force requirement.",
+      "back": "Resultant inward force F=mv²/r=mω²r.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-3",
+      "topicId": "physics-06",
+      "front": "What condition defines simple harmonic motion?",
+      "back": "Acceleration is proportional to displacement from equilibrium and directed towards equilibrium: a=−ω²x.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-4",
+      "topicId": "physics-06",
+      "front": "State the period of a mass-spring oscillator.",
+      "back": "T=2π√(m/k), for an ideal mass-spring system.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-5",
+      "topicId": "physics-06",
+      "front": "State the period of a simple pendulum for small oscillations.",
+      "back": "T=2π√(l/g).",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-6",
+      "topicId": "physics-06",
+      "front": "State the specific heat capacity equation.",
+      "back": "Q=mcΔT.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-7",
+      "topicId": "physics-06",
+      "front": "State the specific latent heat equation.",
+      "back": "Q=mL; energy changes state without changing temperature during the phase change.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-8",
+      "topicId": "physics-06",
+      "front": "State the ideal gas equation.",
+      "back": "pV=nRT or pV=NkT.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-9",
+      "topicId": "physics-06",
+      "front": "What is the mean translational kinetic energy per ideal-gas molecule?",
+      "back": "(3/2)kT.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-06-10",
+      "topicId": "physics-06",
+      "front": "What does the area under a force-extension graph represent?",
+      "back": "The work done in stretching; for an elastic spring it is energy stored.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-1",
+      "topicId": "physics-07",
+      "front": "Define gravitational field strength.",
+      "back": "Force per unit mass on a small test mass: g=F/m.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-2",
+      "topicId": "physics-07",
+      "front": "State the gravitational field strength of a point mass.",
+      "back": "g=GM/r².",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-3",
+      "topicId": "physics-07",
+      "front": "Define electric field strength.",
+      "back": "Force per unit positive charge: E=F/Q.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-4",
+      "topicId": "physics-07",
+      "front": "State the capacitance equation.",
+      "back": "C=Q/V.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-5",
+      "topicId": "physics-07",
+      "front": "State the energy stored in a capacitor.",
+      "back": "E=½QV=½CV²=Q²/(2C).",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-6",
+      "topicId": "physics-07",
+      "front": "What is the time constant of an RC circuit?",
+      "back": "τ=RC; after one time constant during discharge, charge or voltage falls to 1/e of its initial value.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-7",
+      "topicId": "physics-07",
+      "front": "State the force on a straight current-carrying wire in a magnetic field.",
+      "back": "F=BIL sinθ.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-8",
+      "topicId": "physics-07",
+      "front": "State the force on a moving charged particle in a magnetic field.",
+      "back": "F=BQv sinθ, when θ is the angle between velocity and field.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-9",
+      "topicId": "physics-07",
+      "front": "State Faraday's law in words.",
+      "back": "The induced EMF is proportional to the rate of change of magnetic flux linkage.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-07-10",
+      "topicId": "physics-07",
+      "front": "What does Lenz's law determine?",
+      "back": "The induced effect acts in a direction that opposes the change in flux linkage that produces it.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-1",
+      "topicId": "physics-08",
+      "front": "What does radioactive decay being random mean?",
+      "back": "It is impossible to predict when an individual nucleus will decay, but decay of a large sample follows a predictable statistical law.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-2",
+      "topicId": "physics-08",
+      "front": "State the decay equation.",
+      "back": "N=N₀e^(−λt), where λ is the decay constant.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-3",
+      "topicId": "physics-08",
+      "front": "How are activity and number of undecayed nuclei related?",
+      "back": "A=λN.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-4",
+      "topicId": "physics-08",
+      "front": "State the relationship between half-life and decay constant.",
+      "back": "t½=ln2/λ.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-5",
+      "topicId": "physics-08",
+      "front": "Compare alpha, beta-minus and gamma radiation in ionising ability.",
+      "back": "Alpha is strongly ionising, beta is moderately ionising and gamma is weakly ionising.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-6",
+      "topicId": "physics-08",
+      "front": "State the nuclear radius relationship.",
+      "back": "R=R₀A^(1/3), where A is nucleon number.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-7",
+      "topicId": "physics-08",
+      "front": "What is mass defect?",
+      "back": "The difference between the total mass of separate nucleons and the mass of the bound nucleus.",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-8",
+      "topicId": "physics-08",
+      "front": "State the mass-energy equivalence equation.",
+      "back": "E=mc²; a mass difference Δm corresponds to energy ΔE=Δmc².",
+      "difficulty": 3
+    },
+    {
+      "id": "physics-08-9",
+      "topicId": "physics-08",
+      "front": "Why can fission or fusion release energy?",
+      "back": "The products can have greater binding energy per nucleon, so total mass decreases and energy is released.",
+      "difficulty": 3
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "physics-01",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "Use SI base units consistently: kg, m, s, A, K, mol and cd. Prefixes change powers of ten; convert before substituting. Every measurement has uncertainty, arising from instrument resolution, repeatability and systematic effects. For repeated readings, use a suitable mean and assess spread. For a quantity formed by multiplication or division, add percentage or fractional uncertainties; for a power, multiply the percentage uncertainty by the power. Quote sensible significant figures and include units.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: What are the seven SI base units?; How do you combine percentage uncertainties for multiplication or division?; How does a power affect percentage uncertainty?; What is the difference between random and systematic error?; A length is 20.0±0.2 cm. What is its percentage uncertainty?; Why should raw readings not be rounded too early?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "The atom contains protons and neutrons in the nucleus and electrons around it. Hadrons experience the strong interaction and are made of quarks; baryons contain three quarks and mesons contain a quark–antiquark pair. Leptons, including electrons and neutrinos, do not experience the strong interaction. Quarks combine in allowed combinations; antiparticles have opposite charge and other additive quantum numbers. Photon energy is E=hf. The photoelectric effect supports particle behaviour: emission occurs only above a threshold frequency and maximum electron kinetic energy increases with frequency, not intensity. de Broglie wavelength λ=h/p.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: What is the difference between a hadron and a lepton?; What is a baryon and give an example?; What is a meson?; What is the quark composition of a proton and neutron?; What is the charge of an up quark and a down quark?; State the photon energy equation.; What does the threshold frequency represent in the photoelectric effect?; State the de Broglie wavelength equation.; How does increasing light intensity affect photoelectric emission above threshold?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "A progressive wave transfers energy without net transfer of matter. Transverse oscillations are perpendicular to propagation; longitudinal oscillations are parallel. Wave speed v=fλ. Superposition is the addition of displacements. Coherent sources have a constant phase difference and same frequency; constructive interference occurs for path difference nλ, destructive for (n+½)λ. Diffraction is spreading at an aperture or obstacle and is greatest when aperture width is comparable to wavelength. Stationary waves form from two similar waves travelling in opposite directions, with nodes and antinodes.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: State the wave equation.; Distinguish transverse and longitudinal waves.; What is a coherent pair of sources?; What path difference gives constructive interference?; What path difference gives destructive interference?; When is diffraction most pronounced?; What is a node on a stationary wave?; What is an antinode?; How are stationary waves formed?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-04",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "Treat scalars as magnitude only and vectors as magnitude plus direction. Velocity is rate of change of displacement; acceleration is rate of change of velocity. Resolve projectile motion into horizontal and vertical components, with vertical acceleration g downwards and negligible horizontal acceleration when air resistance is ignored. Newton's laws relate resultant force to acceleration; momentum p=mv and impulse equals change in momentum. Work done W=Fs cosθ; kinetic energy=½mv²; power is rate of energy transfer. Stress=F/A, strain=ΔL/L and Young modulus=stress/strain within the linear elastic region.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: What is the difference between a scalar and a vector?; State Newton's second law in momentum form.; State the momentum equation.; What is impulse?; State the work done equation for a constant force.; State kinetic energy and power equations.; Define stress and strain.; Define Young modulus.; What does the area under a force-extension graph represent?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-05",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "Current is rate of flow of charge I=ΔQ/Δt; potential difference is energy transferred per unit charge V=W/Q. For an ohmic conductor at constant temperature, V=IR. Resistivity ρ=RA/L. I–V characteristics distinguish ohmic conductors, filament lamps and diodes. Series components share current and their potential differences add; parallel branches share potential difference and currents add. A potential divider gives Vout=Vin×R2/(R1+R2) for output across R2. EMF is energy supplied per unit charge; internal resistance causes terminal pd V=ε−Ir when delivering current.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: Define electric current.; Define potential difference.; State Ohm's law.; State the resistivity equation.; How do resistors combine in series?; How do resistors combine in parallel?; State the potential-divider equation for output across R₂.; Distinguish EMF from terminal potential difference.; State the terminal pd equation for a source delivering current.",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-06",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "For circular motion, angular speed ω=v/r and centripetal acceleration a=v²/r=ω²r, directed towards the centre; resultant force is mv²/r. Simple harmonic motion has acceleration a=−ω²x, so acceleration is proportional to displacement and directed towards equilibrium. For a mass-spring system T=2π√(m/k); for a simple pendulum at small angle T=2π√(l/g). Thermal energy change Q=mcΔT; phase change energy Q=mL. Ideal gas equation pV=nRT=NkT. Kinetic theory links gas pressure and temperature to molecular motion; mean translational kinetic energy per molecule is 3kT/2.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: State centripetal acceleration in terms of speed and radius.; State the centripetal force requirement.; What condition defines simple harmonic motion?; State the period of a mass-spring oscillator.; State the period of a simple pendulum for small oscillations.; State the specific heat capacity equation.; State the specific latent heat equation.; State the ideal gas equation.; What is the mean translational kinetic energy per ideal-gas molecule?; What does the area under a force-extension graph represent?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-07",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "A field is a region where an object experiences a force. Gravitational field strength g=F/m and potential is work done per unit mass; for a point mass g=GM/r² and V=−GM/r. Electric field strength E=F/Q; for a point charge E=Q/(4πε₀r²). Capacitance C=Q/V and stored energy E=½QV=½CV². Capacitor discharge is exponential with time constant RC. Magnetic force on a current-carrying wire F=BIL sinθ; on a moving charge F=BQv sinθ. Changing magnetic flux linkage induces an EMF; Lenz's law gives the direction that opposes the change causing it.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: Define gravitational field strength.; State the gravitational field strength of a point mass.; Define electric field strength.; State the capacitance equation.; State the energy stored in a capacitor.; What is the time constant of an RC circuit?; State the force on a straight current-carrying wire in a magnetic field.; State the force on a moving charged particle in a magnetic field.; State Faraday's law in words.; What does Lenz's law determine?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    },
+    {
+      "topicId": "physics-08",
+      "kind": "revision-notes",
+      "title": "Core notes and equations",
+      "content": "Radioactive decay is random for individual nuclei but predictable statistically for a large sample. Activity A=λN and N=N₀e^(−λt); half-life t½=ln2/λ. Alpha, beta-minus and gamma emissions differ in ionising ability and penetration. Nuclear stability depends on neutron-to-proton balance and binding energy. Nuclear radius R=R₀A^(1/3). Mass defect Δm corresponds to binding energy E=Δmc². In fission a heavy nucleus splits; in fusion light nuclei combine. Both can release energy when products have greater binding energy per nucleon.\n\nPractical and mathematical skills: use SI units, show vector directions, substitute with units, state assumptions and interpret significant figures. Specification coverage: What does radioactive decay being random mean?; State the decay equation.; How are activity and number of undecayed nuclei related?; State the relationship between half-life and decay constant.; Compare alpha, beta-minus and gamma radiation in ionising ability.; State the nuclear radius relationship.; What is mass defect?; State the mass-energy equivalence equation.; Why can fission or fusion release energy?",
+      "source": "AQA A-level Physics (7408) core specification, sections 3.1–3.8; optional module excluded"
+    }
+  ]
+}
