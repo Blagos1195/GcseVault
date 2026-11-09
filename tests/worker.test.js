@@ -629,3 +629,31 @@ test("owner migration copies legacy Revision leaderboard entries into D1 without
   assert.equal(legacyDeleted, false);
   assert.ok(env.updates.some(update => update.sql.includes("INSERT OR IGNORE INTO revision_leaderboard")));
 });
+
+
+test("owner migration reports malformed Revision leaderboard records as skipped", async () => {
+  const env = makeEnv();
+  env.REVISION.list = async () => ({
+    keys: [{ name: "leaderboard:invalid-account" }],
+    list_complete: true
+  });
+  env.REVISION.get = async () => ({
+    userKey: "invalid-account",
+    username: "",
+    xp: -1,
+    streak: 0
+  });
+
+  const response = await call("/admin/migrate-storage", env, {
+    phase: "revision-leaderboard",
+    limit: 100
+  }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(data.processed, 1);
+  assert.equal(data.migrated, 0);
+  assert.equal(data.skipped, 1);
+  assert.equal(data.complete, true);
+  assert.equal(data.cursor, null);
+});
