@@ -25,3 +25,36 @@ for (const file of files) {
     }
   });
 }
+
+
+test("storage migration summary aggregates all phases", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const phases = {
+    revision: { processed: 2, migrated: 1, alreadyPresent: 1, skipped: 0, complete: true, cursor: null },
+    "revision-leaderboard": { processed: 3, migrated: 1, alreadyPresent: 1, skipped: 1, complete: true, cursor: null },
+    themes: { processed: 4, migrated: 2, alreadyPresent: 2, skipped: 0, complete: true, cursor: null }
+  };
+  const context = {
+    document: { addEventListener() {} },
+    window: { render() {} },
+    localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+    sessionStorage: { getItem() { return "test-session"; }, setItem() {}, removeItem() {} },
+    fetch: async (_url, options) => {
+      const { phase } = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => phases[phase]
+      };
+    },
+    console,
+    URL,
+    setTimeout,
+    clearTimeout
+  };
+  vm.runInNewContext(source + "\\nglobalThis.__AdminManager = AdminManager;", context);
+  const manager = context.__AdminManager;
+  manager.role = "owner";
+  manager.refresh = async () => {};
+  await manager.migrateStorage();
+  assert.equal(manager.migrationStatus, "Migration finished: 4 copied, 4 already present, 1 skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.");
+});
