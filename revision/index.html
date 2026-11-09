@@ -1074,7 +1074,7 @@ normalizeRevisionSet = function(set, fallbackId) {
 state.accountSets.forEach(set => { set.practice = normalizeRevisionSet(set, set.id).practice; });
 const practiceBaseSync = syncActiveRevisionSet;
 syncActiveRevisionSet = function() { practiceBaseSync(); const set=getActiveRevisionSet(); if(set&&!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[]}; };
-function practiceStore(){const set=getActiveRevisionSet();if(!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]};if(!Array.isArray(set.practice.resources))set.practice.resources=[];return set.practice;}
+function practiceStore(){const set=getActiveRevisionSet();if(!set.practice)set.practice={catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]};if(!Array.isArray(set.practice.resources))set.practice.resources=[];if(!Array.isArray(set.practice.formulas))set.practice.formulas=[];return set.practice;}
 function practiceTopics(){return Object.entries(practiceStore().catalogues).flatMap(([subjectId,c])=>(c.topics||[]).map(topic=>({...topic,subjectId,subject:c.subject,examBoard:c.examBoard})));}
 function practiceStats(topic){
  const p=practiceStore(), attempts=p.attempts.filter(a=>a.subjectId===topic.subjectId&&a.topicId===topic.id);
