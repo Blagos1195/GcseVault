@@ -377,6 +377,15 @@ test("owner and admin inherit AI access while an owner can grant it to users", a
   assert.ok(env.updates.some(update => update.sql.includes("SET ai_access = ?") && update.values[0] === 1));
 });
 
+test("AI logout deletes its session even when the linked account session is no longer valid", async () => {
+  const env = makeEnv();
+  let deletedKey = null;
+  env.QUOTEVAULT.delete = async key => { deletedKey = key; };
+  const response = await call("/ai/logout", env, {}, { "X-AI-Session": "expired-ai-token" });
+  assert.equal(response.status, 200);
+  assert.equal(deletedKey, "ai-session:expired-ai-token");
+});
+
 test("admins cannot issue AI access", async () => {
   const env = makeEnv();
   const prepare = env.DB.prepare.bind(env.DB);
