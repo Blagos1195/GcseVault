@@ -490,7 +490,7 @@ export default {
 
     // ── QUOTEVAULT PENDING ────────────────────────────────────────────────────
     if (url.pathname === "/pending" && request.method === "GET") {
-      if (!await getAIUser(request)) {
+      if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
       const list = await env.QUOTEVAULT.list();
@@ -1598,7 +1598,7 @@ export default {
 
     // ── REVISION STUDY GUIDE GENERATOR (admin only) ──────────────────────────
     if (url.pathname === "/generate" && request.method === "POST") {
-      if (!await isAuthorized(url, request)) {
+      if (!await getAIUser(request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
       let body;
