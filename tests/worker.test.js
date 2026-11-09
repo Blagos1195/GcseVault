@@ -144,6 +144,61 @@ test("leaderboard registration rejects unknown sites before database access", as
   assert.equal(await response.text(), "Invalid site");
 });
 
+test("QuoteVault approval keeps the pending submission when D1 cleanup fails", async () => {
+  const env = makeEnv();
+  let pendingDeleted = false;
+  let published = false;
+  const row = {
+    user_key: "account-key",
+    qv_pending_ids: '["quote-1"]',
+    qv_rejected_ids: "[]"
+  };
+  env.QUOTEVAULT.get = async key => key === "session:test-session"
+    ? JSON.stringify({ userKey: "admin-key" })
+    : key === "quote-1" ? { id: "quote-1", text: "A quote" } : null;
+  env.QUOTEVAULT.delete = async key => { if (key === "quote-1") pendingDeleted = true; };
+  env.PUBLIC_QUOTES = { put: async () => { published = true; } };
+  env.DB.prepare = sql => ({
+    bind: () => sql.includes("SELECT user_key, username, role FROM users")
+      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+      : sql.startsWith("SELECT")
+        ? { all: async () => ({ results: [row] }) }
+        : { run: async () => { throw new Error("D1 unavailable"); } }
+  });
+
+  const response = await call("/approve", env, { id: "quote-1" }, { "X-Session-Token": "test-session" });
+
+  assert.equal(response.status, 500);
+  assert.equal(published, true);
+  assert.equal(pendingDeleted, false);
+});
+
+test("DateVault rejection keeps the pending submission when D1 cleanup fails", async () => {
+  const env = makeEnv();
+  let pendingDeleted = false;
+  const row = {
+    user_key: "account-key",
+    dv_pending_ids: '["fact-1"]',
+    dv_rejected_ids: "[]"
+  };
+  env.QUOTEVAULT.get = async key => key === "session:test-session"
+    ? JSON.stringify({ userKey: "admin-key" })
+    : null;
+  env.DV_PENDING.delete = async () => { pendingDeleted = true; };
+  env.DB.prepare = sql => ({
+    bind: () => sql.includes("SELECT user_key, username, role FROM users")
+      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+      : sql.startsWith("SELECT")
+        ? { all: async () => ({ results: [row] }) }
+        : { run: async () => { throw new Error("D1 unavailable"); } }
+  });
+
+  const response = await call("/dv/reject", env, { id: "fact-1" }, { "X-Session-Token": "test-session" });
+
+  assert.equal(response.status, 500);
+  assert.equal(pendingDeleted, false);
+});
+
 test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrelated data", async () => {
   const env = makeEnv([{
     user_key: "account-key",
