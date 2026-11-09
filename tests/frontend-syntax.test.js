@@ -36,7 +36,7 @@ test("storage migration summary aggregates all phases", async () => {
   };
   const context = {
     document: { addEventListener() {} },
-    window: { render() {} },
+    window: { render() {}, __vaultAccountFetchWrapped: true },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     sessionStorage: { getItem() { return "test-session"; }, setItem() {}, removeItem() {} },
     fetch: async (_url, options) => {
