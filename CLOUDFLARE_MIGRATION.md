@@ -4,7 +4,7 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
 ## Production migration and deployment status
 
-The owner has confirmed that the remote Wrangler migration listing returned `No migrations to apply!` after successfully applying `0005_revision_leaderboard.sql`. Wrangler reported the migration successful and the subsequent list showed no pending migrations.
+The owner confirmed that migrations through `0005_revision_leaderboard.sql` were successfully applied. PR #13 added `0006_ai_access.sql`, which adds the `ai_access` permission column. This new migration has not yet been applied remotely.
 
 The owner then successfully ran `npx wrangler deploy`. The deployed Worker URL is `https://quotevault-api.noah-l-barker.workers.dev`, with version ID `fb9b7e72-07c9-44c0-a8e0-4d19ec2c7b8e`.
 
@@ -15,8 +15,9 @@ The five tracked migrations are:
 - `0003_one_time_admin_setup.sql`
 - `0004_password_accounts.sql`
 - `0005_revision_leaderboard.sql`
+- `0006_ai_access.sql` (new; pending remote application)
 
-Do not rerun completed migrations. The repository connection cannot independently inspect the live Cloudflare database or deployment; the production status above is based on the owner's Wrangler output.
+Do not rerun completed migrations. Apply the new pending migration before deploying the updated Worker. The repository connection cannot independently inspect the live Cloudflare database or deployment; the production status above is based on the owner's Wrangler output.
 
 The owner has also completed and checked the production backups:
 - D1 export `leaderboard-backup.sql` downloaded successfully.
@@ -47,7 +48,7 @@ $backup.PSObject.Properties.Count
 
 ### Completed migration and deployment commands
 
-The owner successfully ran:
+The owner previously ran the commands below successfully for migration `0005` and the earlier Worker version. They must now be run again because `0006_ai_access.sql` and updated Worker authentication code have been added:
 
 ```powershell
 npx wrangler d1 migrations apply leaderboard --remote
@@ -55,13 +56,13 @@ npx wrangler d1 migrations list leaderboard --remote
 npx wrangler deploy
 ```
 
-The apply command ran only `0005_revision_leaderboard.sql`; the follow-up list returned `No migrations to apply!`. The Worker deploy completed successfully. Do not repeat these commands unless a future code change introduces a new migration or Worker deployment is intentionally required.
+The migration command should apply only `0006_ai_access.sql`. Confirm the list reports no pending migrations before deploying the Worker.
 
 ## Initial owner setup
 
 **Completed in production.** The owner completed first-owner setup, signed in, and removed the `ADMIN_KEY` secret from the Worker environment. The one-time setup key is no longer needed.
 
-The owner can grant or remove admin access from **Account permissions**. Admins can moderate submissions but cannot change account roles.
+The owner can grant or remove admin access from **Account permissions**. Admins can moderate submissions but cannot change account roles. The owner also controls the separate **Revision AI access** list. Owners and admins inherit AI access; only the owner can grant or revoke it for standard users.
 
 ## Copy existing KV data
 
