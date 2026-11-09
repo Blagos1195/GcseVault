@@ -674,7 +674,9 @@ test("owner migration counts existing D1 records separately from newly copied re
   });
   env.DB.prepare = sql => ({
     bind: () => ({
-      first: async () => null,
+      first: async () => sql.includes("SELECT user_key, username, role FROM users")
+        ? { user_key: "admin-key", username: "owner", role: "owner" }
+        : null,
       all: async () => ({ results: [] }),
       run: async () => ({ success: true, meta: { changes: 0 } })
     })
