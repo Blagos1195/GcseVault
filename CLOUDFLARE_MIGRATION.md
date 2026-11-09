@@ -10,13 +10,31 @@ The owner reports that migrations `0001` through `0004` are already applied to p
 
    `npx wrangler d1 export leaderboard --remote --output=leaderboard-backup.sql`
 
-2. Back up the `REVISION` and `THEMES` KV data before changing production. Keep those backups separate from the live namespaces.
+2. Back up the `REVISION` and `THEMES` KV data before changing production. From the repository root, these commands save every listed key and its value to local JSON files:
 
-3. Apply the tracked migrations:
+   ```sh
+   npx wrangler kv key list --binding=REVISION --remote > revision-keys.json
+   npx wrangler kv bulk get revision-keys.json --binding=REVISION --remote > revision-backup.json
+
+   npx wrangler kv key list --binding=THEMES --remote > themes-keys.json
+   npx wrangler kv bulk get themes-keys.json --binding=THEMES --remote > themes-backup.json
+   ```
+
+   Keep the four files somewhere safe and separate from the live namespaces. Do not upload them to the public repository.
+
+3. Check which migrations remain unapplied:
+
+   `npx wrangler d1 migrations list leaderboard --remote`
+
+4. Apply the tracked migrations. Wrangler applies only migrations not already recorded as applied:
 
    `npx wrangler d1 migrations apply leaderboard --remote`
 
-4. Confirm all five tracked migrations completed:
+5. Confirm all five tracked migrations completed:
+
+   `npx wrangler d1 migrations apply leaderboard --remote`
+
+5. Confirm all five tracked migrations completed:
 
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
@@ -24,7 +42,7 @@ The owner reports that migrations `0001` through `0004` are already applied to p
    - `0004_password_accounts.sql`
    - `0005_revision_leaderboard.sql`
 
-5. Deploy the Worker:
+6. Deploy the Worker:
 
    `npx wrangler deploy`
 
