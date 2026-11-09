@@ -1419,10 +1419,36 @@ export default {
             syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === "object" ? set.syllabusDone : {},
             reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog.slice(-5000) : [],
             practice: set && set.practice && typeof set.practice === "object" ? {
-              catalogues: Object.fromEntries(Object.entries(set.practice.catalogues || {}).slice(0, 8)),
-              attempts: Array.isArray(set.practice.attempts) ? set.practice.attempts.slice(-1000) : [],
-              mistakes: Array.isArray(set.practice.mistakes) ? set.practice.mistakes.slice(-1000) : [],
-              formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : [],
+              catalogues: Object.fromEntries(Object.entries(set.practice.catalogues || {}).slice(0, 8).map(([id, catalogue]) => [String(id).slice(0, 100), {
+                id: String(catalogue.id || id).slice(0, 100),
+                subject: String(catalogue.subject || "").slice(0, 100),
+                examBoard: String(catalogue.examBoard || "").slice(0, 80),
+                qualification: String(catalogue.qualification || "").slice(0, 100),
+                source: String(catalogue.source || "").slice(0, 300),
+                optionalModule: catalogue.optionalModule && typeof catalogue.optionalModule === "object" ? { status: String(catalogue.optionalModule.status || "").slice(0, 40), note: String(catalogue.optionalModule.note || "").slice(0, 300) } : null,
+                topics: Array.isArray(catalogue.topics) ? catalogue.topics.slice(0, 250).map(topic => ({
+                  id: String(topic.id || "").slice(0, 100),
+                  name: String(topic.name || "").slice(0, 160),
+                  year: String(topic.year || "").slice(0, 30),
+                  area: String(topic.area || "").slice(0, 80),
+                  subtopics: Array.isArray(topic.subtopics) ? topic.subtopics.slice(0, 100).map(item => String(item).slice(0, 180)) : []
+                })) : [],
+                updatedAt: Number(catalogue.updatedAt) || 0
+              }])),
+              attempts: Array.isArray(set.practice.attempts) ? set.practice.attempts.slice(-1000).map(item => ({
+                id: String(item.id || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
+                topic: String(item.topic || "").slice(0, 160), marks: Math.max(0, Math.min(10000, Number(item.marks) || 0)), maxMarks: Math.max(0, Math.min(10000, Number(item.maxMarks) || 0)),
+                source: String(item.source || "").slice(0, 160), notes: String(item.notes || "").slice(0, 1200), at: Number(item.at) || 0
+              })) : [],
+              mistakes: Array.isArray(set.practice.mistakes) ? set.practice.mistakes.slice(-1000).map(item => ({
+                id: String(item.id || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
+                topic: String(item.topic || "").slice(0, 160), description: String(item.description || "").slice(0, 1200), source: String(item.source || "").slice(0, 160),
+                at: Number(item.at) || 0, resolved: Boolean(item.resolved), resolvedAt: Number(item.resolvedAt) || 0
+              })) : [],
+              formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300).map(item => ({
+                id: String(item.id || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
+                name: String(item.name || "").slice(0, 120), expression: String(item.expression || "").slice(0, 300), units: String(item.units || "").slice(0, 160), conditions: String(item.conditions || "").slice(0, 300)
+              })) : [],
               formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : []
             } : { catalogues: {}, attempts: [], mistakes: [], formulas: [] }
           }))

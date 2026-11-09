@@ -1170,11 +1170,11 @@ practiceAnalytics=function(){return practiceAnalyticsBeforeFormula()+practiceFor
 importPublicNote = async function(id){
  const note=state.publicNotes.find(item=>item.id===id);if(!note)return;
  const incoming=Array.isArray(note.cards)?note.cards:[];
- const idMap=new Map(incoming.map((card,index)=>[String(card.id||index),'imp'+Date.now()+Math.random().toString(36).slice(2,7)]));
- const existing=new Set(state.cards.map(card=>String(card.title||'').toLowerCase()));
- const imported=incoming.filter(card=>!existing.has(String(card.title||'').toLowerCase())).map((card,index)=>({...card,id:idMap.get(String(card.id||index)),links:(Array.isArray(card.links)?card.links:[]).map(link=>idMap.get(String(link))).filter(Boolean)}));
+ const existingByTitle=new Map(state.cards.map(card=>[String(card.title||'').toLowerCase(),card.id]));
+ const idMap=new Map(incoming.map((card,index)=>{const oldId=String(card.id||index),existingId=existingByTitle.get(String(card.title||'').toLowerCase());return[oldId,existingId||('imp'+Date.now()+Math.random().toString(36).slice(2,7))];}));
+ const imported=incoming.filter(card=>!existingByTitle.has(String(card.title||'').toLowerCase())).map((card,index)=>({...card,id:idMap.get(String(card.id||index)),links:(Array.isArray(card.links)?card.links:[]).map(link=>idMap.get(String(link))).filter(Boolean)}));
  state.cards.push(...imported);
- imported.forEach(card=>(card.links||[]).forEach(id=>{const other=cardById(id);if(other&&!other.links.includes(card.id))other.links.push(card.id);}));
+ imported.forEach(card=>(card.links||[]).forEach(id=>{const other=cardById(id);if(other){other.links=other.links||[];if(!other.links.includes(card.id))other.links.push(card.id);}}));
  saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();
 };
 
