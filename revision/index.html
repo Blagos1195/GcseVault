@@ -1141,6 +1141,43 @@ renderAnalytics=function(){return practiceOldAnalytics()+practiceAnalytics();};
 const practiceOldSettings=renderSettings;
 renderSettings=function(){return practiceOldSettings()+practiceSettings();};
 
+
+function practiceAddFormula(){
+ const subjectId=document.getElementById('formula-subject')?.value,topicId=document.getElementById('formula-topic')?.value;
+ const name=String(document.getElementById('formula-name')?.value||'').trim().slice(0,120);
+ const expression=String(document.getElementById('formula-expression')?.value||'').trim().slice(0,300);
+ const units=String(document.getElementById('formula-units')?.value||'').trim().slice(0,160);
+ const conditions=String(document.getElementById('formula-conditions')?.value||'').trim().slice(0,300);
+ if(!subjectId||!topicId||!name||!expression)return;
+ const p=practiceStore();p.formulas.push({id:'pf-'+Date.now(),subjectId,topicId,name,expression,units,conditions});p.formulas=p.formulas.slice(-300);saveRevision();renderRevision();
+}
+function practiceDeleteFormula(id){const p=practiceStore();p.formulas=p.formulas.filter(f=>f.id!==id);saveRevision();renderRevision();}
+function practiceFormulaWorkspace(){
+ const p=practiceStore();
+ return '<div class="card" style="margin-top:10px"><div class="sec">Formula and equation workspace</div><div class="ps">Keep important equations with their symbols, units and conditions. These are private to this revision set.</div><div class="g2"><div class="fg"><label>Subject</label><select id="formula-subject" onchange="document.getElementById(\'formula-topic\').innerHTML=practiceTopicOptions(this.value)">'+practiceSubjectOptions()+'</select></div><div class="fg"><label>Topic</label><select id="formula-topic">'+practiceTopicOptions(Object.keys(p.catalogues)[0])+'</select></div><div class="fg"><label>Name</label><input id="formula-name" maxlength="120" placeholder="e.g. SUVAT equation"></div><div class="fg"><label>Equation</label><input id="formula-expression" maxlength="300" placeholder="e.g. v = u + at"></div><div class="fg"><label>Units / symbols</label><input id="formula-units" maxlength="160" placeholder="e.g. v in m s⁻¹, t in s"></div><div class="fg"><label>Conditions</label><input id="formula-conditions" maxlength="300" placeholder="e.g. constant acceleration"></div></div><button class="btn bp" onclick="practiceAddFormula()">Save formula</button>'+(p.formulas.length?'<div class="knowledge-list">'+p.formulas.map(f=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(f.name)+' · '+practiceEsc(f.expression)+'</div><div class="knowledge-meta">'+practiceEsc(p.catalogues[f.subjectId]?.subject||'')+' · '+practiceEsc(f.units)+' · '+practiceEsc(f.conditions)+'</div></div><button class="btn bsm br" onclick="practiceDeleteFormula(\''+practiceEsc(f.id)+'\')">Delete</button></div>').join('')+'</div>':'')+'</div>';
+}
+const practiceStatsBeforeLinks=practiceStats;
+practiceStats=function(topic){
+ const result=practiceStatsBeforeLinks(topic);
+ const topicCards=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name));
+ const ids=new Set(topicCards.map(card=>card.id));
+ result.connected=topicCards.reduce((n,card)=>n+(card.links||[]).filter(id=>{const other=cardById(id);return other&&!ids.has(id)&&other.topic!==card.topic;}).length,0);
+ result.score=Math.min(1,result.score+Math.min(.08,result.connected*.01));
+ return result;
+};
+const practiceAnalyticsBeforeFormula=practiceAnalytics;
+practiceAnalytics=function(){return practiceAnalyticsBeforeFormula()+practiceFormulaWorkspace();};
+importPublicNote = async function(id){
+ const note=state.publicNotes.find(item=>item.id===id);if(!note)return;
+ const incoming=Array.isArray(note.cards)?note.cards:[];
+ const idMap=new Map(incoming.map((card,index)=>[String(card.id||index),'imp'+Date.now()+Math.random().toString(36).slice(2,7)]));
+ const existing=new Set(state.cards.map(card=>String(card.title||'').toLowerCase()));
+ const imported=incoming.filter(card=>!existing.has(String(card.title||'').toLowerCase())).map((card,index)=>({...card,id:idMap.get(String(card.id||index)),links:(Array.isArray(card.links)?card.links:[]).map(link=>idMap.get(String(link))).filter(Boolean)}));
+ state.cards.push(...imported);
+ imported.forEach(card=>(card.links||[]).forEach(id=>{const other=cardById(id);if(other&&!other.links.includes(card.id))other.links.push(card.id);}));
+ saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();
+};
+
 renderRevision();
 ThemeManager.initTheme('global');
 syncRevisionTheme();

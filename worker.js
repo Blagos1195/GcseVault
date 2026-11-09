@@ -1422,6 +1422,7 @@ export default {
               catalogues: Object.fromEntries(Object.entries(set.practice.catalogues || {}).slice(0, 8)),
               attempts: Array.isArray(set.practice.attempts) ? set.practice.attempts.slice(-1000) : [],
               mistakes: Array.isArray(set.practice.mistakes) ? set.practice.mistakes.slice(-1000) : [],
+              formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : [],
               formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : []
             } : { catalogues: {}, attempts: [], mistakes: [], formulas: [] }
           }))
