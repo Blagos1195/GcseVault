@@ -1131,9 +1131,10 @@ function practiceImport(input){
    const key=(subject+'|'+String(card.front||card.title)).toLowerCase(),existing=existingCards.get(key);
    idMap.set(String(card.id||index),existing?.id||'cp'+Date.now()+Math.random().toString(36).slice(2,8)+index);
   });
+  const resolveCardId=id=>idMap.get(String(id))||(state.cards.some(card=>String(card.id)===String(id))?String(id):null);
   const imported=incoming.filter(card=>!existingCards.has((subject+'|'+String(card.front||card.title)).toLowerCase())).map(card=>{
    const topic=topicById.get(String(card.topicId||''));if(!topic)throw new Error('A flashcard refers to an unknown topic: '+String(card.topicId||''));
-   return{id:idMap.get(String(card.id||incoming.indexOf(card))),subject,topic:topic.name,title:String(card.front||card.title).slice(0,400),answer:String(card.back||card.answer).slice(0,1200),source:String(card.source||c.source||'Course pack').slice(0,300),links:(Array.isArray(card.links)?card.links.map(id=>idMap.get(String(id))).filter(Boolean):[]),difficulty:Math.max(1,Math.min(5,Number(card.difficulty)||2))};
+   return{id:idMap.get(String(card.id||incoming.indexOf(card))),subject,topic:topic.name,title:String(card.front||card.title).slice(0,400),answer:String(card.back||card.answer).slice(0,1200),source:String(card.source||c.source||'Course pack').slice(0,300),links:(Array.isArray(card.links)?card.links.map(resolveCardId).filter(Boolean):[]),difficulty:Math.max(1,Math.min(5,Number(card.difficulty)||2))};
   });
   incoming.forEach(card=>{
    const existing=existingCards.get((subject+'|'+String(card.front||card.title)).toLowerCase());
