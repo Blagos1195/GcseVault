@@ -1398,14 +1398,10 @@ const AdminManager = {
     }).join('');
     const userManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
       <div class="sec" style="margin-top:0">Account permissions</div>
+      <div class="knowledge-meta" style="margin-bottom:8px">Admins inherit AI access. Only the owner can grant AI access to standard accounts.</div>
       <button class="btn bsm" onclick="AdminManager.migrateStorage()" ${this.migrating ? 'disabled' : ''}>${this.migrating ? 'Migrating...' : 'Migrate existing storage to D1'}</button>
       ${this.migrationStatus ? `<div class="knowledge-meta" style="margin:7px 0">${UI.escapeHTML(this.migrationStatus)}</div>` : ''}
-      ${this.users.map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${UI.escapeHTML(user.role)}</div></div>${user.role === 'owner' ? '<span class="tag tg">Owner</span>' : user.role === 'admin' ? `<button class="btn bsm br" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','user')">Remove admin</button>` : `<button class="btn bsm" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','admin')">Make admin</button>`}</div>`).join('') || '<div class="ps">No accounts found.</div>'}
-    </div>` : '';
-    const aiAccessManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
-      <div class="sec" style="margin-top:0">Revision AI access</div>
-      <div class="knowledge-meta" style="margin-bottom:8px">Owners and admins automatically have AI access. Only the owner can grant it to other accounts.</div>
-      ${this.users.filter(user => user.role === 'user').map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${user.ai_access ? 'AI access enabled' : 'No AI access'}</div></div><button class="btn bsm ${user.ai_access ? 'br' : ''}" onclick="AdminManager.setAIAccess('${UI.escapeHTML(user.username)}', ${!user.ai_access})">${user.ai_access ? 'Revoke access' : 'Grant access'}</button></div>`).join('') || '<div class="ps">No eligible accounts.</div>'}
+      ${this.users.map(user => `<div class="srow" style="align-items:center;gap:10px;flex-wrap:wrap"><div style="min-width:110px;flex:1"><div class="knowledge-title">${UI.escapeHTML(user.username)}</div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><select aria-label="Role for ${UI.escapeHTML(user.username)}" onchange="AdminManager.setRole(this.dataset.username,this.value)" data-username="${UI.escapeHTML(user.username)}" class="admin-permission-select" ${user.role === 'owner' ? 'disabled' : ''}><option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option><option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option><option value="owner" ${user.role === 'owner' ? 'selected' : ''}>Owner</option></select><select aria-label="AI access for ${UI.escapeHTML(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='enabled')" data-username="${UI.escapeHTML(user.username)}" class="admin-permission-select" ${user.role !== 'user' ? 'disabled' : ''}><option value="disabled" ${!user.ai_access ? 'selected' : ''}>No AI access</option><option value="enabled" ${user.ai_access ? 'selected' : ''}>AI access</option></select></div></div>`).join('') || '<div class="ps">No accounts found.</div>'}
     </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
@@ -1414,7 +1410,6 @@ const AdminManager = {
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
       ${userManagement}
-      ${aiAccessManagement}
       <div class="g4" style="margin:10px 0 12px">
         <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
         <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>
