@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN ai_access INTEGER NOT NULL DEFAULT 0 CHECK (ai_access IN (0, 1));

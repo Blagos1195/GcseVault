@@ -37,6 +37,7 @@ function makeEnv(rows = []) {
             return {
               first: async () => {
                 if (sql.includes("FROM account_credentials")) return null;
+                if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
                 if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
                 if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
@@ -61,7 +62,7 @@ function makeEnv(rows = []) {
       }
     },
     QUOTEVAULT: {
-      get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null,
+      get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null,
       delete: async () => {}
     },
     DV_PENDING: {
@@ -154,16 +155,18 @@ test("QuoteVault approval keeps the pending submission when D1 cleanup fails", a
     qv_rejected_ids: "[]"
   };
   env.QUOTEVAULT.get = async key => key === "session:test-session"
-    ? JSON.stringify({ userKey: "admin-key" })
+    ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : key === "quote-1" ? { id: "quote-1", text: "A quote" } : null;
   env.QUOTEVAULT.delete = async key => { if (key === "quote-1") pendingDeleted = true; };
   env.PUBLIC_QUOTES = { put: async () => { published = true; } };
   env.DB.prepare = sql => ({
-    bind: () => sql.includes("SELECT user_key, username, role FROM users")
-      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
-      : sql.startsWith("SELECT")
-        ? { all: async () => ({ results: [row] }) }
-        : { run: async () => { throw new Error("D1 unavailable"); } }
+    bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+      ? { first: async () => ({ user_key: "admin-key" }) }
+      : sql.includes("SELECT user_key, username, role FROM users")
+        ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+        : sql.startsWith("SELECT")
+          ? { all: async () => ({ results: [row] }) }
+          : { run: async () => { throw new Error("D1 unavailable"); } }
   });
 
   const response = await call("/approve", env, { id: "quote-1" }, { "X-Session-Token": "test-session" });
@@ -182,15 +185,17 @@ test("DateVault rejection keeps the pending submission when D1 cleanup fails", a
     dv_rejected_ids: "[]"
   };
   env.QUOTEVAULT.get = async key => key === "session:test-session"
-    ? JSON.stringify({ userKey: "admin-key" })
+    ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : null;
   env.DV_PENDING.delete = async () => { pendingDeleted = true; };
   env.DB.prepare = sql => ({
-    bind: () => sql.includes("SELECT user_key, username, role FROM users")
-      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
-      : sql.startsWith("SELECT")
-        ? { all: async () => ({ results: [row] }) }
-        : { run: async () => { throw new Error("D1 unavailable"); } }
+    bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+      ? { first: async () => ({ user_key: "admin-key" }) }
+      : sql.includes("SELECT user_key, username, role FROM users")
+        ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+        : sql.startsWith("SELECT")
+          ? { all: async () => ({ results: [row] }) }
+          : { run: async () => { throw new Error("D1 unavailable"); } }
   });
 
   const response = await call("/dv/reject", env, { id: "fact-1" }, { "X-Session-Token": "test-session" });
@@ -330,9 +335,63 @@ test("owner can grant an account admin role", async () => {
   assert.ok(env.updates.some(update => update.sql.includes("SET role = ?") && update.values[0] === "admin"));
 });
 
+test("admin authentication requires a valid account session for the same user", async () => {
+  const env = makeEnv();
+  const denied = await call("/auth", env, { userKey: "admin-key" });
+  assert.equal(denied.status, 401);
+  let issued = false;
+  env.QUOTEVAULT.put = async () => { issued = true; };
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    if (!sql.includes("FROM account_sessions s JOIN users")) return statement;
+    return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }) };
+  };
+  const allowed = await call("/auth", env, { userKey: "admin-key" }, { "X-Account-Session": "a".repeat(64) });
+  assert.equal(allowed.status, 200);
+  assert.equal(issued, true);
+});
+
+test("AI login requires account authentication and explicit permission", async () => {
+  const env = makeEnv();
+  const denied = await call("/ai/auth", env, {});
+  assert.equal(denied.status, 401);
+  const token = "a".repeat(64);
+  const digest = await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Buffer.from(digest).toString("hex");
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    if (sql.includes("FROM account_sessions s JOIN users")) return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => values[0] === tokenHash ? { user_key: "student-key", username: "student", role: "user" } : null }) };
+    if (sql.includes("ai_access FROM users")) return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => ({ user_key: "student-key", username: "student", role: "user", ai_access: 0 }) }) };
+    return statement;
+  };
+  const noAccess = await call("/ai/auth", env, {}, { "X-Account-Session": token });
+  assert.equal(noAccess.status, 403);
+});
+
+test("owner and admin inherit AI access while an owner can grant it to users", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/ai-access", env, { username: "student", enabled: true }, { "X-Session-Token": "test-session" });
+  assert.equal(response.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("SET ai_access = ?") && update.values[0] === 1));
+});
+
+test("admins cannot issue AI access", async () => {
+  const env = makeEnv();
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    if (sql.includes("SELECT user_key, username, role FROM users")) return { ...statement, bind: (...values) => ({ ...statement.bind(...values), first: async () => ({ user_key: "admin-key", username: "admin", role: "admin" }) }) };
+    return statement;
+  };
+  const response = await call("/admin/ai-access", env, { username: "student", enabled: true }, { "X-Session-Token": "test-session" });
+  assert.equal(response.status, 403);
+  assert.equal(env.updates.length, 0);
+});
 test("revision sync verifies the account username", async () => {
   const env = makeEnv([{ username: "different-user" }]);
-  env.REVISION = { get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null, put: async () => {} };
+  env.REVISION = { get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null, put: async () => {} };
   const response = await call("/revision/sync", env, {
     userKey: "account-key",
     username: "student",
@@ -674,9 +733,11 @@ test("owner migration counts existing D1 records separately from newly copied re
   });
   env.DB.prepare = sql => ({
     bind: () => ({
-      first: async () => sql.includes("SELECT user_key, username, role FROM users")
-        ? { user_key: "admin-key", username: "owner", role: "owner" }
-        : null,
+      first: async () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+        ? { user_key: "admin-key" }
+        : sql.includes("SELECT user_key, username, role FROM users")
+          ? { user_key: "admin-key", username: "owner", role: "owner" }
+          : null,
       all: async () => ({ results: [] }),
       run: async () => ({ success: true, meta: { changes: 0 } })
     })

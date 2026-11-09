@@ -6,7 +6,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session"
+      "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session, X-AI-Session"
     };
 
     if (request.method === "OPTIONS") {
@@ -22,7 +22,11 @@ export default {
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
-      if (!session.userKey) return null;
+      if (!session.userKey || !session.accountTokenHash) return null;
+      const accountSession = await env.DB.prepare(
+        "SELECT user_key FROM account_sessions WHERE token_hash = ? AND expires_at > ?"
+      ).bind(session.accountTokenHash, new Date().toISOString()).first();
+      if (!accountSession || accountSession.user_key !== session.userKey) return null;
       const user = await env.DB.prepare(
         "SELECT user_key, username, role FROM users WHERE user_key = ?"
       ).bind(session.userKey).first();
@@ -32,6 +36,25 @@ export default {
 
     async function isAuthorized(reqUrl, req) {
       return Boolean(await getSessionUser(reqUrl, req));
+    }
+
+    async function getAIUser(req) {
+      const token = req.headers.get("X-AI-Session");
+      if (!token) return null;
+      const stored = await env.QUOTEVAULT.get("ai-session:" + token);
+      if (!stored) return null;
+      let session;
+      try { session = JSON.parse(stored); } catch { return null; }
+      if (!session.userKey || !session.accountTokenHash) return null;
+      const accountSession = await env.DB.prepare(
+        "SELECT user_key FROM account_sessions WHERE token_hash = ? AND expires_at > ?"
+      ).bind(session.accountTokenHash, new Date().toISOString()).first();
+      if (!accountSession || accountSession.user_key !== session.userKey) return null;
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role, ai_access FROM users WHERE user_key = ?"
+      ).bind(session.userKey).first();
+      if (!user || (!["owner", "admin"].includes(user.role) && Number(user.ai_access) !== 1)) return null;
+      return { ...user, token };
     }
 
     async function updateModerationRecords(site, id, rejected) {
@@ -98,6 +121,8 @@ export default {
       const body = await request.json();
       const userKey = String(body.userKey || "").trim();
       if (!userKey) return new Response("Missing account key", { status: 400, headers: cors });
+      const accountSession = await getAccountSession(request);
+      if (!accountSession || accountSession.user_key !== userKey) return new Response("Sign in to this account first.", { status: 401, headers: cors });
       const user = await env.DB.prepare(
         "SELECT user_key, username, role FROM users WHERE user_key = ?"
       ).bind(userKey).first();
@@ -105,8 +130,41 @@ export default {
         return new Response("This account does not have admin access", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey }), { expirationTtl: 28800 });
+      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/ai/auth" && request.method === "POST") {
+      const accountSession = await getAccountSession(request);
+      if (!accountSession) return new Response("Sign in to your account first.", { status: 401, headers: cors });
+      const user = await env.DB.prepare(
+        "SELECT user_key, username, role, ai_access FROM users WHERE user_key = ?"
+      ).bind(accountSession.user_key).first();
+      if (!user || (!["owner", "admin"].includes(user.role) && Number(user.ai_access) !== 1)) {
+        return new Response("This account does not have AI access.", { status: 403, headers: cors });
+      }
+      const token = crypto.randomUUID() + crypto.randomUUID();
+      await env.QUOTEVAULT.put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
+      return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/ai/session" && request.method === "GET") {
+      const user = await getAIUser(request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      return new Response(JSON.stringify({ username: user.username, role: user.role }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/ai/logout" && request.method === "POST") {
+      const user = await getAIUser(request);
+      if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.QUOTEVAULT.delete("ai-session:" + user.token);
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -295,9 +353,29 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
       const { results } = await env.DB.prepare(
-        "SELECT username, role FROM users ORDER BY username COLLATE NOCASE"
+        "SELECT username, role, ai_access FROM users ORDER BY username COLLATE NOCASE"
       ).all();
       return new Response(JSON.stringify({ users: results }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
+    if (url.pathname === "/admin/ai-access" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      if (!username || typeof body.enabled !== "boolean") return new Response("Invalid AI access request", { status: 400, headers: cors });
+      const target = await env.DB.prepare(
+        "SELECT user_key, role FROM users WHERE LOWER(username) = LOWER(?)"
+      ).bind(username).first();
+      if (!target) return new Response("Account not found", { status: 404, headers: cors });
+      if (target.role !== "user") return new Response("AI access is inherited by owners and admins.", { status: 400, headers: cors });
+      await env.DB.prepare(
+        "UPDATE users SET ai_access = ? WHERE user_key = ? AND role = 'user'"
+      ).bind(body.enabled ? 1 : 0, target.user_key).run();
+      return new Response(JSON.stringify({ success: true, username, ai_access: body.enabled }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -1520,7 +1598,7 @@ export default {
 
     // ── REVISION STUDY GUIDE GENERATOR (admin only) ──────────────────────────
     if (url.pathname === "/generate" && request.method === "POST") {
-      if (!await isAuthorized(url, request)) {
+      if (!await getAIUser(request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
       let body;

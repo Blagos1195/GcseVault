@@ -1102,7 +1102,7 @@ const AdminManager = {
     try {
       const response = await fetch(`${WORKER_API}/auth`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Account-Session': VaultUser.getAccountSession() },
         body: JSON.stringify({ userKey })
       });
       if (!response.ok) throw new Error(response.status === 403 ? 'This account does not have admin access.' : `HTTP ${response.status}`);
@@ -1241,6 +1241,20 @@ const AdminManager = {
     }
   },
 
+  async setAIAccess(username, enabled) {
+    try {
+      const response = await fetch(`${WORKER_API}/admin/ai-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
+        body: JSON.stringify({ username, enabled })
+      });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Account not found.' : `HTTP ${response.status}`);
+      await this.refresh();
+    } catch (error) {
+      this.error = error.message;
+      if (typeof window.render === 'function') window.render();
+    }
+  },
   async refresh() {
     if (!this.getToken()) return;
     this.loading = true;
@@ -1388,6 +1402,11 @@ const AdminManager = {
       ${this.migrationStatus ? `<div class="knowledge-meta" style="margin:7px 0">${UI.escapeHTML(this.migrationStatus)}</div>` : ''}
       ${this.users.map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${UI.escapeHTML(user.role)}</div></div>${user.role === 'owner' ? '<span class="tag tg">Owner</span>' : user.role === 'admin' ? `<button class="btn bsm br" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','user')">Remove admin</button>` : `<button class="btn bsm" onclick="AdminManager.setRole('${UI.escapeHTML(user.username)}','admin')">Make admin</button>`}</div>`).join('') || '<div class="ps">No accounts found.</div>'}
     </div>` : '';
+    const aiAccessManagement = this.role === 'owner' ? `<div class="card" style="margin:12px 0">
+      <div class="sec" style="margin-top:0">Revision AI access</div>
+      <div class="knowledge-meta" style="margin-bottom:8px">Owners and admins automatically have AI access. Only the owner can grant it to other accounts.</div>
+      ${this.users.filter(user => user.role === 'user').map(user => `<div class="srow"><div><div class="knowledge-title">${UI.escapeHTML(user.username)}</div><div class="knowledge-meta">${user.ai_access ? 'AI access enabled' : 'No AI access'}</div></div><button class="btn bsm ${user.ai_access ? 'br' : ''}" onclick="AdminManager.setAIAccess('${UI.escapeHTML(user.username)}', ${!user.ai_access})">${user.ai_access ? 'Revoke access' : 'Grant access'}</button></div>`).join('') || '<div class="ps">No eligible accounts.</div>'}
+    </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div><div class="pt">Admin Panel</div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
@@ -1395,6 +1414,7 @@ const AdminManager = {
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
       ${userManagement}
+      ${aiAccessManagement}
       <div class="g4" style="margin:10px 0 12px">
         <div class="scard"><div class="snum">${counts.quote || 0}</div><div class="slbl">QuoteVault</div></div>
         <div class="scard"><div class="snum">${counts.date || 0}</div><div class="slbl">DateVault</div></div>
