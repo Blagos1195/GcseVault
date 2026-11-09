@@ -1137,7 +1137,7 @@ const AdminManager = {
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
-      for (const phase of ['revision', 'themes']) {
+      for (const phase of ['revision', 'revision-leaderboard', 'themes']) {
         let cursor = null;
         let processed = 0;
         let migrated = 0;
