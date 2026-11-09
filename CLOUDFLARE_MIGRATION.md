@@ -2,9 +2,21 @@
 
 The Worker now uses D1 as the primary store for revision sync data and custom themes. Existing KV records are copied into D1 by an owner-controlled, repeatable migration. KV copies are deliberately retained as backups.
 
-## Before deploying
+## Production migration and deployment status
 
-The owner has confirmed that the remote Wrangler migration listing returned `No migrations to apply!`. Wrangler therefore reports all five tracked migrations as already applied. Do not run migrations manually or rerun completed migrations. Recheck the migration list before deploying; if it still reports no pending migrations, proceed without applying anything.
+The owner has confirmed that the remote Wrangler migration listing returned `No migrations to apply!` after successfully applying `0005_revision_leaderboard.sql`. Wrangler reported the migration successful and the subsequent list showed no pending migrations.
+
+The owner then successfully ran `npx wrangler deploy`. The deployed Worker URL is `https://quotevault-api.noah-l-barker.workers.dev`, with version ID `fb9b7e72-07c9-44c0-a8e0-4d19ec2c7b8e`.
+
+The five tracked migrations are:
+
+- `0001_admin_roles.sql`
+- `0002_persistent_user_data.sql`
+- `0003_one_time_admin_setup.sql`
+- `0004_password_accounts.sql`
+- `0005_revision_leaderboard.sql`
+
+Do not rerun completed migrations. The repository connection cannot independently inspect the live Cloudflare database or deployment; the production status above is based on the owner's Wrangler output.
 
 The owner has also completed and checked the production backups:
 - D1 export `leaderboard-backup.sql` downloaded successfully.
@@ -33,27 +45,17 @@ $backup = Get-Content .\revision-backup.json -Raw | ConvertFrom-Json
 $backup.PSObject.Properties.Count
 ```
 
-### Migration and deployment order
+### Completed migration and deployment commands
 
-1. Confirm the remote migration history:
+The owner successfully ran:
 
-   `npx wrangler d1 migrations list leaderboard --remote`
+```powershell
+npx wrangler d1 migrations apply leaderboard --remote
+npx wrangler d1 migrations list leaderboard --remote
+npx wrangler deploy
+```
 
-2. If Wrangler reports `No migrations to apply!`, do not run the apply command. If it lists a genuinely pending migration, stop and inspect the migration history before applying anything.
-
-3. Once all five migrations are confirmed applied and backups are safely stored, deploy the Worker:
-
-   `npx wrangler deploy`
-
-The five tracked migrations are:
-
-- `0001_admin_roles.sql`
-- `0002_persistent_user_data.sql`
-- `0003_one_time_admin_setup.sql`
-- `0004_password_accounts.sql`
-- `0005_revision_leaderboard.sql`
-
-The new Worker expects the `revision_leaderboard` table from migration 0005.
+The apply command ran only `0005_revision_leaderboard.sql`; the follow-up list returned `No migrations to apply!`. The Worker deploy completed successfully. Do not repeat these commands unless a future code change introduces a new migration or Worker deployment is intentionally required.
 
 ## Initial owner setup
 
@@ -81,7 +83,7 @@ Do not delete the old KV namespaces or their records. Keep them until the migrat
 
 ## Verification still required
 
-The repository integration can update and test code, but it cannot access the live Cloudflare account, export its D1 database, enumerate production KV records, apply migrations, or deploy the Worker. Those production steps must be completed from an authenticated Wrangler session. The migration endpoint reports scanned and copied counts; compare those with the original namespace counts before considering the migration complete.
+The owner has completed the D1 migration and Worker deployment. Remaining production steps are first-owner setup, removal of the `ADMIN_KEY` secret after successful setup, and the owner-controlled KV-to-D1 data copy. The migration endpoint reports scanned and copied counts; compare those with the original namespace counts before considering the data migration complete. Keep the KV source records and local backups until cross-device checks pass.
 
 ## Password account rollout
 
