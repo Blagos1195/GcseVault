@@ -2,7 +2,7 @@
 
 ## Intended data layout
 
-The repository targets this layout. The owner has applied all five tracked D1 migrations and deployed the current Worker. The owner-controlled KV-to-D1 data copy is complete. First-owner setup is complete and the `ADMIN_KEY` secret has been removed. Browser verification is still pending.
+The repository targets this layout. The owner has applied migrations `0001` through `0005` and deployed the Worker. Migration `0006_ai_access.sql` is now pending and must be applied before deploying the updated Worker. The owner-controlled KV-to-D1 data copy is complete. First-owner setup is complete and the `ADMIN_KEY` secret has been removed. Browser verification is still pending.
 
 | Data | Intended primary store | Legacy or local copy |
 |---|---|---|
@@ -29,7 +29,8 @@ The repository targets this layout. The owner has applied all five tracked D1 mi
 - Custom themes use D1 as the primary store. KV remains a backup/mirror and is imported when needed.
 - An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records. Migration reporting distinguishes newly copied, already-present and skipped records.
 - Admin access uses account roles: one owner can grant or remove admin access. Admins can moderate but cannot manage roles.
-- Admin sessions use random tokens in request headers, expire after eight hours, and are checked against the current account role on each request. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup. A permanent D1 setup lock is claimed atomically with the first owner promotion, preventing reuse for another account even if roles are later altered.
+- Admin sessions require a valid account session for the same user, use random tokens in request headers, expire after eight hours, and are checked against the current role and originating account session on every request. Logging out or revoking the account session invalidates the derived admin session. Legacy admin sessions without this binding are rejected. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup. A permanent D1 setup lock is claimed atomically with the first owner promotion, preventing reuse for another account even if roles are later altered.
+- Revision AI uses separate account-authenticated sessions, also bound to the originating account session and rechecked against current permissions on every generation request. Owners and admins inherit AI access. Standard users receive AI access only through an owner-only grant/revoke endpoint backed by the D1 `ai_access` flag. Admins cannot grant AI access or elevate their own permissions.
 - Added worker regression tests, frontend JavaScript syntax checks, and a GitHub Actions test workflow.
 - Added password account credentials using PBKDF2-HMAC-SHA-256 with 600,000 iterations and a unique random salt per account.
 - Added random 256-bit account sessions stored as SHA-256 hashes in D1, with a 30-day expiry and login throttling.
@@ -49,6 +50,7 @@ GCSE Vault's existing account system uses a private user key as a bearer credent
 
 The owner reports the following successful production steps:
 - Applied `0005_revision_leaderboard.sql` to the remote `leaderboard` D1 database. Wrangler reported all three SQL statements executed and marked the migration successful.
+- `0006_ai_access.sql` has been added by PR #13 and is pending remote application. Apply it before deploying the updated Worker.
 - Re-ran `npx wrangler d1 migrations list leaderboard --remote`; Wrangler returned `No migrations to apply!`.
 - Deployed the Worker successfully to `https://quotevault-api.noah-l-barker.workers.dev` (version `fb9b7e72-07c9-44c0-a8e0-4d19ec2c7b8e`).
 
@@ -73,7 +75,9 @@ The owner completed first-owner setup, removed the `ADMIN_KEY` Worker secret, an
 
 ## Latest repository verification
 
-- Latest repository commit: `987aaa8dca24d9c923781c0c91fe3015c32658df` (documentation-only).
+- Revision AI security and owner-managed AI access merged in PR #13 (`5f90b4ae67122178d75913119c69072447cf097a`). Its full GitHub Actions test suite passed in run `42708352456`.
+- The latest repository application commit includes the new `0006_ai_access.sql` migration. Remote application and Worker deployment are still required.
+- Previous repository commit: `987aaa8dca24d9c923781c0c91fe3015c32658df` (before the AI access changes).
 - GitHub Actions test run `42670357089` completed successfully for application commit `b3ef0719de65bc6829cca465d5ece28c237a1661`; the commits after it only update documentation.
 - The Pages run `42670356117` was cancelled. The most recent successful Pages deployment remains run `42669345186`, which deployed the unchanged application code from `74d31db2660171ebfb80f6dedaf2b4816390d632`.
 - The Worker deployment and D1/KV migration are owner-confirmed. Browser behaviour and cross-device persistence remain unverified.
