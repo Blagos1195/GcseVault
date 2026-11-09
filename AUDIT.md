@@ -1,19 +1,21 @@
 # GCSE Vault backend audit
 
-## Data layout
+## Intended data layout
 
-| Data | Current deployed location | Branch target after migration |
+The repository now targets this layout. Production rollout is incomplete, so this table describes the code's intended storage rather than independently verified live state.
+
+| Data | Intended primary store | Legacy or local copy |
 |---|---|---|
-| QuoteVault and DateVault account stats, XP, mastery IDs, streaks and moderation metadata | D1 `users` table | D1 `users` table |
-| Revision accounts, sets and progress | D1 `revision_sync_data`, with legacy `REVISION` KV retained as a backup/mirror | D1 `revision_sync_data` |
-| Revision leaderboard | `REVISION` KV namespace | D1 `revision_leaderboard`, with KV retained as a backup/mirror |
-| Public and pending revision notes | `REVISION` KV namespace | `REVISION` KV namespace |
-| Custom themes | `THEMES` KV namespace and browser local storage | D1 `custom_themes`, with KV retained as a backup/mirror |
-| QuoteVault and DateVault submissions and published content | Existing KV namespaces | Existing KV namespaces |
-| Local revision sets, progress and study preferences | Browser local storage | Browser local storage, with account-specific local snapshots |
+| QuoteVault and DateVault account stats, XP, mastery IDs, streaks and moderation metadata | D1 `users` table | Existing KV content remains in its current namespaces |
+| Revision accounts, sets and progress | D1 `revision_sync_data` | `REVISION` KV retained as a backup/mirror |
+| Revision leaderboard | D1 `revision_leaderboard` | `REVISION` KV retained as a backup/mirror |
+| Public and pending revision notes | `REVISION` KV | No D1 migration planned |
+| Custom themes | D1 `custom_themes` | `THEMES` KV retained as a backup/mirror |
+| QuoteVault and DateVault submissions and published content | Existing KV namespaces | No blanket migration planned |
+| Local revision sets, progress and study preferences | Browser local storage | Account-specific local snapshots |
 | Local QuoteVault and DateVault practice progress | Browser local storage | Browser local storage |
 
-## Changes in this branch
+## Changes in the code
 
 - Public leaderboard and username lookup responses no longer disclose account keys or private account records.
 - New account keys are generated with cryptographically secure UUIDs.
@@ -25,7 +27,7 @@
 - Revision leaderboard reads and writes use D1 `revision_leaderboard`; an owner-controlled migration copies existing KV leaderboard records into D1 without deleting the KV backups.
 - Revision local snapshots are kept separately per account when switching accounts, so one linked account does not silently replace another account's local workspace.
 - Custom themes use D1 as the primary store. KV remains a backup/mirror and is imported when needed.
-- An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records.
+- An owner-controlled, paginated migration copies existing Revision and theme KV records into D1. It is repeatable and does not delete the source KV records. Migration reporting distinguishes newly copied, already-present and skipped records.
 - Admin access uses account roles: one owner can grant or remove admin access. Admins can moderate but cannot manage roles.
 - Admin sessions use random tokens in request headers, expire after eight hours, and are checked against the current account role on each request. The old shared-password admin login and token-in-query/body paths have been removed. The existing `ADMIN_KEY` is used only for initial owner setup. A permanent D1 setup lock is claimed atomically with the first owner promotion, preventing reuse for another account even if roles are later altered.
 - Added worker regression tests, frontend JavaScript syntax checks, and a GitHub Actions test workflow.
@@ -37,20 +39,28 @@
 - Added tests for password hashing, login, session validation and rejection of unauthenticated access to a password-protected account.
 - `SECURITY_DESIGN.md` and `CLOUDFLARE_MIGRATION.md` document the conventional password model, recovery limitations and staged rollout.
 - Removed the local Wrangler account cache from the branch and added ignore rules for Wrangler and environment files.
+- Moderation updates now write D1 account metadata before deleting pending KV records. This makes approval/rejection safer to retry after partial failures.
 
 ## Important account security note
 
-GCSE Vault's existing account system uses a private user key as a bearer credential rather than a conventional username-and-password login. Anyone who obtains that key can act as that account. Password accounts now add a salted password hash and require a valid account session for the account-key endpoints covered by the Worker guard. The internal account key remains a recovery credential during the transition, so keep it private. Historical versions exposed account keys through some public API responses, so old keys should not automatically be assumed uncompromised. Passwords are not stored in plaintext and cannot be viewed by administrators. This is not end-to-end encryption: the Worker and database can still access account data.
+GCSE Vault's existing account system uses a private user key as a bearer credential rather than a conventional username-and-password login. Anyone who obtains that key can act as that account. Password accounts add a salted password hash and require a valid account session for the account-key endpoints covered by the Worker guard. The internal account key remains a recovery credential during the transition, so keep it private. Historical versions exposed account keys through some public API responses, so old keys should not automatically be assumed uncompromised. Passwords are not stored in plaintext and cannot be viewed by administrators. This is not end-to-end encryption: the Worker and database can still access account data.
 
 ## Remaining work
 
-1. **Password account rollout checks.** The code and UI flows are in place on this branch, but browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
-2. **Live data backup and migration.** The repository connection cannot query the deployed Cloudflare D1 or KV resources. The owner reports that the first four D1 migrations are applied in production. Migration `0005_revision_leaderboard.sql` remains outstanding based on that report. The repository connection cannot independently verify Cloudflare migration history or whether any data migration has run.
-3. **Migration verification.** Export the live D1 database and relevant KV namespaces, record counts/checksums, apply the migrations, run the owner migration, and compare source and destination counts before relying on D1-only reads. Keep the KV copies until verification and cross-device testing are complete.
-4. **Moderation consistency.** QuoteVault and DateVault approval/rejection now update D1 before deleting the pending KV record. D1 failures return an error and leave the pending item available for retry; approval may leave a public copy while retaining the pending copy until account cleanup succeeds. The update is repeatable across partial failures. Regression tests cover D1 failures. Browser-level verification and monitoring are still required.
-5. **End-to-end checks.** CI covers worker regressions and frontend syntax, but browser-level tests across QuoteVault, DateVault and Revision, especially offline and multi-device flows, are still required.
-6. **Production rollout.** PR #9, which adds the Revision leaderboard D1 migration, is merged. The GitHub Pages deployment succeeded for commit `67cd41f`, which contained documentation changes only. Later frontend changes are awaiting the current Pages deployment. The Cloudflare Worker deployment is not confirmed. The owner reports migrations 0001–0004 are applied; verify migration history, back up production data, apply only unapplied migrations (currently expected to be 0005), deploy the Worker, run the owner migration, then verify counts and cross-device behaviour.
+1. **Production state.** The owner reports that D1 migrations `0001` through `0004` are applied. Migration `0005_revision_leaderboard.sql` is expected to be the only unapplied migration. The repository connection cannot inspect Cloudflare's live migration history, D1 data or KV contents, so this report is not independently verified.
+2. **Backups and migration.** Before changing production, export the live D1 database and back up the relevant KV data. Confirm the migration history, apply only migrations not already recorded as applied, run the owner-controlled storage migration, and compare source and destination counts. Keep every KV copy until verification and cross-device testing pass.
+3. **Worker deployment.** The latest Worker code has not been confirmed deployed. Deploy it only after the required D1 migrations are confirmed applied.
+4. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
+5. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
+6. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
+
+## Latest repository verification
+
+- Main branch head: `9be9ec5b85c3644709bf21929d30ac255ffa4ac8`.
+- GitHub Actions test run for that exact commit: successful.
+- GitHub Pages build and deployment run for that exact commit: successful.
+- These results verify the repository tests and Pages deployment only. They do not verify the Cloudflare Worker deployment or production D1/KV migration.
 
 ## UI scope
 
-The existing QuoteVault, DateVault and Revision content, theme system, navigation and study features are retained. The admin access screen changes to account-based access and owner-controlled roles. No production database or KV records have been modified.
+The existing QuoteVault, DateVault and Revision content, theme system, navigation and study features are retained. The admin access screen changes to account-based access and owner-controlled roles. No production D1 or KV records have been modified by the repository work.
