@@ -1,0 +1,519 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-chemistry-amount-of-substance-depth",
+  "catalogueId": "aqa-a-level-chemistry",
+  "subject": "Chemistry",
+  "examBoard": "AQA",
+  "qualification": "A-level Chemistry (7405)",
+  "source": "AQA A-level Chemistry (7405), specification sections 3.1.2 and relevant mathematical/practical requirements. Original revision explanations and examples.",
+  "cards": [
+    {
+      "id": "chemistry-02-deep-1",
+      "topicId": "chemistry-02",
+      "front": "What is the relative atomic mass, Ar, of an element?",
+      "back": "The weighted mean mass of an atom of the element compared with 1/12 of the mass of a carbon-12 atom. It accounts for the natural abundances of its isotopes.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-2",
+      "topicId": "chemistry-02",
+      "front": "What is relative molecular mass, Mr?",
+      "back": "The sum of the relative atomic masses of all atoms in a molecule. It is dimensionless.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-3",
+      "topicId": "chemistry-02",
+      "front": "What is relative formula mass?",
+      "back": "The sum of the relative atomic masses in the formula unit, commonly used for ionic compounds that do not exist as discrete molecules.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-4",
+      "topicId": "chemistry-02",
+      "front": "What is the difference between Mr and molar mass?",
+      "back": "Mr is a relative, dimensionless value. Molar mass is the mass of one mole, usually expressed in g mol⁻¹. Their numerical values are usually equal.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-5",
+      "topicId": "chemistry-02",
+      "front": "What is one mole?",
+      "back": "The amount of substance containing exactly the Avogadro constant of specified entities: 6.02214076 × 10²³ mol⁻¹.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-6",
+      "topicId": "chemistry-02",
+      "front": "What must be specified when using the mole?",
+      "back": "The type of entity being counted: atoms, molecules, ions, electrons or formula units, for example.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-7",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate the number of particles from an amount in moles?",
+      "back": "Number of particles = amount in moles × Avogadro constant, N = nNA.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-8",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate amount from a known number of particles?",
+      "back": "n = N/NA.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-9",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate amount from mass?",
+      "back": "n = m/M, where m is mass and M is molar mass. Use consistent mass units, commonly g and g mol⁻¹.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-10",
+      "topicId": "chemistry-02",
+      "front": "Why is the balanced equation essential in reacting-mass calculations?",
+      "back": "Its coefficients give the mole ratio. Convert the known quantity to moles, apply the coefficient ratio, then convert to the requested quantity.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-11",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate an empirical formula from masses?",
+      "back": "Convert each element's mass to moles using its Ar, divide every amount by the smallest, then multiply ratios to obtain whole numbers.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-12",
+      "topicId": "chemistry-02",
+      "front": "Why should you not round empirical-formula ratios too early?",
+      "back": "Small rounding errors can change the simplest whole-number ratio. Keep full calculator values until the ratio is clear.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-13",
+      "topicId": "chemistry-02",
+      "front": "What should you do if an empirical-formula ratio is close to 1.5?",
+      "back": "Multiply every ratio by 2 to obtain a whole-number ratio such as 2:3. For 1.33 or 1.25, consider multiplying by 3 or 4 respectively.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-14",
+      "topicId": "chemistry-02",
+      "front": "How is a molecular formula obtained from an empirical formula?",
+      "back": "Calculate empirical formula mass, divide Mr by it to obtain an integer multiplier, then multiply every empirical subscript by that integer.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-15",
+      "topicId": "chemistry-02",
+      "front": "What is the relationship between molecular formula and empirical formula mass?",
+      "back": "Mr = integer multiplier × empirical formula mass.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-16",
+      "topicId": "chemistry-02",
+      "front": "How can percentage composition be used to find an empirical formula?",
+      "back": "Assume 100 g of compound, so each percentage becomes a mass in grams; convert these masses to moles and simplify the ratio.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-17",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate percentage by mass of an element in a compound?",
+      "back": "(Total mass contributed by that element in one mole ÷ Mr of compound) × 100%.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-18",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate concentration in mol dm⁻³?",
+      "back": "c = n/V, with solution volume V in dm³.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-19",
+      "topicId": "chemistry-02",
+      "front": "How do you convert a volume in cm³ to dm³?",
+      "back": "Divide by 1000. For example, 25.0 cm³ = 0.0250 dm³.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-20",
+      "topicId": "chemistry-02",
+      "front": "Why must solution volume be in dm³ in c = n/V when concentration is mol dm⁻³?",
+      "back": "The units must be consistent: mol divided by dm³ gives mol dm⁻³. Using cm³ without conversion makes the answer 1000 times too small.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-21",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate the amount of solute in a solution?",
+      "back": "n = cV, with V in dm³.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-22",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate concentration after dilution?",
+      "back": "The amount of solute is unchanged, so c₁V₁ = c₂V₂, provided volumes use the same units.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-23",
+      "topicId": "chemistry-02",
+      "front": "What happens to concentration when a solution is diluted?",
+      "back": "Concentration decreases because the same amount of solute is distributed through a larger volume.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-24",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate the amount of gas using molar gas volume?",
+      "back": "n = V/Vm. Use the molar gas volume specified for the conditions in the question.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-25",
+      "topicId": "chemistry-02",
+      "front": "What molar gas volume is commonly used at room temperature and pressure in A-level calculations?",
+      "back": "Approximately 24.0 dm³ mol⁻¹ at room temperature and pressure. Follow any value or conditions stated in the question.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-26",
+      "topicId": "chemistry-02",
+      "front": "What is the ideal gas equation?",
+      "back": "pV = nRT. Use pressure in Pa, volume in m³, amount in mol, temperature in K and R = 8.31 J mol⁻¹ K⁻¹.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-27",
+      "topicId": "chemistry-02",
+      "front": "How do you convert Celsius to kelvin?",
+      "back": "T/K = temperature in °C + 273.15. Use kelvin in gas-law calculations.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-28",
+      "topicId": "chemistry-02",
+      "front": "Why must volume be converted to m³ in pV = nRT when pressure is in Pa?",
+      "back": "Pa is N m⁻², so Pa × m³ gives joules, matching the units of RT.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-29",
+      "topicId": "chemistry-02",
+      "front": "How do you find the limiting reactant?",
+      "back": "Calculate the available amount of each reactant divided by its coefficient in the balanced equation. The smallest value identifies the limiting reactant.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-30",
+      "topicId": "chemistry-02",
+      "front": "What is the theoretical yield?",
+      "back": "The maximum amount of product predicted from the limiting reactant assuming the reaction goes to completion and no product is lost.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-31",
+      "topicId": "chemistry-02",
+      "front": "How is percentage yield calculated?",
+      "back": "Percentage yield = (actual yield ÷ theoretical yield) × 100%. Use the same units for both yields.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-32",
+      "topicId": "chemistry-02",
+      "front": "Why is percentage yield usually below 100%?",
+      "back": "The reaction may be incomplete or reversible, side reactions may occur, or product may be lost during transfer, filtration, washing or purification.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-33",
+      "topicId": "chemistry-02",
+      "front": "What is atom economy?",
+      "back": "The Mr of the desired product divided by the total Mr of all products, multiplied by 100%, using the balanced equation coefficients.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-34",
+      "topicId": "chemistry-02",
+      "front": "How does atom economy differ from percentage yield?",
+      "back": "Atom economy measures how much of the reactant atoms can form the desired product. Percentage yield compares actual product obtained with the theoretical amount.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-35",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate the mass of a hydrated salt's water of crystallisation?",
+      "back": "Find the mass lost on heating to constant mass, then convert water and anhydrous salt masses to moles to obtain their simplest ratio.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-36",
+      "topicId": "chemistry-02",
+      "front": "Why is a hydrated salt heated to constant mass?",
+      "back": "Repeated heating, cooling and weighing until the mass stops changing indicates that water has been removed as far as the method allows.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-37",
+      "topicId": "chemistry-02",
+      "front": "What is a standard solution?",
+      "back": "A solution with accurately known concentration, prepared using a known amount of solute and a known final solution volume.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-38",
+      "topicId": "chemistry-02",
+      "front": "Why is a volumetric flask used to prepare a standard solution?",
+      "back": "It is calibrated to contain an accurate fixed volume, allowing a solution of accurately known concentration to be prepared.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-39",
+      "topicId": "chemistry-02",
+      "front": "Why is the beaker rinsed into the volumetric flask during standard-solution preparation?",
+      "back": "To transfer all dissolved solute quantitatively. Any solute left behind would make the final solution less concentrated than calculated.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-40",
+      "topicId": "chemistry-02",
+      "front": "Why is the volumetric flask inverted several times after making up to the mark?",
+      "back": "To mix the solution thoroughly so the concentration is uniform throughout.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-41",
+      "topicId": "chemistry-02",
+      "front": "Why is a pipette rinsed with the solution it will contain?",
+      "back": "To prevent residual water from diluting the measured aliquot.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-42",
+      "topicId": "chemistry-02",
+      "front": "Why is a burette rinsed with the titrant?",
+      "back": "To prevent residual water from diluting the titrant and changing its concentration.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-43",
+      "topicId": "chemistry-02",
+      "front": "Why is the burette funnel removed before taking readings?",
+      "back": "Liquid remaining in the funnel could enter the burette after the initial reading and change the delivered volume.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-44",
+      "topicId": "chemistry-02",
+      "front": "How is a titre calculated?",
+      "back": "Final burette reading minus initial burette reading.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-45",
+      "topicId": "chemistry-02",
+      "front": "What are concordant titres?",
+      "back": "Titre values that agree closely, commonly within 0.10 cm³ in school titration work. Follow the tolerance specified by the method.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-46",
+      "topicId": "chemistry-02",
+      "front": "Why is a rough titration performed first?",
+      "back": "It estimates the endpoint volume so subsequent accurate titrations can approach the endpoint carefully.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-deep-47",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate an unknown concentration from a titration?",
+      "back": "Use the mean concordant titre to find moles of the known solution, apply the balanced equation mole ratio, then divide the unknown moles by its volume in dm³.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-48",
+      "topicId": "chemistry-02",
+      "front": "Why is it incorrect to assume a 1:1 mole ratio in every titration?",
+      "back": "The stoichiometric ratio is determined by the balanced equation and may be different, for example 1:2 or 2:1.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-49",
+      "topicId": "chemistry-02",
+      "front": "How does an indicator endpoint relate to the equivalence point?",
+      "back": "The endpoint is the observed colour change; the equivalence point is where reacting amounts are in exact stoichiometric proportions. A suitable indicator changes colour close to the equivalence point.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-50",
+      "topicId": "chemistry-02",
+      "front": "How do you calculate percentage uncertainty in a titre from burette readings?",
+      "back": "Each burette reading has an uncertainty. For a titre found by subtracting two readings, add the absolute reading uncertainties, then divide by the titre and multiply by 100%.",
+      "difficulty": 5
+    },
+    {
+      "id": "chemistry-02-deep-51",
+      "topicId": "chemistry-02",
+      "front": "Why does a small titre generally have a larger percentage uncertainty?",
+      "back": "The absolute reading uncertainty is a larger fraction of a small delivered volume.",
+      "difficulty": 4
+    },
+    {
+      "id": "chemistry-02-deep-52",
+      "topicId": "chemistry-02",
+      "front": "What is the key calculation sequence for a multi-step stoichiometry question?",
+      "back": "Write and balance the equation; convert given data to moles; use the coefficient ratio; convert to the requested quantity; check units and significant figures.",
+      "difficulty": 4
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "chemistry-02",
+      "kind": "revision-notes",
+      "title": "Amount of substance: complete specification guide",
+      "content": "THE MOLE AND PARTICLE COUNTING\nThe mole is the SI unit for amount of substance. One mole contains exactly 6.02214076 × 10²³ specified entities. Always identify what is being counted: atoms, molecules, ions, electrons or formula units. The number of entities is N = nNA, and n = N/NA.\n\nRELATIVE MASSES AND MOLAR MASS\nAr is the weighted mean mass of an atom relative to one twelfth of a carbon-12 atom. Mr is the sum of the Ar values in a molecule. Relative formula mass is used for ionic formula units. Relative masses are dimensionless; molar mass M is expressed in g mol⁻¹ and has the same numerical value as the corresponding relative mass. Use n = m/M.\n\nEMPIRICAL AND MOLECULAR FORMULAE\nFor mass data, divide each element's mass by its Ar to obtain moles. Divide by the smallest mole amount. Convert the ratio to the simplest whole numbers, multiplying all values by 2, 3 or 4 when necessary. For percentage composition, assume 100 g so percentages become masses in grams. To obtain a molecular formula, calculate the empirical formula mass, divide Mr by it, and multiply every empirical subscript by the resulting integer.\n\nREACTING QUANTITIES\nStart with a balanced symbol equation. Coefficients give mole ratios, not mass ratios. Convert the known quantity to moles, use the coefficient ratio, then convert to the requested mass, concentration, volume or particle count. For limiting reactants, compare n/coefficient for each reactant; the smallest value limits the reaction. Calculate theoretical yield from this reactant.\n\nSOLUTIONS\nConcentration c = n/V, where V is in dm³ for c in mol dm⁻³. n = cV. Convert cm³ to dm³ by dividing by 1000. On dilution, solute amount is unchanged: c₁V₁ = c₂V₂, using matching volume units. A standard solution is prepared by accurately weighing solute, dissolving it, transferring quantitatively to a volumetric flask, rinsing all apparatus into the flask, making up to the calibration mark and mixing thoroughly.\n\nGASES\nAt room temperature and pressure, a molar gas volume of approximately 24.0 dm³ mol⁻¹ is commonly used where specified. n = V/Vm. The ideal gas equation pV = nRT is used with p in Pa, V in m³, n in mol, T in K and R = 8.31 J mol⁻¹ K⁻¹. Convert Celsius to kelvin by adding 273.15. Convert dm³ to m³ by dividing by 1000.\n\nTITRATIONS\nUse a pipette to transfer a measured aliquot and a burette to deliver titrant. Rinse each with the solution it will contain. Record initial and final burette readings and calculate titre = final − initial. Perform a rough titration, then accurate repeats until concordant titres are obtained. Use the balanced equation to convert known moles to unknown moles. Divide by unknown volume in dm³ to find concentration. Never assume a 1:1 ratio without checking the equation.\n\nYIELD AND EFFICIENCY\nPercentage yield = actual yield/theoretical yield × 100%. Atom economy = Mr of desired product × its coefficient divided by the total Mr of all products × their coefficients, multiplied by 100%. Yield describes what was obtained in practice; atom economy describes the proportion of reactant atoms incorporated into the desired product.\n\nHYDRATED SALTS\nHeat a known mass of hydrated salt, cool and reweigh. Repeat until constant mass. The mass lost is water; the remaining mass is anhydrous salt. Convert both masses to moles and simplify the ratio to find x in salt·xH₂O. Consider decomposition, spitting or reabsorption of water as possible sources of error.\n\nEXAM DISCIPLINE\nShow the equation, substitution and answer. Include units. Keep unrounded values until the final step. Use the data and conditions stated in the question rather than assuming a molar gas volume. Check that a calculated mole ratio is chemically plausible and that a concentration uses dm³.",
+      "source": "AQA 7405 specification; original explanatory material."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "worked-examples",
+      "title": "Worked calculations: masses, formulae and particles",
+      "content": "EXAMPLE 1: MOLES FROM MASS\nCalculate the amount in 5.85 g of sodium chloride, NaCl. Mr = 23.0 + 35.5 = 58.5. n = m/M = 5.85/58.5 = 0.100 mol.\n\nEXAMPLE 2: PARTICLE COUNT\nFind the number of formula units in 0.100 mol NaCl. N = nNA = 0.100 × 6.022 × 10²³ = 6.02 × 10²² formula units.\n\nEXAMPLE 3: EMPIRICAL FORMULA\nA compound contains 2.4 g carbon and 0.6 g hydrogen. Carbon moles = 2.4/12.0 = 0.200. Hydrogen moles = 0.6/1.0 = 0.600. Divide by 0.200: C:H = 1:3. Empirical formula = CH₃.\n\nEXAMPLE 4: MOLECULAR FORMULA\nA compound has empirical formula CH₂O and Mr = 180. Empirical formula mass = 12 + 2 + 16 = 30. Multiplier = 180/30 = 6. Molecular formula = C₆H₁₂O₆.\n\nEXAMPLE 5: PERCENTAGE COMPOSITION\nFind percentage by mass of oxygen in H₂SO₄. Mr = 2(1) + 32.1 + 4(16) = 98.1. Oxygen contribution = 64. Percentage = 64/98.1 × 100 = 65.2% (3 s.f.).\n\nCHECK: The mole ratio comes from dividing by Ar, not by mass alone. For empirical formulae, the final ratio must be the simplest whole-number ratio."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "worked-examples",
+      "title": "Worked calculations: solutions and dilution",
+      "content": "EXAMPLE 1: CONCENTRATION FROM MASS\n2.00 g NaOH (Mr = 40.0) is dissolved to make 250 cm³ solution. n = 2.00/40.0 = 0.0500 mol. V = 0.250 dm³. c = n/V = 0.0500/0.250 = 0.200 mol dm⁻³.\n\nEXAMPLE 2: AMOUNT IN AN ALIQUOT\nFind moles in 25.0 cm³ of 0.120 mol dm⁻³ solution. Convert volume: 0.0250 dm³. n = cV = 0.120 × 0.0250 = 0.00300 mol.\n\nEXAMPLE 3: DILUTION\nWhat volume of 2.00 mol dm⁻³ stock solution is needed to make 250 cm³ of 0.100 mol dm⁻³ solution? c₁V₁ = c₂V₂. V₁ = (0.100 × 250)/2.00 = 12.5 cm³. Transfer 12.5 cm³ and dilute to a final volume of 250 cm³.\n\nEXAM CHECKS\nA final volume of 250 cm³ means the solution is made up to 250 cm³, not that 250 cm³ of water is added. Keep the distinction between volume of solvent added and final solution volume."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "worked-examples",
+      "title": "Worked calculations: reacting quantities and limiting reactants",
+      "content": "EXAMPLE 1: REACTING MASS\nMagnesium reacts with oxygen: 2Mg + O₂ → 2MgO. What mass of MgO forms from 4.80 g Mg in excess oxygen? n(Mg) = 4.80/24.3 = 0.1975 mol. The ratio Mg:MgO is 2:2, so n(MgO) = 0.1975 mol. Mr(MgO) = 24.3 + 16.0 = 40.3. Mass = 0.1975 × 40.3 = 7.96 g.\n\nEXAMPLE 2: LIMITING REACTANT\nN₂ + 3H₂ → 2NH₃. Suppose there are 2.00 mol N₂ and 3.00 mol H₂. n/coefficient: N₂ = 2.00/1 = 2.00; H₂ = 3.00/3 = 1.00. Hydrogen is limiting. Ammonia amount = 1.00 × 2 = 2.00 mol.\n\nEXAMPLE 3: THEORETICAL AND PERCENTAGE YIELD\nIf the theoretical yield is 34.0 g and actual dry product is 27.2 g, percentage yield = 27.2/34.0 × 100 = 80.0%.\n\nCOMMON TRAP\nDo not identify the limiting reactant by comparing masses. Convert each reactant to moles and account for the equation coefficients."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "worked-examples",
+      "title": "Worked calculations: gas volumes and ideal gas equation",
+      "content": "EXAMPLE 1: MOLAR GAS VOLUME\nA gas occupies 120 cm³ at RTP. Using 24.0 dm³ mol⁻¹, convert 120 cm³ to 0.120 dm³. n = 0.120/24.0 = 0.00500 mol.\n\nEXAMPLE 2: IDEAL GAS EQUATION\nCalculate the amount in a 2.00 × 10⁻³ m³ vessel at 100 kPa and 298 K. Convert pressure to 100000 Pa. n = pV/RT = (100000 × 2.00 × 10⁻³)/(8.31 × 298) = 0.0808 mol (3 s.f.).\n\nUNIT CHECK\nIf p is in Pa, V must be in m³. Temperature must be in K. The R value 8.31 has units J mol⁻¹ K⁻¹. Do not combine kPa with m³ and R = 8.31 without converting pressure."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "worked-examples",
+      "title": "Worked calculations: titration stoichiometry",
+      "content": "EXAMPLE: UNKNOWN ACID CONCENTRATION\n25.0 cm³ of sulfuric acid is neutralised by 22.40 cm³ of 0.100 mol dm⁻³ sodium hydroxide. Equation: H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O.\n\nMoles NaOH = cV = 0.100 × 0.02240 = 0.002240 mol. The ratio H₂SO₄:NaOH is 1:2, so moles H₂SO₄ = 0.002240/2 = 0.001120 mol. Acid volume = 0.0250 dm³. c(H₂SO₄) = 0.001120/0.0250 = 0.0448 mol dm⁻³.\n\nMETHOD TO REPEAT\n1. Write the balanced equation.\n2. Calculate moles of the known solution using cV.\n3. Apply the coefficient ratio.\n4. Convert the unknown volume to dm³.\n5. Calculate unknown concentration using n/V.\n\nCOMMON TRAP\nThe acid and alkali volumes are not automatically equal, and their mole amounts are not automatically equal."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "exam-technique",
+      "title": "Amount of substance: common exam traps and checks",
+      "content": "1. Using cm³ directly in c = n/V when the concentration unit is mol dm⁻³. Convert cm³ to dm³ first.\n2. Using Celsius in pV = nRT. Convert to kelvin.\n3. Using dm³ in pV = nRT with pressure in Pa and R = 8.31. Convert dm³ to m³.\n4. Assuming all titration ratios are 1:1. Read the balanced equation.\n5. Comparing reactant masses to find the limiting reagent. Compare moles divided by coefficients.\n6. Rounding empirical-formula ratios too soon. Keep calculator values and identify the simplest integer ratio.\n7. Confusing empirical formula with molecular formula. Use Mr to find the integer multiplier.\n8. Confusing percentage yield with atom economy. One is experimental outcome; the other is a theoretical measure of atom use.\n9. Forgetting that dilution changes concentration but not the amount of dissolved solute.\n10. Treating a standard solution's solvent volume as its final solution volume. Make up to the calibration mark.\n11. Forgetting the water of crystallisation is the mass lost on heating, not the final residue.\n12. Reporting a number without units or sensible significant figures.\n\nA strong numerical answer normally shows the equation, substitution, intermediate mole amount, stoichiometric ratio, final answer and unit."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "practical-guide",
+      "title": "Required practical 1: preparing a standard solution and titration",
+      "content": "STANDARD SOLUTION FROM A SOLID\nAccurately weigh the required mass using a balance. Transfer the solid to a beaker and dissolve it in deionised water, stirring with a glass rod. Transfer the solution through a funnel into a volumetric flask. Rinse the beaker, glass rod and funnel with deionised water and add the washings to the flask so all solute is transferred. Add water close to the calibration line, then use a dropping pipette to bring the bottom of the meniscus to the mark at eye level. Stopper and invert repeatedly to mix.\n\nTITRATION\nRinse the pipette with the solution to be measured and use a pipette filler to transfer the fixed aliquot to a conical flask. Add a few drops of a suitable indicator. Rinse the burette with titrant, fill it, ensure the jet is full and remove the funnel. Record the initial reading. Run titrant into the flask while swirling; add dropwise near the endpoint. Record the final reading and calculate titre. Do one rough titration, then repeat accurately to obtain concordant values. Calculate the mean using concordant titres, not the rough result.\n\nWHY THESE DETAILS MATTER\nQuantitative transfer prevents loss of solute. Rinsing the pipette and burette with their solutions avoids dilution. A full jet prevents an unmeasured volume entering the tip. Eye-level readings reduce parallax. A white tile helps observe the indicator colour change. Repeats improve reliability.\n\nEVALUATION\nA systematic error such as an incorrectly calibrated volumetric flask affects all results similarly. Random reading variation is reduced by repeats. A suitable indicator must change colour within the steep pH region around the equivalence point. The endpoint is an experimental observation, not the exact theoretical equivalence point."
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "exam-technique",
+      "title": "Amount of substance: uncertainty and significant figures",
+      "content": "For a titre obtained from two burette readings, the absolute uncertainties in the two readings add. If a burette reading uncertainty is ±0.05 cm³, the titre uncertainty from two readings is ±0.10 cm³. Percentage uncertainty = (absolute uncertainty ÷ measured titre) × 100%.\n\nFor quantities multiplied or divided, percentage uncertainties are added. For quantities added or subtracted, absolute uncertainties are added. Follow the uncertainty rules and conventions taught for the instrument and question.\n\nKeep full calculator precision through intermediate calculations. Round only the final result, usually to a number of significant figures consistent with the data. Include units for quantities that have units. Relative masses and ratios are dimensionless.\n\nWhen evaluating a method, state a specific limitation, explain how it affects the measured value, and give an improvement that directly addresses it. For example, a burette reading uncertainty is a larger percentage of a small titre; using a larger aliquot or choosing concentrations that produce a larger titre can reduce its relative effect, provided the method remains appropriate."
+    }
+  ],
+  "formulas": [
+    {
+      "topicId": "chemistry-02",
+      "name": "Amount from mass",
+      "expression": "n = m/M",
+      "units": "n in mol; m in g; M in g mol⁻¹",
+      "conditions": "Use molar mass in matching mass units"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Particle number",
+      "expression": "N = nNₐ",
+      "units": "N is number of entities; Nₐ = 6.02214076 × 10²³ mol⁻¹",
+      "conditions": "Specify the entity being counted"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Amount from particle number",
+      "expression": "n = N/Nₐ",
+      "units": "mol",
+      "conditions": "N is number of specified entities"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Concentration",
+      "expression": "c = n/V",
+      "units": "mol dm⁻³; V in dm³",
+      "conditions": "For amount of dissolved solute"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Amount in solution",
+      "expression": "n = cV",
+      "units": "mol; c in mol dm⁻³; V in dm³",
+      "conditions": "Convert cm³ to dm³"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Dilution",
+      "expression": "c₁V₁ = c₂V₂",
+      "units": "Concentration units consistent; volume units consistent",
+      "conditions": "Amount of solute remains constant"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Molar gas volume",
+      "expression": "n = V/Vₘ",
+      "units": "mol; V and Vₘ in same volume units",
+      "conditions": "Use the molar gas volume given for the stated conditions"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Ideal gas equation",
+      "expression": "pV = nRT",
+      "units": "Pa, m³, mol, K; R = 8.31 J mol⁻¹ K⁻¹",
+      "conditions": "Convert temperature to kelvin and volume to m³"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Percentage yield",
+      "expression": "% yield = (actual yield/theoretical yield) × 100",
+      "units": "%",
+      "conditions": "Use matching units for both yields"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Atom economy",
+      "expression": "% atom economy = (Mr desired product × coefficient / Σ(Mr products × coefficients)) × 100",
+      "units": "%",
+      "conditions": "Use the balanced equation"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Percentage composition by mass",
+      "expression": "% element = (mass of element in one mole of compound/Mr) × 100",
+      "units": "%",
+      "conditions": "Use the full contribution of that element's atoms"
+    },
+    {
+      "topicId": "chemistry-02",
+      "name": "Titration stoichiometry",
+      "expression": "n₁/coefficient₁ = n₂/coefficient₂",
+      "units": "mol",
+      "conditions": "Use the balanced equation"
+    }
+  ]
+}
