@@ -34,6 +34,29 @@ export default {
       return Boolean(await getSessionUser(reqUrl, req));
     }
 
+    async function updateModerationRecords(site, id, rejected) {
+      const pendingColumn = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
+      const rejectedColumn = site === "qv" ? "qv_rejected_ids" : "dv_rejected_ids";
+      const { results } = await env.DB.prepare(
+        `SELECT user_key, ${pendingColumn}, ${rejectedColumn} FROM users WHERE ${pendingColumn} LIKE ?`
+      ).bind(`%${id}%`).all();
+
+      for (const row of results) {
+        const pendingIds = JSON.parse(row[pendingColumn] || "[]").map(String);
+        if (!pendingIds.includes(id)) continue;
+        const rejectedIds = JSON.parse(row[rejectedColumn] || "[]").map(String).filter(value => value !== id);
+        if (rejected) rejectedIds.push(id);
+        await env.DB.prepare(
+          `UPDATE users SET ${pendingColumn}=?, ${rejectedColumn}=?, updated_at=? WHERE user_key=?`
+        ).bind(
+          JSON.stringify(pendingIds.filter(value => value !== id)),
+          JSON.stringify([...new Set(rejectedIds)]),
+          new Date().toISOString(),
+          row.user_key
+        ).run();
+      }
+    }
+
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
@@ -464,26 +487,21 @@ export default {
     // ── QUOTEVAULT APPROVE ────────────────────────────────────────────────────
     if (url.pathname === "/approve" && request.method === "POST") {
       const body = await request.json();
-      const ok = await isAuthorized(url, request);
-      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.QUOTEVAULT.get(body.id, "json");
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
-      await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(quote));
-      await env.QUOTEVAULT.delete(body.id);
-
+      await env.PUBLIC_QUOTES.put(id, JSON.stringify(quote));
       try {
-        const { results } = await env.DB.prepare(
-          `SELECT user_key, qv_pending_ids, qv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
-        ).bind(`%${body.id}%`).all();
-        for (const row of results) {
-          const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
-          const rejectedIds = JSON.parse(row.qv_rejected_ids || "[]").filter(i => i !== body.id);
-          await env.DB.prepare(
-            `UPDATE users SET qv_pending_ids=?, qv_rejected_ids=?, updated_at=? WHERE user_key=?`
-          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
-        }
-      } catch (e) { /* non-fatal */ }
-
+        await updateModerationRecords("qv", id, false);
+      } catch {
+        return new Response("Quote was published, but account records could not be updated. The submission remains pending so you can retry.", {
+          status: 500,
+          headers: cors
+        });
+      }
+      await env.QUOTEVAULT.delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -492,23 +510,18 @@ export default {
     // ── QUOTEVAULT REJECT ─────────────────────────────────────────────────────
     if (url.pathname === "/reject" && request.method === "POST") {
       const body = await request.json();
-      const ok = await isAuthorized(url, request);
-      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete(body.id);
-
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       try {
-        const { results } = await env.DB.prepare(
-          `SELECT user_key, qv_pending_ids, qv_rejected_ids FROM users WHERE qv_pending_ids LIKE ?`
-        ).bind(`%${body.id}%`).all();
-        for (const row of results) {
-          const pendingIds = JSON.parse(row.qv_pending_ids || "[]").filter(i => i !== body.id);
-          const rejectedIds = [...new Set([...JSON.parse(row.qv_rejected_ids || "[]"), body.id])];
-          await env.DB.prepare(
-            `UPDATE users SET qv_pending_ids=?, qv_rejected_ids=?, updated_at=? WHERE user_key=?`
-          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
-        }
-      } catch (e) { /* non-fatal */ }
-
+        await updateModerationRecords("qv", id, true);
+      } catch {
+        return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
+          status: 500,
+          headers: cors
+        });
+      }
+      await env.QUOTEVAULT.delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -650,26 +663,21 @@ export default {
 
     if (url.pathname === "/dv/approve" && request.method === "POST") {
       const body = await request.json();
-      const ok = await isAuthorized(url, request);
-      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.DV_PENDING.get(body.id, "json");
-      if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
-      await env.DV_PUBLIC.put(body.id, JSON.stringify(quote));
-      await env.DV_PENDING.delete(body.id);
-
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const fact = await env.DV_PENDING.get(id, "json");
+      if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
+      await env.DV_PUBLIC.put(id, JSON.stringify(fact));
       try {
-        const { results } = await env.DB.prepare(
-          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE dv_pending_ids LIKE ?`
-        ).bind(`%${body.id}%`).all();
-        for (const row of results) {
-          const pendingIds = JSON.parse(row.dv_pending_ids || "[]").filter(i => i !== body.id);
-          const rejectedIds = JSON.parse(row.dv_rejected_ids || "[]").filter(i => i !== body.id);
-          await env.DB.prepare(
-            `UPDATE users SET dv_pending_ids=?, dv_rejected_ids=?, updated_at=? WHERE user_key=?`
-          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
-        }
-      } catch (e) { /* non-fatal */ }
-
+        await updateModerationRecords("dv", id, false);
+      } catch {
+        return new Response("Fact was published, but account records could not be updated. The submission remains pending so you can retry.", {
+          status: 500,
+          headers: cors
+        });
+      }
+      await env.DV_PENDING.delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -677,23 +685,18 @@ export default {
 
     if (url.pathname === "/dv/reject" && request.method === "POST") {
       const body = await request.json();
-      const ok = await isAuthorized(url, request);
-      if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.DV_PENDING.delete(body.id);
-
+      const id = String(body.id || "").trim();
+      if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       try {
-        const { results } = await env.DB.prepare(
-          `SELECT user_key, dv_pending_ids, dv_rejected_ids FROM users WHERE dv_pending_ids LIKE ?`
-        ).bind(`%${body.id}%`).all();
-        for (const row of results) {
-          const pendingIds = JSON.parse(row.dv_pending_ids || "[]").filter(i => i !== body.id);
-          const rejectedIds = [...new Set([...JSON.parse(row.dv_rejected_ids || "[]"), body.id])];
-          await env.DB.prepare(
-            `UPDATE users SET dv_pending_ids=?, dv_rejected_ids=?, updated_at=? WHERE user_key=?`
-          ).bind(JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), row.user_key).run();
-        }
-      } catch (e) { /* non-fatal */ }
-
+        await updateModerationRecords("dv", id, true);
+      } catch {
+        return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
+          status: 500,
+          headers: cors
+        });
+      }
+      await env.DV_PENDING.delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
