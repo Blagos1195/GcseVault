@@ -67,16 +67,16 @@ The owner completed first-owner setup, removed the `ADMIN_KEY` Worker secret, an
 ## Remaining work
 
 1. **Live endpoint and browser verification.** Check Worker health and test QuoteVault, DateVault and Revision flows. For Revision, verify sync, leaderboard updates, account switching and cross-device persistence. Keep all KV records and local backups until these checks pass.
-3. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
-4. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
-5. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
+2. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
+3. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
+4. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
 
 ## Latest repository verification
 
-- Latest repository commit: `74d31db2660171ebfb80f6dedaf2b4816390d632`.
-- GitHub Actions test run `42669345855` for that exact commit: successful.
-- GitHub Pages build and deployment run `42667329513`: successful for application commit `d6c996e735f7a49171ae1be2c2bd3345c8067764`. The later `e7b91a1` and `74d31db` commits only changed migration and audit documentation; the application code deployed by the Pages run is unchanged.
-- These results verify repository tests and the Pages deployment only. The Worker deployment is separately confirmed by the owner's Wrangler output; the owner-controlled production data migration and browser behaviour remain unverified.
+- Latest repository commit: `987aaa8dca24d9c923781c0c91fe3015c32658df` (documentation-only).
+- GitHub Actions test run `42670357089` completed successfully for application commit `b3ef0719de65bc6829cca465d5ece28c237a1661`; the commits after it only update documentation.
+- The Pages run `42670356117` was cancelled. The most recent successful Pages deployment remains run `42669345186`, which deployed the unchanged application code from `74d31db2660171ebfb80f6dedaf2b4816390d632`.
+- The Worker deployment and D1/KV migration are owner-confirmed. Browser behaviour and cross-device persistence remain unverified.
 
 ## UI scope
 
