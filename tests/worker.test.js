@@ -155,16 +155,18 @@ test("QuoteVault approval keeps the pending submission when D1 cleanup fails", a
     qv_rejected_ids: "[]"
   };
   env.QUOTEVAULT.get = async key => key === "session:test-session"
-    ? JSON.stringify({ userKey: "admin-key" })
+    ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : key === "quote-1" ? { id: "quote-1", text: "A quote" } : null;
   env.QUOTEVAULT.delete = async key => { if (key === "quote-1") pendingDeleted = true; };
   env.PUBLIC_QUOTES = { put: async () => { published = true; } };
   env.DB.prepare = sql => ({
-    bind: () => sql.includes("SELECT user_key, username, role FROM users")
-      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
-      : sql.startsWith("SELECT")
-        ? { all: async () => ({ results: [row] }) }
-        : { run: async () => { throw new Error("D1 unavailable"); } }
+    bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+      ? { first: async () => ({ user_key: "admin-key" }) }
+      : sql.includes("SELECT user_key, username, role FROM users")
+        ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+        : sql.startsWith("SELECT")
+          ? { all: async () => ({ results: [row] }) }
+          : { run: async () => { throw new Error("D1 unavailable"); } }
   });
 
   const response = await call("/approve", env, { id: "quote-1" }, { "X-Session-Token": "test-session" });
@@ -183,15 +185,17 @@ test("DateVault rejection keeps the pending submission when D1 cleanup fails", a
     dv_rejected_ids: "[]"
   };
   env.QUOTEVAULT.get = async key => key === "session:test-session"
-    ? JSON.stringify({ userKey: "admin-key" })
+    ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : null;
   env.DV_PENDING.delete = async () => { pendingDeleted = true; };
   env.DB.prepare = sql => ({
-    bind: () => sql.includes("SELECT user_key, username, role FROM users")
-      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
-      : sql.startsWith("SELECT")
-        ? { all: async () => ({ results: [row] }) }
-        : { run: async () => { throw new Error("D1 unavailable"); } }
+    bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
+      ? { first: async () => ({ user_key: "admin-key" }) }
+      : sql.includes("SELECT user_key, username, role FROM users")
+        ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+        : sql.startsWith("SELECT")
+          ? { all: async () => ({ results: [row] }) }
+          : { run: async () => { throw new Error("D1 unavailable"); } }
   });
 
   const response = await call("/dv/reject", env, { id: "fact-1" }, { "X-Session-Token": "test-session" });
@@ -387,7 +391,7 @@ test("admins cannot issue AI access", async () => {
 });
 test("revision sync verifies the account username", async () => {
   const env = makeEnv([{ username: "different-user" }]);
-  env.REVISION = { get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key" }) : null, put: async () => {} };
+  env.REVISION = { get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null, put: async () => {} };
   const response = await call("/revision/sync", env, {
     userKey: "account-key",
     username: "student",
