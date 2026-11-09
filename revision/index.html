@@ -1132,8 +1132,12 @@ function practiceImport(input){
    const topic=topicById.get(String(item.topicId||''));if(!topic)throw new Error('A resource refers to an unknown topic: '+String(item.topicId||''));
    return{id:'cr'+Date.now()+Math.random().toString(36).slice(2,7)+index,subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
   }).filter(item=>item.content);
-  p.resources.push(...resources);p.resources=p.resources.slice(-500);state.cards.push(...imported);
-  saveRevision();state.setMessage='Imported '+imported.length+' flashcards and '+resources.length+' learning resources for '+subject+'.';state.view='resources';renderRevision();
+  const formulas=(Array.isArray(c.formulas)?c.formulas:[]).map((item,index)=>{
+   const topic=topicById.get(String(item.topicId||''));if(!topic)throw new Error('A formula refers to an unknown topic: '+String(item.topicId||''));
+   return{id:'cf'+Date.now()+Math.random().toString(36).slice(2,7)+index,subjectId:catalogueId,topicId:topic.id,name:String(item.name||'').slice(0,120),expression:String(item.expression||'').slice(0,300),units:String(item.units||'').slice(0,160),conditions:String(item.conditions||'').slice(0,300)};
+  }).filter(item=>item.name&&item.expression);
+  p.resources.push(...resources);p.resources=p.resources.slice(-500);p.formulas.push(...formulas);p.formulas=p.formulas.slice(-300);state.cards.push(...imported);
+  saveRevision();state.setMessage='Imported '+imported.length+' flashcards, '+resources.length+' learning resources and '+formulas.length+' formulas for '+subject+'.';state.view='resources';renderRevision();
  }catch(e){state.setMessage=e.message||'Could not import resource file.';renderRevision();}};
  reader.readAsText(file);
 }
