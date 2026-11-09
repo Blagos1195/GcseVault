@@ -1,0 +1,1569 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-a-level-chemistry-pack",
+  "catalogueId": "aqa-a-level-chemistry",
+  "subject": "Chemistry",
+  "examBoard": "AQA",
+  "qualification": "A-level Chemistry (7405)",
+  "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7 — https://www.aqa.org.uk/subjects/chemistry/a-level/chemistry-7405/specification",
+  "cards": [
+    {
+      "id": "chemistry-01-1",
+      "topicId": "chemistry-01",
+      "front": "What defines isotopes of an element?",
+      "back": "They have the same number of protons but different numbers of neutrons.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-05-1",
+        "chemistry-03-1"
+      ]
+    },
+    {
+      "id": "chemistry-01-2",
+      "topicId": "chemistry-01",
+      "front": "What does mass spectrometry measure?",
+      "back": "The mass-to-charge ratio (m/z) of ions; the spectrum can show isotopic abundances and molecular fragments.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-01-3",
+      "topicId": "chemistry-01",
+      "front": "How is relative atomic mass calculated from isotopic data?",
+      "back": "Weighted mean: Σ(isotopic mass×percentage abundance)/100.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-01-4",
+      "topicId": "chemistry-01",
+      "front": "Define first ionisation energy.",
+      "back": "Energy required to remove one electron from each atom in one mole of gaseous atoms to form one mole of gaseous 1+ ions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-01-5",
+      "topicId": "chemistry-01",
+      "front": "Why does first ionisation energy generally increase across a period?",
+      "back": "Nuclear charge increases while shielding changes relatively little, so outer electrons are attracted more strongly.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-01-6",
+      "topicId": "chemistry-01",
+      "front": "Why are there exceptions to the general first-ionisation-energy trend?",
+      "back": "Subshell energy differences and electron-pair repulsion can make removal easier at particular positions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-1",
+      "topicId": "chemistry-02",
+      "front": "State the Avogadro constant.",
+      "back": "Approximately 6.02×10²³ mol⁻¹.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-19-1",
+        "chemistry-27-1"
+      ]
+    },
+    {
+      "id": "chemistry-02-2",
+      "topicId": "chemistry-02",
+      "front": "State the relationship between amount, mass and molar mass.",
+      "back": "n=m/M.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-3",
+      "topicId": "chemistry-02",
+      "front": "State the concentration equation.",
+      "back": "c=n/V, with volume in dm³ and concentration in mol dm⁻³.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-4",
+      "topicId": "chemistry-02",
+      "front": "How do you obtain an empirical formula from mass data?",
+      "back": "Convert each element's mass to moles, divide by the smallest amount, then scale to the simplest whole-number ratio.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-5",
+      "topicId": "chemistry-02",
+      "front": "How do you obtain a molecular formula from an empirical formula?",
+      "back": "Find Mr÷empirical formula mass; multiply every empirical subscript by this integer.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-6",
+      "topicId": "chemistry-02",
+      "front": "Why must a balanced equation be used in titration calculations?",
+      "back": "It gives the mole ratio between reacting species, which may not be 1:1.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-7",
+      "topicId": "chemistry-02",
+      "front": "How do you convert cm³ to dm³?",
+      "back": "Divide by 1000.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-02-8",
+      "topicId": "chemistry-02",
+      "front": "What is the key technique for making a standard solution?",
+      "back": "Dissolve the accurately weighed solute, transfer quantitatively to a volumetric flask, rinse apparatus into it, make up to the mark and mix thoroughly.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-1",
+      "topicId": "chemistry-03",
+      "front": "What holds an ionic lattice together?",
+      "back": "Strong electrostatic attraction between oppositely charged ions in all directions.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-01-1"
+      ]
+    },
+    {
+      "id": "chemistry-03-2",
+      "topicId": "chemistry-03",
+      "front": "What is a covalent bond?",
+      "back": "A shared pair of electrons attracted to the nuclei of both bonded atoms.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-3",
+      "topicId": "chemistry-03",
+      "front": "What is metallic bonding?",
+      "back": "Electrostatic attraction between positive metal ions and delocalised electrons.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-4",
+      "topicId": "chemistry-03",
+      "front": "Why do lone pairs affect molecular shape?",
+      "back": "Lone pairs occupy more space and repel more strongly than bonding pairs, reducing bond angles.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-5",
+      "topicId": "chemistry-03",
+      "front": "What conditions allow hydrogen bonding?",
+      "back": "Hydrogen covalently bonded to N, O or F is attracted to a lone pair on N, O or F in another molecule.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-6",
+      "topicId": "chemistry-03",
+      "front": "Why does water have an unusually high boiling point for its relative molecular mass?",
+      "back": "Extensive hydrogen bonding requires energy to overcome between molecules.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-03-7",
+      "topicId": "chemistry-03",
+      "front": "Does a polar bond always make a polar molecule?",
+      "back": "No. Bond dipoles can cancel because of molecular symmetry, as in CO₂.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-04-1",
+      "topicId": "chemistry-04",
+      "front": "Define oxidation and reduction using electrons.",
+      "back": "Oxidation is loss of electrons; reduction is gain of electrons.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-27-1"
+      ]
+    },
+    {
+      "id": "chemistry-04-2",
+      "topicId": "chemistry-04",
+      "front": "How does oxidation state change during oxidation?",
+      "back": "It increases.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-04-3",
+      "topicId": "chemistry-04",
+      "front": "What is the oxidation state of oxygen in most compounds?",
+      "back": "−2, with exceptions such as peroxides and compounds with fluorine.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-04-4",
+      "topicId": "chemistry-04",
+      "front": "How do you combine redox half-equations?",
+      "back": "Balance atoms and charge in each half-equation, equalise electron numbers, add them and cancel electrons and common species.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-05-1",
+      "topicId": "chemistry-05",
+      "front": "Why does atomic radius generally decrease across Period 3?",
+      "back": "Nuclear charge increases while shielding does not increase greatly, pulling electrons closer.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-01-1"
+      ]
+    },
+    {
+      "id": "chemistry-05-2",
+      "topicId": "chemistry-05",
+      "front": "Why is aluminium's first ionisation energy lower than magnesium's?",
+      "back": "The electron removed from aluminium is in a higher-energy 3p subshell, so it is easier to remove.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-05-3",
+      "topicId": "chemistry-05",
+      "front": "What is the acid-base trend in Period 3 oxides?",
+      "back": "Oxides change from basic through amphoteric to acidic across the period.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-05-4",
+      "topicId": "chemistry-05",
+      "front": "What is an amphoteric oxide?",
+      "back": "An oxide that reacts with both acids and bases, for example aluminium oxide.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-06-1",
+      "topicId": "chemistry-06",
+      "front": "What ion do Group 2 metals form?",
+      "back": "M²⁺, by losing their two outer-shell electrons.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-06-2",
+      "topicId": "chemistry-06",
+      "front": "How does reactivity change down Group 2 and why?",
+      "back": "It increases because the outer electrons are further from the nucleus and more shielded, reducing attraction.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-06-3",
+      "topicId": "chemistry-06",
+      "front": "What are the products when a Group 2 metal reacts with water?",
+      "back": "A metal hydroxide and hydrogen: M+2H₂O→M(OH)₂+H₂.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-06-4",
+      "topicId": "chemistry-06",
+      "front": "How does the solubility of Group 2 hydroxides change down the group?",
+      "back": "It generally increases down the group.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-06-5",
+      "topicId": "chemistry-06",
+      "front": "How does the solubility of Group 2 sulfates change down the group?",
+      "back": "It decreases down the group.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-07-1",
+      "topicId": "chemistry-07",
+      "front": "How does halogen reactivity change down Group 7?",
+      "back": "It decreases because increased distance and shielding reduce attraction for an incoming electron.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-07-2",
+      "topicId": "chemistry-07",
+      "front": "What happens in a halogen displacement reaction?",
+      "back": "A more reactive halogen oxidises the halide ion of a less reactive halogen, displacing it from solution.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-07-3",
+      "topicId": "chemistry-07",
+      "front": "What precipitate forms when chloride ions react with silver nitrate?",
+      "back": "White silver chloride, AgCl.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-07-4",
+      "topicId": "chemistry-07",
+      "front": "What are the silver halide precipitate colours?",
+      "back": "AgCl white; AgBr cream; AgI yellow.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-07-5",
+      "topicId": "chemistry-07",
+      "front": "Why is dilute nitric acid added before silver nitrate in the halide test?",
+      "back": "It removes interfering carbonate ions without introducing halide ions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-08-1",
+      "topicId": "chemistry-08",
+      "front": "What is the sign of ΔH for an exothermic reaction?",
+      "back": "Negative, because heat is released to the surroundings.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-22-1",
+        "chemistry-09-1"
+      ]
+    },
+    {
+      "id": "chemistry-08-2",
+      "topicId": "chemistry-08",
+      "front": "State the calorimetry equation.",
+      "back": "q=mcΔT.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-08-3",
+      "topicId": "chemistry-08",
+      "front": "How do you convert heat q into molar enthalpy change?",
+      "back": "Divide the heat change by the amount in moles, with the sign chosen for the reaction system.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-08-4",
+      "topicId": "chemistry-08",
+      "front": "State Hess's law.",
+      "back": "The enthalpy change for a reaction is independent of the route taken, provided initial and final states are the same.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-08-5",
+      "topicId": "chemistry-08",
+      "front": "How do you estimate reaction enthalpy using mean bond enthalpies?",
+      "back": "ΔH≈Σ(bonds broken)−Σ(bonds formed).",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-08-6",
+      "topicId": "chemistry-08",
+      "front": "Why are mean bond enthalpy calculations approximate?",
+      "back": "Bond enthalpies are average values across different chemical environments, usually for gaseous molecules.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-09-1",
+      "topicId": "chemistry-09",
+      "front": "State collision theory.",
+      "back": "A reaction occurs when particles collide with sufficient energy and suitable orientation.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-16-1",
+        "chemistry-10-1"
+      ]
+    },
+    {
+      "id": "chemistry-09-2",
+      "topicId": "chemistry-09",
+      "front": "What is activation energy?",
+      "back": "The minimum energy that reacting particles must possess for a successful collision.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-09-3",
+      "topicId": "chemistry-09",
+      "front": "How does a catalyst increase reaction rate?",
+      "back": "It provides an alternative reaction pathway with lower activation energy and is regenerated.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-09-4",
+      "topicId": "chemistry-09",
+      "front": "Why does a small temperature increase often cause a large rate increase?",
+      "back": "A much larger fraction of particles have energy at least equal to activation energy, increasing successful collisions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-09-5",
+      "topicId": "chemistry-09",
+      "front": "How does increasing concentration affect rate?",
+      "back": "It increases collision frequency per unit volume, so successful collisions occur more often.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-10-1",
+      "topicId": "chemistry-10",
+      "front": "What is dynamic equilibrium?",
+      "back": "In a closed system, forward and reverse reaction rates are equal and concentrations remain constant.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-09-1",
+        "chemistry-19-1",
+        "chemistry-16-1"
+      ]
+    },
+    {
+      "id": "chemistry-10-2",
+      "topicId": "chemistry-10",
+      "front": "What happens when temperature increases for an exothermic forward reaction?",
+      "back": "Equilibrium shifts in the endothermic reverse direction.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-10-3",
+      "topicId": "chemistry-10",
+      "front": "What happens to equilibrium position when pressure increases for a gaseous equilibrium?",
+      "back": "It shifts towards the side with fewer moles of gas, if the number differs.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-10-4",
+      "topicId": "chemistry-10",
+      "front": "What changes the value of Kc or Kp?",
+      "back": "Only temperature.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-10-5",
+      "topicId": "chemistry-10",
+      "front": "What is the general Kc expression for aA+bB⇌cC+dD?",
+      "back": "Kc=[C]^c[D]^d/[A]^a[B]^b, using equilibrium concentrations.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-10-6",
+      "topicId": "chemistry-10",
+      "front": "What does a catalyst do to an equilibrium system?",
+      "back": "It speeds up both forward and reverse reactions equally, so equilibrium is reached faster but its position and K are unchanged.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-11-1",
+      "topicId": "chemistry-11",
+      "front": "What is the general formula for an acyclic alkane?",
+      "back": "CnH₂n+₂.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-12-1",
+        "chemistry-13-1",
+        "chemistry-14-1"
+      ]
+    },
+    {
+      "id": "chemistry-11-2",
+      "topicId": "chemistry-11",
+      "front": "What are the products of complete combustion of an alkane?",
+      "back": "Carbon dioxide and water.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-11-3",
+      "topicId": "chemistry-11",
+      "front": "What are the three stages of free-radical substitution?",
+      "back": "Initiation, propagation and termination.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-11-4",
+      "topicId": "chemistry-11",
+      "front": "What happens in the initiation step of chlorination?",
+      "back": "UV light causes homolytic fission of Cl₂ to form two chlorine radicals.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-11-5",
+      "topicId": "chemistry-11",
+      "front": "Why can free-radical substitution produce a mixture?",
+      "back": "Radicals can substitute at different positions and further substitution can occur.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-12-1",
+      "topicId": "chemistry-12",
+      "front": "What is a nucleophile?",
+      "back": "An electron-pair donor that is attracted to an electron-deficient centre.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-13-1",
+        "chemistry-15-1"
+      ]
+    },
+    {
+      "id": "chemistry-12-2",
+      "topicId": "chemistry-12",
+      "front": "What product forms when a halogenoalkane undergoes nucleophilic substitution with aqueous hydroxide?",
+      "back": "An alcohol, with halide ion displaced.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-12-3",
+      "topicId": "chemistry-12",
+      "front": "What conditions favour elimination of a halogenoalkane?",
+      "back": "Ethanolic hydroxide and heating favour elimination to form an alkene.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-12-4",
+      "topicId": "chemistry-12",
+      "front": "Why do iodoalkanes hydrolyse faster than chloroalkanes?",
+      "back": "The C–I bond is weaker than the C–Cl bond, so it breaks more readily.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-12-5",
+      "topicId": "chemistry-12",
+      "front": "What is the role of silver nitrate in hydrolysis-rate comparisons?",
+      "back": "Halide ions released form a silver halide precipitate; the time to cloudiness indicates relative rate.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-13-1",
+      "topicId": "chemistry-13",
+      "front": "Why are alkenes more reactive than alkanes?",
+      "back": "The C=C contains a π bond with high electron density that is susceptible to electrophilic attack.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-12-1",
+        "chemistry-14-1",
+        "chemistry-23-1",
+        "chemistry-26-1"
+      ]
+    },
+    {
+      "id": "chemistry-13-2",
+      "topicId": "chemistry-13",
+      "front": "What is electrophilic addition?",
+      "back": "A reaction where an electrophile attacks an electron-rich multiple bond and atoms add across it.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-13-3",
+      "topicId": "chemistry-13",
+      "front": "What happens when bromine adds to an alkene?",
+      "back": "Bromine adds across the C=C to form a dibromoalkane; bromine water is decolourised.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-13-4",
+      "topicId": "chemistry-13",
+      "front": "How does addition polymerisation work?",
+      "back": "The C=C bond opens and many alkene monomers join to form a saturated carbon-chain polymer.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-13-5",
+      "topicId": "chemistry-13",
+      "front": "What is the repeat unit of poly(ethene)?",
+      "back": "[−CH₂−CH₂−]ₙ.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-14-1",
+      "topicId": "chemistry-14",
+      "front": "What product forms when a primary alcohol is gently oxidised and distilled?",
+      "back": "An aldehyde, which is distilled off to limit further oxidation.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-11-1",
+        "chemistry-13-1",
+        "chemistry-15-1",
+        "chemistry-23-1"
+      ]
+    },
+    {
+      "id": "chemistry-14-2",
+      "topicId": "chemistry-14",
+      "front": "What product forms when a primary alcohol is oxidised under reflux with excess oxidising agent?",
+      "back": "A carboxylic acid.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-14-3",
+      "topicId": "chemistry-14",
+      "front": "What product forms from oxidation of a secondary alcohol?",
+      "back": "A ketone.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-14-4",
+      "topicId": "chemistry-14",
+      "front": "What happens when an alcohol is dehydrated?",
+      "back": "Water is eliminated to form an alkene, commonly using an acid catalyst and heat.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-14-5",
+      "topicId": "chemistry-14",
+      "front": "What are the products of esterification?",
+      "back": "An ester and water, from a carboxylic acid and an alcohol under acid catalysis.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-15-1",
+      "topicId": "chemistry-15",
+      "front": "What does a positive 2,4-DNPH test indicate?",
+      "back": "A carbonyl group in an aldehyde or ketone; an orange precipitate forms.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-12-1",
+        "chemistry-14-1",
+        "chemistry-17-1",
+        "chemistry-18-1",
+        "chemistry-21-1",
+        "chemistry-24-1"
+      ]
+    },
+    {
+      "id": "chemistry-15-2",
+      "topicId": "chemistry-15",
+      "front": "How can an aldehyde be distinguished from a ketone?",
+      "back": "Aldehydes give a silver mirror with Tollens' reagent or brick-red precipitate with Fehling's/Benedict's; ketones do not.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-15-3",
+      "topicId": "chemistry-15",
+      "front": "What observation indicates an alkene with bromine water?",
+      "back": "Orange bromine water is decolourised.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-15-4",
+      "topicId": "chemistry-15",
+      "front": "What does a broad IR absorption around 2500–3300 cm⁻¹ suggest?",
+      "back": "A carboxylic acid O–H bond.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-15-5",
+      "topicId": "chemistry-15",
+      "front": "What information can a molecular ion peak provide?",
+      "back": "The relative molecular mass of the molecule, if the molecular ion is observed.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-16-1",
+      "topicId": "chemistry-16",
+      "front": "What does the order of reaction describe?",
+      "back": "The power to which a reactant concentration is raised in the experimentally determined rate equation.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-09-1",
+        "chemistry-10-1"
+      ]
+    },
+    {
+      "id": "chemistry-16-2",
+      "topicId": "chemistry-16",
+      "front": "How is overall order calculated?",
+      "back": "Add the individual reactant orders in the rate equation.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-16-3",
+      "topicId": "chemistry-16",
+      "front": "What is the rate equation for a reaction involving A and B?",
+      "back": "A general form is rate=k[A]^m[B]^n; orders m and n must be determined experimentally.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-16-4",
+      "topicId": "chemistry-16",
+      "front": "What are the units of k for an overall second-order reaction?",
+      "back": "dm³ mol⁻¹ s⁻¹ when rate is in mol dm⁻³ s⁻¹.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-16-5",
+      "topicId": "chemistry-16",
+      "front": "What does the rate-determining step imply about a mechanism?",
+      "back": "It is the slow step; its reactants must be consistent with the species and powers in the rate equation.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-16-6",
+      "topicId": "chemistry-16",
+      "front": "State the Arrhenius equation.",
+      "back": "k=Ae^(−Ea/RT). A plot of ln k against 1/T has gradient −Ea/R.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-17-1",
+      "topicId": "chemistry-17",
+      "front": "What causes separation in chromatography?",
+      "back": "Different affinities for the stationary and mobile phases cause substances to travel at different rates.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1"
+      ]
+    },
+    {
+      "id": "chemistry-17-2",
+      "topicId": "chemistry-17",
+      "front": "State the TLC Rf equation.",
+      "back": "Rf=distance travelled by substance÷distance travelled by solvent front.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-17-3",
+      "topicId": "chemistry-17",
+      "front": "Why is the TLC baseline drawn in pencil?",
+      "back": "Graphite does not dissolve and travel with the solvent, unlike many inks.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-17-4",
+      "topicId": "chemistry-17",
+      "front": "Why must the solvent start below the TLC baseline?",
+      "back": "Otherwise the sample spots dissolve directly into the solvent reservoir.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-17-5",
+      "topicId": "chemistry-17",
+      "front": "What can gas chromatography retention time indicate?",
+      "back": "It can help identify a substance by comparison with a known standard under the same conditions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-18-1",
+      "topicId": "chemistry-18",
+      "front": "What does the number of proton NMR signals indicate?",
+      "back": "The number of distinct chemical environments of hydrogen atoms.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1"
+      ]
+    },
+    {
+      "id": "chemistry-18-2",
+      "topicId": "chemistry-18",
+      "front": "What does integration in proton NMR show?",
+      "back": "The relative number of hydrogen atoms contributing to each signal.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-18-3",
+      "topicId": "chemistry-18",
+      "front": "What causes splitting in proton NMR?",
+      "back": "Spin-spin coupling with neighbouring non-equivalent hydrogen atoms.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-18-4",
+      "topicId": "chemistry-18",
+      "front": "State the n+1 rule.",
+      "back": "A set of equivalent protons with n equivalent neighbouring protons is split into n+1 peaks in the simple first-order case.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-18-5",
+      "topicId": "chemistry-18",
+      "front": "What does carbon-13 NMR tell you?",
+      "back": "The number of distinct carbon environments in the molecule.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-19-1",
+      "topicId": "chemistry-19",
+      "front": "Define a Brønsted–Lowry acid and base.",
+      "back": "An acid donates a proton; a base accepts a proton.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-10-1",
+        "chemistry-27-1"
+      ]
+    },
+    {
+      "id": "chemistry-19-2",
+      "topicId": "chemistry-19",
+      "front": "State the pH equation.",
+      "back": "pH=−log₁₀[H⁺].",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-19-3",
+      "topicId": "chemistry-19",
+      "front": "State Ka for HA⇌H⁺+A⁻.",
+      "back": "Ka=[H⁺][A⁻]/[HA], using equilibrium concentrations.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-19-4",
+      "topicId": "chemistry-19",
+      "front": "Why does a buffer resist pH changes?",
+      "back": "It contains a weak acid/base and its conjugate partner, which react with added OH⁻ or H⁺.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-19-5",
+      "topicId": "chemistry-19",
+      "front": "What is the relationship between pKa and Ka?",
+      "back": "pKa=−log₁₀Ka.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-19-6",
+      "topicId": "chemistry-19",
+      "front": "Why is an indicator selected based on its transition range?",
+      "back": "Its colour change must occur within the steep pH region around the equivalence point.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-20-1",
+      "topicId": "chemistry-20",
+      "front": "What makes a carbon atom a chiral centre?",
+      "back": "It is tetrahedral and bonded to four different groups.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-20-2",
+      "topicId": "chemistry-20",
+      "front": "What are enantiomers?",
+      "back": "Non-superimposable mirror-image stereoisomers.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-20-3",
+      "topicId": "chemistry-20",
+      "front": "How do enantiomers affect plane-polarised light?",
+      "back": "They rotate it by equal magnitudes in opposite directions under the same conditions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-20-4",
+      "topicId": "chemistry-20",
+      "front": "Why is a racemic mixture optically inactive?",
+      "back": "Equal amounts of enantiomers rotate plane-polarised light in opposite directions, cancelling overall rotation.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-21-1",
+      "topicId": "chemistry-21",
+      "front": "How do aldehydes and ketones differ structurally?",
+      "back": "An aldehyde has a terminal –CHO group; a ketone has a carbonyl carbon bonded to two carbon groups.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-15-1",
+        "chemistry-23-1"
+      ]
+    },
+    {
+      "id": "chemistry-21-2",
+      "topicId": "chemistry-21",
+      "front": "Why is the carbonyl carbon attacked by nucleophiles?",
+      "back": "The C=O bond is polar, leaving the carbonyl carbon electron deficient (δ+).",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-21-3",
+      "topicId": "chemistry-21",
+      "front": "What product forms when an aldehyde is reduced?",
+      "back": "A primary alcohol.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-21-4",
+      "topicId": "chemistry-21",
+      "front": "What product forms when a ketone is reduced?",
+      "back": "A secondary alcohol.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-21-5",
+      "topicId": "chemistry-21",
+      "front": "What happens when an aldehyde is oxidised?",
+      "back": "It forms a carboxylic acid.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-22-1",
+      "topicId": "chemistry-22",
+      "front": "State the Gibbs free-energy equation.",
+      "back": "ΔG=ΔH−TΔS, with temperature in kelvin and consistent units.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-08-1",
+        "chemistry-27-1"
+      ]
+    },
+    {
+      "id": "chemistry-22-2",
+      "topicId": "chemistry-22",
+      "front": "What does ΔG<0 indicate at constant temperature and pressure?",
+      "back": "The process is thermodynamically feasible (spontaneous) in the forward direction under those conditions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-22-3",
+      "topicId": "chemistry-22",
+      "front": "Does a negative ΔG mean a reaction is fast?",
+      "back": "No. Feasibility is thermodynamic; rate depends on kinetics and activation energy.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-22-4",
+      "topicId": "chemistry-22",
+      "front": "What is the sign of entropy change when a gas is produced from a liquid?",
+      "back": "Usually positive because energy and particles become more dispersed.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-23-1",
+      "topicId": "chemistry-23",
+      "front": "What functional group defines a carboxylic acid?",
+      "back": "The carboxyl group, –COOH.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-13-1",
+        "chemistry-14-1",
+        "chemistry-21-1"
+      ]
+    },
+    {
+      "id": "chemistry-23-2",
+      "topicId": "chemistry-23",
+      "front": "What are the products when a carboxylic acid reacts with a carbonate?",
+      "back": "A salt, water and carbon dioxide.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-23-3",
+      "topicId": "chemistry-23",
+      "front": "What are the products of esterification?",
+      "back": "An ester and water.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-23-4",
+      "topicId": "chemistry-23",
+      "front": "Why are acyl chlorides more reactive than carboxylic acids?",
+      "back": "The carbonyl carbon is strongly electrophilic and chloride is a good leaving group.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-23-5",
+      "topicId": "chemistry-23",
+      "front": "What type of mechanism do acyl chlorides undergo with nucleophiles?",
+      "back": "Nucleophilic addition-elimination.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-24-1",
+      "topicId": "chemistry-24",
+      "front": "Why are all C–C bonds in benzene the same length?",
+      "back": "The six π electrons are delocalised around the ring, making all C–C bonds equivalent.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-25-1",
+        "chemistry-15-1"
+      ]
+    },
+    {
+      "id": "chemistry-24-2",
+      "topicId": "chemistry-24",
+      "front": "Why does benzene favour substitution rather than addition?",
+      "back": "Substitution preserves the delocalised aromatic ring; addition would disrupt it.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-24-3",
+      "topicId": "chemistry-24",
+      "front": "What is the role of concentrated sulfuric acid in nitration?",
+      "back": "It helps generate the nitronium ion, NO₂⁺, the electrophile.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-24-4",
+      "topicId": "chemistry-24",
+      "front": "Why does phenol react more readily in electrophilic substitution than benzene?",
+      "back": "The oxygen lone pair delocalises into the ring, increasing electron density and activating it.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-24-5",
+      "topicId": "chemistry-24",
+      "front": "Which positions are favoured in electrophilic substitution of phenol?",
+      "back": "The 2, 4 and 6 positions relative to the –OH group.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-25-1",
+      "topicId": "chemistry-25",
+      "front": "Why are amines basic?",
+      "back": "The nitrogen lone pair can accept a proton.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-24-1"
+      ]
+    },
+    {
+      "id": "chemistry-25-2",
+      "topicId": "chemistry-25",
+      "front": "Why are aliphatic amines generally stronger bases than ammonia?",
+      "back": "Alkyl groups donate electron density towards nitrogen, making its lone pair more available.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-25-3",
+      "topicId": "chemistry-25",
+      "front": "Why is phenylamine less basic than ammonia?",
+      "back": "The nitrogen lone pair is delocalised into the benzene ring, so it is less available to accept H⁺.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-25-4",
+      "topicId": "chemistry-25",
+      "front": "How can a primary amine be prepared from a halogenoalkane?",
+      "back": "Nucleophilic substitution using excess ethanolic ammonia, followed by work-up.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-26-1",
+      "topicId": "chemistry-26",
+      "front": "What is a zwitterion?",
+      "back": "A species with both a positive and a negative charge but an overall net charge of zero.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-13-1"
+      ]
+    },
+    {
+      "id": "chemistry-26-2",
+      "topicId": "chemistry-26",
+      "front": "How is a peptide bond formed?",
+      "back": "Condensation between the carboxyl group of one amino acid and amino group of another, eliminating water.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-26-3",
+      "topicId": "chemistry-26",
+      "front": "What are the complementary DNA base pairs?",
+      "back": "Adenine pairs with thymine; cytosine pairs with guanine.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-26-4",
+      "topicId": "chemistry-26",
+      "front": "How does addition polymerisation differ from condensation polymerisation?",
+      "back": "Addition uses unsaturated monomers and produces no small by-product; condensation joins monomers while eliminating a small molecule.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-26-5",
+      "topicId": "chemistry-26",
+      "front": "What are the four levels of protein structure?",
+      "back": "Primary, secondary, tertiary and quaternary (where multiple polypeptide chains assemble).",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-27-1",
+      "topicId": "chemistry-27",
+      "front": "What is the standard hydrogen electrode potential?",
+      "back": "Defined as 0.00 V.",
+      "difficulty": 3,
+      "links": [
+        "chemistry-02-1",
+        "chemistry-19-1",
+        "chemistry-22-1",
+        "chemistry-04-1"
+      ]
+    },
+    {
+      "id": "chemistry-27-2",
+      "topicId": "chemistry-27",
+      "front": "What does a more positive standard electrode potential indicate?",
+      "back": "A greater tendency for the species to be reduced under standard conditions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-27-3",
+      "topicId": "chemistry-27",
+      "front": "State the standard cell EMF equation.",
+      "back": "E°cell=E°(cathode)−E°(anode), using standard reduction potentials.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-27-4",
+      "topicId": "chemistry-27",
+      "front": "What does a positive E°cell indicate?",
+      "back": "The reaction as written is thermodynamically feasible under standard conditions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-27-5",
+      "topicId": "chemistry-27",
+      "front": "Does a positive cell EMF guarantee a fast reaction?",
+      "back": "No. It indicates thermodynamic feasibility, not reaction rate.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-1",
+      "topicId": "chemistry-28",
+      "front": "What is a transition element in the AQA definition?",
+      "back": "An element that forms at least one stable ion with an incomplete d subshell.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-2",
+      "topicId": "chemistry-28",
+      "front": "What is a ligand?",
+      "back": "An ion or molecule that donates a lone pair to a central metal ion to form a coordinate bond.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-3",
+      "topicId": "chemistry-28",
+      "front": "What is coordination number?",
+      "back": "The number of coordinate bonds formed to the central metal ion.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-4",
+      "topicId": "chemistry-28",
+      "front": "Why are many transition-metal compounds coloured?",
+      "back": "The ligand environment splits d-orbital energies; absorption of visible light promotes d-electron transitions.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-5",
+      "topicId": "chemistry-28",
+      "front": "Why can transition metals show variable oxidation states?",
+      "back": "The 3d and 4s electrons are close in energy, so different numbers can be involved in bonding or ion formation.",
+      "difficulty": 3
+    },
+    {
+      "id": "chemistry-28-6",
+      "topicId": "chemistry-28",
+      "front": "What is ligand substitution?",
+      "back": "A reaction in which one or more ligands around a metal centre are replaced by different ligands.",
+      "difficulty": 3
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "chemistry-01",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Atoms contain protons and neutrons in a tiny nucleus with electrons in orbitals. Isotopes have the same proton number but different neutron numbers. A mass spectrometer vaporises and ionises a sample, accelerates ions, separates them by mass-to-charge ratio and detects them; relative isotopic masses and abundances give Ar. Electrons occupy shells, subshells and orbitals in increasing energy, following the rules for filling and spin. First ionisation energy is the energy needed to remove one electron from each atom in one mole of gaseous atoms; trends reflect nuclear charge, distance and shielding.\n\nSpecification coverage: What defines isotopes of an element?; What does mass spectrometry measure?; How is relative atomic mass calculated from isotopic data?; Define first ionisation energy.; Why does first ionisation energy generally increase across a period?; Why are there exceptions to the general first-ionisation-energy trend?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "The mole is the amount containing Avogadro's constant, 6.02×10²³ specified particles. n=m/M; for solutions n=cV with V in dm³; for gases use the molar gas volume or pV=nRT as appropriate. Determine empirical formula from mole ratios, then use Mr to obtain molecular formula. In titrations, use a balanced equation and the mole ratio, not an assumed 1:1 ratio. Make volumetric solutions using accurate transfer, rinsing and dilution to the calibration mark.\n\nSpecification coverage: State the Avogadro constant.; State the relationship between amount, mass and molar mass.; State the concentration equation.; How do you obtain an empirical formula from mass data?; How do you obtain a molecular formula from an empirical formula?; Why must a balanced equation be used in titration calculations?; How do you convert cm³ to dm³?; What is the key technique for making a standard solution?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-03",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Ionic bonding is electrostatic attraction between oppositely charged ions in a giant lattice. Covalent bonding is attraction between shared electron pairs and nuclei; metallic bonding is attraction between positive metal ions and delocalised electrons. Molecular shape follows electron-pair repulsion: lone pairs repel more strongly than bonding pairs. Electronegativity difference affects bond polarity; molecular polarity also depends on shape. Intermolecular forces include London dispersion, permanent dipole-dipole and hydrogen bonding; these affect physical properties but are weaker than covalent bonds.\n\nSpecification coverage: What holds an ionic lattice together?; What is a covalent bond?; What is metallic bonding?; Why do lone pairs affect molecular shape?; What conditions allow hydrogen bonding?; Why does water have an unusually high boiling point for its relative molecular mass?; Does a polar bond always make a polar molecule?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-04",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Oxidation is loss of electrons or an increase in oxidation state; reduction is gain of electrons or a decrease in oxidation state. Oxidation states are assigned using standard rules: elements are zero, simple ions equal their charge, oxygen is usually −2 and hydrogen usually +1. In redox equations, balance atoms and charge using half-equations, then combine electron transfers so electrons cancel.\n\nSpecification coverage: Define oxidation and reduction using electrons.; How does oxidation state change during oxidation?; What is the oxidation state of oxygen in most compounds?; How do you combine redox half-equations?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-05",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Across Period 3, nuclear charge increases while added electrons enter the same principal shell, so atomic radius generally decreases. First ionisation energy generally rises, with small drops associated with entering a higher-energy p subshell and pairing electrons. Melting points reflect structure and bonding: giant metallic structures increase then decrease in strength across metals, while silicon has a giant covalent structure and later elements are molecular. Oxides change from basic through amphoteric to acidic.\n\nSpecification coverage: Why does atomic radius generally decrease across Period 3?; Why is aluminium's first ionisation energy lower than magnesium's?; What is the acid-base trend in Period 3 oxides?; What is an amphoteric oxide?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-06",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Group 2 metals form M²⁺ ions. Reactivity generally increases down the group because the outer electrons are further from the nucleus and more shielded, so they are removed more easily despite increasing nuclear charge. Reactions with water form hydroxides and hydrogen; hydroxide solubility generally increases down the group, while sulfate solubility decreases. Use balanced equations and state observations such as effervescence or precipitate formation.\n\nSpecification coverage: What ion do Group 2 metals form?; How does reactivity change down Group 2 and why?; What are the products when a Group 2 metal reacts with water?; How does the solubility of Group 2 hydroxides change down the group?; How does the solubility of Group 2 sulfates change down the group?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-07",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Halogens exist as diatomic molecules X₂ and gain one electron to form X⁻ ions. Reactivity decreases down Group 7 because increased atomic radius and shielding reduce attraction for an incoming electron. A more reactive halogen displaces a less reactive halide from solution. Silver nitrate tests halide ions after acidifying with dilute nitric acid: AgCl is white, AgBr cream and AgI yellow; ammonia distinguishes precipitates by solubility.\n\nSpecification coverage: How does halogen reactivity change down Group 7?; What happens in a halogen displacement reaction?; What precipitate forms when chloride ions react with silver nitrate?; What are the silver halide precipitate colours?; Why is dilute nitric acid added before silver nitrate in the halide test?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-08",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Enthalpy change is the heat transferred at constant pressure. Exothermic changes have negative ΔH; endothermic changes positive ΔH. Calorimetry estimates q=mcΔT and ΔH per mole from q and amount reacted, accounting for heat loss. Hess's law follows from enthalpy being a state function: construct an energy cycle and reverse or scale equations consistently. Mean bond enthalpy estimates ΔH using bonds broken minus bonds formed; it is approximate because values are averages.\n\nSpecification coverage: What is the sign of ΔH for an exothermic reaction?; State the calorimetry equation.; How do you convert heat q into molar enthalpy change?; State Hess's law.; How do you estimate reaction enthalpy using mean bond enthalpies?; Why are mean bond enthalpy calculations approximate?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-09",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Particles must collide with sufficient energy and suitable orientation to react. The activation energy is the minimum energy needed for a successful collision. Increasing temperature raises the fraction of particles with energy at or above Ea; increasing concentration or pressure increases collision frequency; a catalyst provides an alternative pathway with lower Ea. Maxwell–Boltzmann curves show a distribution of molecular energies, not a single energy.\n\nSpecification coverage: State collision theory.; What is activation energy?; How does a catalyst increase reaction rate?; Why does a small temperature increase often cause a large rate increase?; How does increasing concentration affect rate?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-10",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Dynamic equilibrium occurs in a closed system when forward and reverse reaction rates are equal; concentrations remain constant but reactions continue. Le Chatelier's principle predicts the direction of shift after a change. Kc uses equilibrium concentrations raised to stoichiometric powers; Kp uses partial pressures for gases. Only temperature changes the value of an equilibrium constant; concentration, pressure and catalysts change position or rate, not K.\n\nSpecification coverage: What is dynamic equilibrium?; What happens when temperature increases for an exothermic forward reaction?; What happens to equilibrium position when pressure increases for a gaseous equilibrium?; What changes the value of Kc or Kp?; What is the general Kc expression for aA+bB⇌cC+dD?; What does a catalyst do to an equilibrium system?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-11",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Alkanes are saturated hydrocarbons with general formula CnH2n+2 for open-chain molecules. They are relatively unreactive because C–C and C–H bonds are strong and non-polar. Complete combustion produces CO₂ and H₂O; incomplete combustion can produce CO and/or carbon. Free-radical substitution with halogens proceeds by initiation, propagation and termination; UV light initiates homolytic fission of the halogen bond.\n\nSpecification coverage: What is the general formula for an acyclic alkane?; What are the products of complete combustion of an alkane?; What are the three stages of free-radical substitution?; What happens in the initiation step of chlorination?; Why can free-radical substitution produce a mixture?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-12",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Halogenoalkanes contain a polar C–X bond. In nucleophilic substitution, a nucleophile donates an electron pair to the carbon attached to the halogen, replacing the halide. Aqueous hydroxide forms an alcohol; ethanolic ammonia can form an amine. Elimination with ethanolic hydroxide removes HX to form an alkene. Rate comparisons with silver nitrate in ethanol reflect C–X bond strength and the ease of hydrolysis.\n\nSpecification coverage: What is a nucleophile?; What product forms when a halogenoalkane undergoes nucleophilic substitution with aqueous hydroxide?; What conditions favour elimination of a halogenoalkane?; Why do iodoalkanes hydrolyse faster than chloroalkanes?; What is the role of silver nitrate in hydrolysis-rate comparisons?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-13",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Alkenes contain a C=C double bond with a reactive π bond. They undergo electrophilic addition: electron-rich π electrons attract an electrophile, followed by attack by a nucleophile. Typical additions include hydrogen, halogens, hydrogen halides and steam. Addition polymerisation opens the C=C bond and links monomers; the repeat unit must be drawn with correct single bonds and continuation bonds.\n\nSpecification coverage: Why are alkenes more reactive than alkanes?; What is electrophilic addition?; What happens when bromine adds to an alkene?; How does addition polymerisation work?; What is the repeat unit of poly(ethene)?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-14",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Alcohols contain the hydroxyl group –OH. Primary alcohols oxidise to aldehydes with distillation to remove the aldehyde, or to carboxylic acids under reflux with excess oxidising agent. Secondary alcohols oxidise to ketones; tertiary alcohols resist oxidation under these conditions. Dehydration with an acid catalyst forms an alkene. Alcohols react with carboxylic acids to form esters and water under acid catalysis.\n\nSpecification coverage: What product forms when a primary alcohol is gently oxidised and distilled?; What product forms when a primary alcohol is oxidised under reflux with excess oxidising agent?; What product forms from oxidation of a secondary alcohol?; What happens when an alcohol is dehydrated?; What are the products of esterification?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-15",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Use chemical tests to identify functional groups and justify observations. Carbonyls react with 2,4-DNPH to form an orange precipitate; aldehydes reduce Tollens' reagent to a silver mirror and Fehling's/Benedict's solution to a brick-red precipitate, while ketones do not under these conditions. Alkenes decolourise bromine water. Carboxylic acids effervesce with carbonates. IR absorption bands identify bonds; mass spectra provide molecular-ion and fragment evidence.\n\nSpecification coverage: What does a positive 2,4-DNPH test indicate?; How can an aldehyde be distinguished from a ketone?; What observation indicates an alkene with bromine water?; What does a broad IR absorption around 2500–3300 cm⁻¹ suggest?; What information can a molecular ion peak provide?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-16",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "For rate=k[A]^m[B]^n, m and n are experimentally determined orders and overall order is m+n. Rate constants have units that depend on overall order. Initial-rate experiments compare how rate changes when concentrations change. A rate-determining step is the slow step in a proposed mechanism; its reactants must be consistent with the rate equation. Arrhenius: k=Ae^(−Ea/RT); plotting ln k against 1/T gives gradient −Ea/R.\n\nSpecification coverage: What does the order of reaction describe?; How is overall order calculated?; What is the rate equation for a reaction involving A and B?; What are the units of k for an overall second-order reaction?; What does the rate-determining step imply about a mechanism?; State the Arrhenius equation.",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-17",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Chromatography separates substances because they distribute differently between a stationary phase and a mobile phase. In TLC, a pencil baseline is used, the solvent level starts below it, and spots are kept above the solvent. Rf=distance moved by substance/distance moved by solvent front. Compare Rf values only under identical conditions. In gas chromatography, retention time can help identify substances and peak area can estimate relative amount when calibrated.\n\nSpecification coverage: What causes separation in chromatography?; State the TLC Rf equation.; Why is the TLC baseline drawn in pencil?; Why must the solvent start below the TLC baseline?; What can gas chromatography retention time indicate?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-18",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "In proton NMR, chemically equivalent hydrogen atoms give one signal. The number of signals indicates distinct proton environments; chemical shift indicates electronic environment; integration gives relative proton numbers; splitting gives neighbouring non-equivalent hydrogens, often following the n+1 rule for n equivalent neighbours. Carbon-13 NMR shows distinct carbon environments, usually without integration or splitting at this level. Use molecular formula and other spectra together to identify structure.\n\nSpecification coverage: What does the number of proton NMR signals indicate?; What does integration in proton NMR show?; What causes splitting in proton NMR?; State the n+1 rule.; What does carbon-13 NMR tell you?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-19",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Brønsted–Lowry acids donate protons and bases accept them. Strong acids ionise essentially completely; weak acids partially ionise. pH=−log₁₀[H⁺]; Ka=[H⁺][A⁻]/[HA] for HA⇌H⁺+A⁻. Buffers resist pH change because a weak acid removes added OH⁻ and its conjugate base removes added H⁺. Titration curves depend on acid/base strength; indicator choice should match the steep pH change around the equivalence point.\n\nSpecification coverage: Define a Brønsted–Lowry acid and base.; State the pH equation.; State Ka for HA⇌H⁺+A⁻.; Why does a buffer resist pH changes?; What is the relationship between pKa and Ka?; Why is an indicator selected based on its transition range?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-20",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "A chiral centre is typically a tetrahedral carbon attached to four different groups. A molecule with a chiral centre can exist as two non-superimposable mirror images called enantiomers. Enantiomers have identical physical properties in achiral environments but rotate plane-polarised light in opposite directions and may behave differently in biological systems. A racemic mixture contains equal amounts of both enantiomers and is optically inactive overall.\n\nSpecification coverage: What makes a carbon atom a chiral centre?; What are enantiomers?; How do enantiomers affect plane-polarised light?; Why is a racemic mixture optically inactive?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-21",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Aldehydes have a terminal –CHO group; ketones have a carbonyl group within the carbon chain. The carbonyl carbon is electrophilic because the C=O bond is polar. Nucleophiles attack this carbon in nucleophilic addition. Aldehydes oxidise to carboxylic acids; ketones resist mild oxidation. Sodium borohydride reduces aldehydes to primary alcohols and ketones to secondary alcohols.\n\nSpecification coverage: How do aldehydes and ketones differ structurally?; Why is the carbonyl carbon attacked by nucleophiles?; What product forms when an aldehyde is reduced?; What product forms when a ketone is reduced?; What happens when an aldehyde is oxidised?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-22",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Entropy measures the dispersal of energy and the number of accessible arrangements (microstates). A process is feasible when the total entropy change of the universe is positive. Gibbs free-energy change at constant temperature and pressure is ΔG=ΔH−TΔS; a negative ΔG indicates thermodynamic feasibility under those conditions. Convert units consistently, commonly ΔS in kJ K⁻¹ mol⁻¹ if ΔH is in kJ mol⁻¹, and distinguish feasibility from rate.\n\nSpecification coverage: State the Gibbs free-energy equation.; What does ΔG<0 indicate at constant temperature and pressure?; Does a negative ΔG mean a reaction is fast?; What is the sign of entropy change when a gas is produced from a liquid?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-23",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Carboxylic acids contain –COOH and are weak acids in water. They react with bases to form salts and water, with carbonates to form salts, water and CO₂, and with alcohols to form esters. Acyl chlorides are reactive acyl derivatives; they undergo nucleophilic addition-elimination with water, alcohols and ammonia, producing HCl as a by-product. Compare reaction conditions and identify the product functional group.\n\nSpecification coverage: What functional group defines a carboxylic acid?; What are the products when a carboxylic acid reacts with a carbonate?; What are the products of esterification?; Why are acyl chlorides more reactive than carboxylic acids?; What type of mechanism do acyl chlorides undergo with nucleophiles?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-24",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Benzene is a planar ring with delocalised π electrons above and below the carbon framework; all C–C bonds are equivalent and intermediate between single and double bonds. Its stability means it tends to undergo electrophilic substitution rather than addition. A catalyst generates a strong electrophile for nitration or halogenation. Phenol's –OH group activates the ring and directs substitution mainly to 2,4,6 positions; phenol is weakly acidic.\n\nSpecification coverage: Why are all C–C bonds in benzene the same length?; Why does benzene favour substitution rather than addition?; What is the role of concentrated sulfuric acid in nitration?; Why does phenol react more readily in electrophilic substitution than benzene?; Which positions are favoured in electrophilic substitution of phenol?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-25",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Amines contain a nitrogen atom with a lone pair and act as Brønsted–Lowry bases by accepting a proton. Aliphatic amines are generally stronger bases than ammonia because alkyl groups donate electron density; aromatic amines are weaker because the lone pair can delocalise into the ring. Amines can be prepared by nucleophilic substitution of halogenoalkanes with ammonia or by reduction of nitriles/nitro compounds, depending on the route.\n\nSpecification coverage: Why are amines basic?; Why are aliphatic amines generally stronger bases than ammonia?; Why is phenylamine less basic than ammonia?; How can a primary amine be prepared from a halogenoalkane?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-26",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Amino acids contain both an amino group and a carboxyl group and can exist as zwitterions. Peptide bonds form by condensation between amino acids, releasing water; hydrolysis breaks peptide bonds. Proteins have primary, secondary, tertiary and sometimes quaternary structure. DNA contains nucleotide units with a sugar, phosphate and base; complementary base pairing is A–T and C–G. Addition polymers form from alkenes; condensation polymers form with loss of a small molecule such as water or HCl.\n\nSpecification coverage: What is a zwitterion?; How is a peptide bond formed?; What are the complementary DNA base pairs?; How does addition polymerisation differ from condensation polymerisation?; What are the four levels of protein structure?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-27",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "A standard electrode potential is measured relative to the standard hydrogen electrode under standard conditions. More positive E° indicates a greater tendency for reduction. For a cell, E°cell=E°(more positive reduction electrode)−E°(other reduction electrode). A positive E°cell indicates a feasible reaction under standard conditions, but not its rate. Cell diagrams and half-equations must keep electron flow and oxidation/reduction directions consistent.\n\nSpecification coverage: What is the standard hydrogen electrode potential?; What does a more positive standard electrode potential indicate?; State the standard cell EMF equation.; What does a positive E°cell indicate?; Does a positive cell EMF guarantee a fast reaction?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-28",
+      "kind": "revision-notes",
+      "title": "Core notes and explanations",
+      "content": "Transition metals form at least one ion with an incomplete d subshell and often show variable oxidation states, coloured compounds, complex formation and catalytic activity. A ligand donates a lone pair to a central metal ion to form a coordinate bond. Coordination number is the number of coordinate bonds to the central ion. Ligand substitution changes the ligands around a metal centre. Aqueous ions can be identified using hydroxide or ammonia; precipitate colours and solubility in excess reagent are diagnostic.\n\nSpecification coverage: What is a transition element in the AQA definition?; What is a ligand?; What is coordination number?; Why are many transition-metal compounds coloured?; Why can transition metals show variable oxidation states?; What is ligand substitution?",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "required-practical",
+      "title": "Required practical 1: volumetric solution and acid–base titration",
+      "content": "Accurately weigh the solid, dissolve it in a beaker, transfer quantitatively to a volumetric flask, rinsing the beaker and funnel into the flask. Make up to the calibration mark with deionised water, using a dropping pipette near the mark, then invert repeatedly. Rinse the pipette with the solution and the burette with the titrant. Record initial and final burette readings to the appropriate precision. Do a rough titration, then repeat until concordant titres are obtained. Use the balanced equation and titre volume to calculate unknown concentration. Avoid parallax and ensure the jet is full and no air bubble remains.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-08",
+      "kind": "required-practical",
+      "title": "Required practical 2: measurement of an enthalpy change",
+      "content": "Measure known volumes and concentrations, record initial temperature, mix reactants in an insulated container with a lid, stir and record the maximum or minimum temperature. Calculate q=mcΔT, using total solution mass and an appropriate specific heat capacity assumption. Divide by moles of limiting reagent and apply the sign convention for the reaction. Evaluate heat loss, heat capacity of the apparatus, thermometer resolution and incomplete reaction; insulation and extrapolation can improve the estimate.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-09",
+      "kind": "required-practical",
+      "title": "Required practical 3: effect of temperature on reaction rate",
+      "content": "Use a controlled clock reaction or continuous monitoring method at several temperatures. Equilibrate reactants at the chosen temperature before mixing, keep concentrations and total volumes constant, and measure the time to a defined endpoint or follow a measurable change. Repeat and calculate a mean. For a fixed endpoint, rate is proportional to 1/time. Control temperature carefully and consider heat exchange during mixing.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-06",
+      "kind": "required-practical",
+      "title": "Required practical 4: qualitative tests for ions",
+      "content": "For Group 2 cations, add sodium hydroxide and observe precipitate formation and solubility trends; ammonium ions release ammonia on warming with sodium hydroxide, turning damp red litmus blue. For halides, acidify with dilute nitric acid then add silver nitrate: chloride white, bromide cream, iodide yellow. Carbonate gives effervescence with dilute acid and CO₂ turns limewater cloudy; sulfate gives a white barium sulfate precipitate after acidification. Hydroxide ions can be indicated by pH/indicator behaviour. Record reagents, conditions and observations distinctly.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-14",
+      "kind": "required-practical",
+      "title": "Required practical 5: distillation of a product",
+      "content": "Set up appropriate distillation glassware securely, with the thermometer bulb positioned near the side arm. Heat using a suitable controlled source and collect the fraction at the expected boiling range. Distillation separates a volatile liquid from less volatile components; do not seal the apparatus. Explain the role of the condenser and identify sources of product loss, contamination and thermometer error.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-15",
+      "kind": "required-practical",
+      "title": "Required practical 6: tests for organic functional groups",
+      "content": "Use small samples and appropriate reagents. Test alkenes with bromine water; aldehydes with Tollens' or Fehling's/Benedict's reagent; carbonyls with 2,4-DNPH; carboxylic acids with carbonate; alcohols using suitable oxidation conditions. Record both positive and negative observations and avoid using a single test as proof where more than one functional group could give a result. Use clean apparatus to avoid cross-contamination.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-16",
+      "kind": "required-practical",
+      "title": "Required practical 7: measuring reaction rate",
+      "content": "Use an initial-rate method by mixing reactants and measuring the time to a defined endpoint at the start of the reaction, or a continuous method such as gas volume, mass loss, colour or concentration against time. Change one variable at a time and control temperature, volume and other concentrations. Plot suitable data, determine gradient for rate and repeat. Evaluate timing delay, mixing, gas leaks, sensor calibration and endpoint judgement.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-27",
+      "kind": "required-practical",
+      "title": "Required practical 8: measuring EMF of an electrochemical cell",
+      "content": "Prepare two half-cells with appropriate metal/ion combinations, connect them using a salt bridge and a high-resistance voltmeter, and record the potential difference. The salt bridge completes the circuit while limiting direct mixing and maintaining charge balance. Identify electrode polarity and write oxidation and reduction half-equations. Compare the measured EMF with standard values, noting concentration and temperature effects.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-19",
+      "kind": "required-practical",
+      "title": "Required practical 9: pH changes during acid–base reactions",
+      "content": "Measure pH with a calibrated pH meter or probe as measured volumes of one solution are added to another. Keep concentrations known, stir consistently and record pH after each addition, using smaller volume increments near the steep region. Plot pH against volume added. Compare strong/weak acid and base curves, identify buffer regions and equivalence points, and explain indicator suitability.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-23",
+      "kind": "required-practical",
+      "title": "Required practical 10: preparation and purification of organic products",
+      "content": "Prepare a pure organic solid or liquid using the specified reaction. Isolate the product by filtration or separating funnel as appropriate, wash to remove soluble impurities, then purify by recrystallisation or distillation. Dry the product. Assess purity using melting point for solids or boiling range for liquids, and calculate percentage yield. Explain why a narrow melting range close to the data value indicates greater purity.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-28",
+      "kind": "required-practical",
+      "title": "Required practical 11: test-tube reactions of transition-metal ions",
+      "content": "Add sodium hydroxide and ammonia separately, dropwise and then in excess, to small samples of transition-metal solutions. Record precipitate colour, whether it dissolves in excess reagent and any colour change. These observations arise from hydroxide precipitation and complex-ion formation. Use ionic equations and ligand terminology to explain results; avoid relying on colour alone if ions may be confused.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-17",
+      "kind": "required-practical",
+      "title": "Required practical 12: thin-layer chromatography",
+      "content": "Draw a pencil baseline near the bottom of a TLC plate, apply small concentrated spots and place the plate in a covered chamber with solvent below the baseline. Allow the solvent front to rise, remove the plate and mark the solvent front immediately. Visualise spots if needed, measure distances and calculate Rf. Compare samples under identical conditions. Small spots, a closed chamber and a level solvent front improve separation and reliability.",
+      "source": "AQA 7405 practical assessment, required activities 1–12"
+    },
+    {
+      "topicId": "chemistry-02",
+      "kind": "exam-methods",
+      "title": "Chemistry mathematical and practical exam checklist",
+      "content": "Show the equation before substitution. Convert cm³ to dm³ and temperature to kelvin where required. Use balanced equations and limiting reagents. Keep unrounded values until the final answer, include units and sensible significant figures. For uncertainty questions, identify the measured quantities and combine percentage uncertainties appropriately. For practical evaluation, name a specific source of error, explain its effect on the result and give a realistic improvement that addresses it.",
+      "source": "AQA A-level Chemistry (7405) specification, subject content sections 3.1–3.3 and practical assessment section 7"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "formula-1",
+      "topicId": "chemistry-01",
+      "name": "Relative atomic mass",
+      "expression": "Aᵣ = Σ(isotopic mass × abundance)/100",
+      "units": "Relative mass",
+      "conditions": "Abundances as percentages"
+    },
+    {
+      "id": "formula-2",
+      "topicId": "chemistry-02",
+      "name": "Amount of substance",
+      "expression": "n = m/M",
+      "units": "mol, g, g mol⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-3",
+      "topicId": "chemistry-02",
+      "name": "Concentration",
+      "expression": "c = n/V",
+      "units": "mol dm⁻³; V in dm³",
+      "conditions": ""
+    },
+    {
+      "id": "formula-4",
+      "topicId": "chemistry-02",
+      "name": "Ideal gas equation",
+      "expression": "pV = nRT",
+      "units": "Pa, m³, mol, K",
+      "conditions": ""
+    },
+    {
+      "id": "formula-5",
+      "topicId": "chemistry-02",
+      "name": "Titration mole ratio",
+      "expression": "n₁/coefficient₁ = n₂/coefficient₂",
+      "units": "mol",
+      "conditions": "Use balanced equation"
+    },
+    {
+      "id": "formula-6",
+      "topicId": "chemistry-08",
+      "name": "Calorimetry",
+      "expression": "q = mcΔT",
+      "units": "J, g or kg, J g⁻¹ K⁻¹ or J kg⁻¹ K⁻¹",
+      "conditions": "Use consistent mass and heat capacity units"
+    },
+    {
+      "id": "formula-7",
+      "topicId": "chemistry-08",
+      "name": "Enthalpy from calorimetry",
+      "expression": "ΔH = −q/n",
+      "units": "kJ mol⁻¹ if q in kJ",
+      "conditions": "For heat released to solution"
+    },
+    {
+      "id": "formula-8",
+      "topicId": "chemistry-08",
+      "name": "Mean bond enthalpy estimate",
+      "expression": "ΔH ≈ Σ(bonds broken)−Σ(bonds formed)",
+      "units": "kJ mol⁻¹",
+      "conditions": "Approximate"
+    },
+    {
+      "id": "formula-9",
+      "topicId": "chemistry-10",
+      "name": "Equilibrium constant Kc",
+      "expression": "Kc = [C]^c[D]^d/[A]^a[B]^b",
+      "units": "Concentration units depend on expression",
+      "conditions": "For aA+bB ⇌ cC+dD"
+    },
+    {
+      "id": "formula-10",
+      "topicId": "chemistry-10",
+      "name": "Equilibrium constant Kp",
+      "expression": "Kp = (pC)^c(pD)^d/(pA)^a(pB)^b",
+      "units": "Partial pressures",
+      "conditions": "For gaseous equilibrium"
+    },
+    {
+      "id": "formula-11",
+      "topicId": "chemistry-16",
+      "name": "Rate equation",
+      "expression": "rate = k[A]^m[B]^n",
+      "units": "Units depend on overall order",
+      "conditions": "Orders determined experimentally"
+    },
+    {
+      "id": "formula-12",
+      "topicId": "chemistry-16",
+      "name": "Arrhenius equation",
+      "expression": "k = Ae^(−Ea/RT)",
+      "units": "T in K; Ea in J mol⁻¹",
+      "conditions": ""
+    },
+    {
+      "id": "formula-13",
+      "topicId": "chemistry-19",
+      "name": "pH",
+      "expression": "pH = −log₁₀[H⁺]",
+      "units": "[H⁺] in mol dm⁻³",
+      "conditions": ""
+    },
+    {
+      "id": "formula-14",
+      "topicId": "chemistry-19",
+      "name": "Acid dissociation constant",
+      "expression": "Ka = [H⁺][A⁻]/[HA]",
+      "units": "Equilibrium concentrations",
+      "conditions": "HA ⇌ H⁺ + A⁻"
+    },
+    {
+      "id": "formula-15",
+      "topicId": "chemistry-19",
+      "name": "pKa",
+      "expression": "pKa = −log₁₀Ka",
+      "units": "Dimensionless",
+      "conditions": ""
+    },
+    {
+      "id": "formula-16",
+      "topicId": "chemistry-22",
+      "name": "Gibbs free energy",
+      "expression": "ΔG = ΔH−TΔS",
+      "units": "Use consistent energy units; T in K",
+      "conditions": "At constant temperature and pressure"
+    },
+    {
+      "id": "formula-17",
+      "topicId": "chemistry-27",
+      "name": "Cell EMF",
+      "expression": "E°cell = E°cathode−E°anode",
+      "units": "V",
+      "conditions": "Use standard reduction potentials"
+    }
+  ]
+}

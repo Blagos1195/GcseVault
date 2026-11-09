@@ -153,6 +153,41 @@ test("A-level practice catalogues cover the configured subjects", () => {
   assert.ok(catalogues[2].topics.length >= 20);
 });
 
+test("A-level course packs cover their catalogues and include usable revision data", () => {
+  const subjects = [
+    ["edexcel-a-level-mathematics", "revision/course-packs/edexcel-a-level-mathematics.json", "revision/catalogues/edexcel-a-level-mathematics.json"],
+    ["aqa-a-level-physics", "revision/course-packs/aqa-a-level-physics-core.json", "revision/catalogues/aqa-a-level-physics-core.json"],
+    ["aqa-a-level-chemistry", "revision/course-packs/aqa-a-level-chemistry.json", "revision/catalogues/aqa-a-level-chemistry.json"]
+  ];
+  for (const [catalogueId, packPath, cataloguePath] of subjects) {
+    const pack = JSON.parse(fs.readFileSync(new URL(`../${packPath}`, import.meta.url), "utf8"));
+    const catalogue = JSON.parse(fs.readFileSync(new URL(`../${cataloguePath}`, import.meta.url), "utf8"));
+    const topicIds = new Set(catalogue.topics.map(topic => topic.id));
+    const cardIds = new Set(pack.cards.map(card => card.id));
+    assert.equal(pack.type, "revision-course-pack");
+    assert.equal(pack.version, 1);
+    assert.equal(pack.catalogueId, catalogueId);
+    assert.ok(pack.cards.length >= catalogue.topics.length * 3);
+    assert.ok(pack.resources.length >= catalogue.topics.length);
+    assert.ok(pack.formulas.length > 0);
+    for (const topic of catalogue.topics) {
+      assert.ok(pack.cards.some(card => card.topicId === topic.id), `No flashcards for ${topic.id}`);
+      assert.ok(pack.resources.some(resource => resource.topicId === topic.id), `No learning resource for ${topic.id}`);
+    }
+    for (const card of pack.cards) {
+      assert.ok(topicIds.has(card.topicId));
+      assert.ok(card.front && card.back);
+      assert.ok((card.links || []).every(id => cardIds.has(id)));
+    }
+    for (const resource of pack.resources) assert.ok(topicIds.has(resource.topicId) && resource.content);
+    for (const formula of pack.formulas) assert.ok(topicIds.has(formula.topicId) && formula.name && formula.expression);
+  }
+  const physics = JSON.parse(fs.readFileSync(new URL("../revision/course-packs/aqa-a-level-physics-core.json", import.meta.url), "utf8"));
+  const chemistry = JSON.parse(fs.readFileSync(new URL("../revision/course-packs/aqa-a-level-chemistry.json", import.meta.url), "utf8"));
+  assert.equal(physics.resources.filter(resource => resource.kind === "required-practical").length, 12);
+  assert.equal(chemistry.resources.filter(resource => resource.kind === "required-practical").length, 12);
+});
+
 test("Revision sync retains private exam-practice data", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");

@@ -1,0 +1,1646 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "edexcel-a-level-mathematics-pack",
+  "catalogueId": "edexcel-a-level-mathematics",
+  "subject": "Mathematics",
+  "examBoard": "Pearson Edexcel",
+  "qualification": "A-level Mathematics (9MA0), not Further Mathematics",
+  "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance — https://qualifications.pearson.com/en/qualifications/edexcel-a-levels/mathematics-2017.html",
+  "cards": [
+    {
+      "id": "algebraic-expressions-1",
+      "topicId": "algebraic-expressions",
+      "front": "State the index laws for multiplication and division.",
+      "back": "For a≠0: a^m×a^n=a^(m+n); a^m÷a^n=a^(m−n).",
+      "difficulty": 3,
+      "links": [
+        "quadratics-1"
+      ]
+    },
+    {
+      "id": "algebraic-expressions-2",
+      "topicId": "algebraic-expressions",
+      "front": "How is a negative or fractional index interpreted?",
+      "back": "a^(−n)=1/a^n; a^(1/n)=the nth root of a. More generally a^(m/n)=the nth root of a^m, where defined.",
+      "difficulty": 3
+    },
+    {
+      "id": "algebraic-expressions-3",
+      "topicId": "algebraic-expressions",
+      "front": "How do you simplify an algebraic fraction?",
+      "back": "Factorise numerator and denominator fully, state excluded values from the original denominator, then cancel common factors.",
+      "difficulty": 3
+    },
+    {
+      "id": "algebraic-expressions-4",
+      "topicId": "algebraic-expressions",
+      "front": "Simplify √72.",
+      "back": "√72=√(36×2)=6√2. Keep the exact surd unless a decimal is requested.",
+      "difficulty": 2
+    },
+    {
+      "id": "quadratics-1",
+      "topicId": "quadratics",
+      "front": "What does the discriminant b²−4ac tell you?",
+      "back": "Δ>0: two distinct real roots; Δ=0: one repeated real root; Δ<0: no real roots.",
+      "difficulty": 3,
+      "links": [
+        "algebraic-expressions-1",
+        "equations-inequalities-1",
+        "graphs-transformations-1"
+      ]
+    },
+    {
+      "id": "quadratics-2",
+      "topicId": "quadratics",
+      "front": "Write the quadratic formula.",
+      "back": "For ax²+bx+c=0, x=(−b±√(b²−4ac))/(2a).",
+      "difficulty": 3
+    },
+    {
+      "id": "quadratics-3",
+      "topicId": "quadratics",
+      "front": "What information does completed-square form a(x−h)²+k reveal?",
+      "back": "The turning point is (h,k); the axis of symmetry is x=h. If a>0 it is a minimum; if a<0 it is a maximum.",
+      "difficulty": 3
+    },
+    {
+      "id": "quadratics-4",
+      "topicId": "quadratics",
+      "front": "Find the roots of x²−5x+6=0.",
+      "back": "(x−2)(x−3)=0, so x=2 or x=3.",
+      "difficulty": 2
+    },
+    {
+      "id": "equations-inequalities-1",
+      "topicId": "equations-inequalities",
+      "front": "What happens to an inequality when you multiply by a negative number?",
+      "back": "Reverse the inequality sign.",
+      "difficulty": 3,
+      "links": [
+        "quadratics-1"
+      ]
+    },
+    {
+      "id": "equations-inequalities-2",
+      "topicId": "equations-inequalities",
+      "front": "Solve |x|=a for a>0.",
+      "back": "x=a or x=−a because both values are distance a from zero.",
+      "difficulty": 3
+    },
+    {
+      "id": "equations-inequalities-3",
+      "topicId": "equations-inequalities",
+      "front": "How do you solve a linear and quadratic simultaneous system?",
+      "back": "Rearrange the linear equation for one variable, substitute into the quadratic, solve, then back-substitute and check both equations.",
+      "difficulty": 3
+    },
+    {
+      "id": "equations-inequalities-4",
+      "topicId": "equations-inequalities",
+      "front": "Solve x²−4<0.",
+      "back": "(x−2)(x+2)<0, so −2<x<2.",
+      "difficulty": 2
+    },
+    {
+      "id": "graphs-transformations-1",
+      "topicId": "graphs-transformations",
+      "front": "Describe y=f(x)+a.",
+      "back": "Translate the graph of y=f(x) vertically by a units: up if a>0, down if a<0.",
+      "difficulty": 3,
+      "links": [
+        "quadratics-1",
+        "coordinate-geometry-1"
+      ]
+    },
+    {
+      "id": "graphs-transformations-2",
+      "topicId": "graphs-transformations",
+      "front": "Describe y=f(x+a).",
+      "back": "Translate the graph horizontally by a units to the left when a>0.",
+      "difficulty": 3
+    },
+    {
+      "id": "graphs-transformations-3",
+      "topicId": "graphs-transformations",
+      "front": "What is the difference between y=−f(x) and y=f(−x)?",
+      "back": "y=−f(x) reflects in the x-axis; y=f(−x) reflects in the y-axis.",
+      "difficulty": 3
+    },
+    {
+      "id": "graphs-transformations-4",
+      "topicId": "graphs-transformations",
+      "front": "How does y=2f(x) change a graph?",
+      "back": "A vertical stretch by scale factor 2, parallel to the y-axis.",
+      "difficulty": 2
+    },
+    {
+      "id": "coordinate-geometry-1",
+      "topicId": "coordinate-geometry",
+      "front": "Find the gradient between (x₁,y₁) and (x₂,y₂).",
+      "back": "m=(y₂−y₁)/(x₂−x₁), provided x₂≠x₁.",
+      "difficulty": 3,
+      "links": [
+        "graphs-transformations-1",
+        "functions-graphs-1"
+      ]
+    },
+    {
+      "id": "coordinate-geometry-2",
+      "topicId": "coordinate-geometry",
+      "front": "What is the condition for two non-vertical lines to be perpendicular?",
+      "back": "Their gradients multiply to −1: m₁m₂=−1.",
+      "difficulty": 3
+    },
+    {
+      "id": "coordinate-geometry-3",
+      "topicId": "coordinate-geometry",
+      "front": "State the equation of a circle with centre (a,b) and radius r.",
+      "back": "(x−a)²+(y−b)²=r².",
+      "difficulty": 3
+    },
+    {
+      "id": "coordinate-geometry-4",
+      "topicId": "coordinate-geometry",
+      "front": "What is the centre and radius of x²+y²−6x+4y−12=0?",
+      "back": "Complete squares: (x−3)²+(y+2)²=25. Centre (3,−2), radius 5.",
+      "difficulty": 2
+    },
+    {
+      "id": "algebraic-methods-1",
+      "topicId": "algebraic-methods",
+      "front": "State the factor theorem.",
+      "back": "(x−a) is a factor of polynomial f(x) if and only if f(a)=0.",
+      "difficulty": 3
+    },
+    {
+      "id": "algebraic-methods-2",
+      "topicId": "algebraic-methods",
+      "front": "What is a proper algebraic fraction?",
+      "back": "One where the degree of the numerator is less than the degree of the denominator.",
+      "difficulty": 3
+    },
+    {
+      "id": "algebraic-methods-3",
+      "topicId": "algebraic-methods",
+      "front": "When is polynomial division needed before partial fractions?",
+      "back": "When the numerator's degree is greater than or equal to the denominator's degree; first divide to obtain a proper remainder fraction.",
+      "difficulty": 3
+    },
+    {
+      "id": "algebraic-methods-4",
+      "topicId": "algebraic-methods",
+      "front": "What makes a mathematical proof valid?",
+      "back": "A logically connected argument from accepted facts or stated assumptions to the result, with no unsupported steps or circular reasoning.",
+      "difficulty": 2
+    },
+    {
+      "id": "binomial-expansion-1",
+      "topicId": "binomial-expansion",
+      "front": "State the general term in (a+b)^n.",
+      "back": "T_(r+1)=nCr·a^(n−r)·b^r, for r=0,…,n.",
+      "difficulty": 3,
+      "links": [
+        "sequences-series-1"
+      ]
+    },
+    {
+      "id": "binomial-expansion-2",
+      "topicId": "binomial-expansion",
+      "front": "What condition is needed for the expansion of (1+x)^n with non-integer n?",
+      "back": "The binomial series converges for |x|<1.",
+      "difficulty": 3
+    },
+    {
+      "id": "binomial-expansion-3",
+      "topicId": "binomial-expansion",
+      "front": "How do you find a specified term in a binomial expansion?",
+      "back": "Use the general term, substitute the term position for r, and simplify its coefficient and powers.",
+      "difficulty": 3
+    },
+    {
+      "id": "binomial-expansion-4",
+      "topicId": "binomial-expansion",
+      "front": "Write the first three terms of (1+x)^n.",
+      "back": "1+nx+n(n−1)x²/2!+…",
+      "difficulty": 2
+    },
+    {
+      "id": "trigonometry-1",
+      "topicId": "trigonometry",
+      "front": "State the sine rule.",
+      "back": "a/sin A=b/sin B=c/sin C, with each side opposite its corresponding angle.",
+      "difficulty": 3,
+      "links": [
+        "radians-1",
+        "advanced-trigonometry-1",
+        "parametric-equations-1"
+      ]
+    },
+    {
+      "id": "trigonometry-2",
+      "topicId": "trigonometry",
+      "front": "State the cosine rule.",
+      "back": "c²=a²+b²−2ab cos C, where C is the included angle between sides a and b.",
+      "difficulty": 3
+    },
+    {
+      "id": "trigonometry-3",
+      "topicId": "trigonometry",
+      "front": "State the area formula for a triangle using two sides and the included angle.",
+      "back": "Area=½ab sin C.",
+      "difficulty": 3
+    },
+    {
+      "id": "trigonometry-4",
+      "topicId": "trigonometry",
+      "front": "What are the exact values of sin 30°, cos 60° and tan 45°?",
+      "back": "All are 1/2, 1/2 and 1 respectively.",
+      "difficulty": 2
+    },
+    {
+      "id": "vectors-1",
+      "topicId": "vectors",
+      "front": "How do you find vector AB from position vectors a and b?",
+      "back": "AB=b−a.",
+      "difficulty": 3,
+      "links": [
+        "three-dimensional-vectors-1",
+        "forces-motion-1",
+        "projectiles-1"
+      ]
+    },
+    {
+      "id": "vectors-2",
+      "topicId": "vectors",
+      "front": "What does it mean for two non-zero vectors to be parallel?",
+      "back": "One is a scalar multiple of the other.",
+      "difficulty": 3
+    },
+    {
+      "id": "vectors-3",
+      "topicId": "vectors",
+      "front": "How do you find the magnitude of a 2D vector (x,y)?",
+      "back": "|v|=√(x²+y²).",
+      "difficulty": 3
+    },
+    {
+      "id": "vectors-4",
+      "topicId": "vectors",
+      "front": "If OA=a and OB=b, write AB.",
+      "back": "AB=b−a.",
+      "difficulty": 2
+    },
+    {
+      "id": "differentiation-1",
+      "topicId": "differentiation",
+      "front": "State the power rule for differentiation.",
+      "back": "d(x^n)/dx=nx^(n−1).",
+      "difficulty": 3,
+      "links": [
+        "advanced-differentiation-1",
+        "integration-1",
+        "variable-acceleration-1"
+      ]
+    },
+    {
+      "id": "differentiation-2",
+      "topicId": "differentiation",
+      "front": "How do you find the equation of a tangent at x=a?",
+      "back": "Find y=f(a) and gradient f′(a), then use y−f(a)=f′(a)(x−a).",
+      "difficulty": 3
+    },
+    {
+      "id": "differentiation-3",
+      "topicId": "differentiation",
+      "front": "What condition defines a stationary point?",
+      "back": "f′(x)=0.",
+      "difficulty": 3
+    },
+    {
+      "id": "differentiation-4",
+      "topicId": "differentiation",
+      "front": "How can the second derivative classify a stationary point?",
+      "back": "At a stationary point, f″>0 indicates a local minimum and f″<0 a local maximum; f″=0 is inconclusive.",
+      "difficulty": 2
+    },
+    {
+      "id": "integration-1",
+      "topicId": "integration",
+      "front": "State the power rule for integration.",
+      "back": "∫x^n dx=x^(n+1)/(n+1)+C, for n≠−1.",
+      "difficulty": 3,
+      "links": [
+        "differentiation-1",
+        "advanced-integration-1",
+        "further-kinematics-1"
+      ]
+    },
+    {
+      "id": "integration-2",
+      "topicId": "integration",
+      "front": "What does a definite integral represent geometrically?",
+      "back": "Signed area between the curve and x-axis over the interval.",
+      "difficulty": 3
+    },
+    {
+      "id": "integration-3",
+      "topicId": "integration",
+      "front": "How do you find area between two curves?",
+      "back": "Integrate upper curve minus lower curve over the interval, splitting where the curves cross if needed.",
+      "difficulty": 3
+    },
+    {
+      "id": "integration-4",
+      "topicId": "integration",
+      "front": "Find ∫(3x²−4) dx.",
+      "back": "x³−4x+C.",
+      "difficulty": 2
+    },
+    {
+      "id": "exponentials-logarithms-1",
+      "topicId": "exponentials-logarithms",
+      "front": "State three logarithm laws.",
+      "back": "log_a(xy)=log_a x+log_a y; log_a(x/y)=log_a x−log_a y; log_a(x^n)=n log_a x.",
+      "difficulty": 3,
+      "links": [
+        "sequences-series-1"
+      ]
+    },
+    {
+      "id": "exponentials-logarithms-2",
+      "topicId": "exponentials-logarithms",
+      "front": "What is the relationship between exponential and logarithmic functions?",
+      "back": "They are inverses: y=a^x iff x=log_a y.",
+      "difficulty": 3
+    },
+    {
+      "id": "exponentials-logarithms-3",
+      "topicId": "exponentials-logarithms",
+      "front": "What is ln x?",
+      "back": "The logarithm of x to base e, where e≈2.71828.",
+      "difficulty": 3
+    },
+    {
+      "id": "exponentials-logarithms-4",
+      "topicId": "exponentials-logarithms",
+      "front": "Solve 3^x=10.",
+      "back": "Take logs: x=ln(10)/ln(3).",
+      "difficulty": 2
+    },
+    {
+      "id": "functions-graphs-1",
+      "topicId": "functions-graphs",
+      "front": "What is the domain of a function?",
+      "back": "The set of input values for which the function is defined.",
+      "difficulty": 3,
+      "links": [
+        "coordinate-geometry-1"
+      ]
+    },
+    {
+      "id": "functions-graphs-2",
+      "topicId": "functions-graphs",
+      "front": "How do you evaluate fg(x) when fg means f∘g?",
+      "back": "Calculate g(x) first, then substitute that result into f.",
+      "difficulty": 3
+    },
+    {
+      "id": "functions-graphs-3",
+      "topicId": "functions-graphs",
+      "front": "When does an inverse function exist?",
+      "back": "When the function is one-to-one on its domain, or after restricting the domain to make it one-to-one.",
+      "difficulty": 3
+    },
+    {
+      "id": "functions-graphs-4",
+      "topicId": "functions-graphs",
+      "front": "Distinguish |f(x)| from f(|x|).",
+      "back": "|f(x)| reflects negative y-values above the x-axis; f(|x|) reflects the right-hand half of the graph across the y-axis.",
+      "difficulty": 2
+    },
+    {
+      "id": "sequences-series-1",
+      "topicId": "sequences-series",
+      "front": "State the nth term of an arithmetic sequence.",
+      "back": "u_n=a+(n−1)d.",
+      "difficulty": 3,
+      "links": [
+        "binomial-expansion-1",
+        "exponentials-logarithms-1"
+      ]
+    },
+    {
+      "id": "sequences-series-2",
+      "topicId": "sequences-series",
+      "front": "State the sum of the first n terms of an arithmetic sequence.",
+      "back": "S_n=n/2[2a+(n−1)d].",
+      "difficulty": 3
+    },
+    {
+      "id": "sequences-series-3",
+      "topicId": "sequences-series",
+      "front": "State the nth term and finite sum of a geometric sequence.",
+      "back": "u_n=ar^(n−1); S_n=a(1−r^n)/(1−r), r≠1.",
+      "difficulty": 3
+    },
+    {
+      "id": "sequences-series-4",
+      "topicId": "sequences-series",
+      "front": "When does a geometric series have a sum to infinity?",
+      "back": "When |r|<1; then S∞=a/(1−r).",
+      "difficulty": 2
+    },
+    {
+      "id": "radians-1",
+      "topicId": "radians",
+      "front": "How is an angle in radians defined?",
+      "back": "θ=s/r, where s is arc length and r is radius.",
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
+    },
+    {
+      "id": "radians-2",
+      "topicId": "radians",
+      "front": "State the arc length formula.",
+      "back": "s=rθ, with θ in radians.",
+      "difficulty": 3
+    },
+    {
+      "id": "radians-3",
+      "topicId": "radians",
+      "front": "State the sector area formula.",
+      "back": "A=½r²θ, with θ in radians.",
+      "difficulty": 3
+    },
+    {
+      "id": "radians-4",
+      "topicId": "radians",
+      "front": "State the small-angle approximations.",
+      "back": "For small θ in radians: sinθ≈θ, tanθ≈θ, cosθ≈1−θ²/2.",
+      "difficulty": 2
+    },
+    {
+      "id": "advanced-trigonometry-1",
+      "topicId": "advanced-trigonometry",
+      "front": "State sin(A±B).",
+      "back": "sin(A±B)=sinA cosB ± cosA sinB.",
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
+    },
+    {
+      "id": "advanced-trigonometry-2",
+      "topicId": "advanced-trigonometry",
+      "front": "State cos(A±B).",
+      "back": "cos(A±B)=cosA cosB ∓ sinA sinB.",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-trigonometry-3",
+      "topicId": "advanced-trigonometry",
+      "front": "State the double-angle identities for sin2θ and cos2θ.",
+      "back": "sin2θ=2sinθcosθ; cos2θ=cos²θ−sin²θ=1−2sin²θ=2cos²θ−1.",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-trigonometry-4",
+      "topicId": "advanced-trigonometry",
+      "front": "How is a sinθ+b cosθ rewritten as R sin(θ+α)?",
+      "back": "R=√(a²+b²), with Rcosα=a and Rsinα=b.",
+      "difficulty": 2
+    },
+    {
+      "id": "parametric-equations-1",
+      "topicId": "parametric-equations",
+      "front": "How do you find dy/dx for parametric equations?",
+      "back": "dy/dx=(dy/dt)/(dx/dt), provided dx/dt is non-zero.",
+      "difficulty": 3,
+      "links": [
+        "trigonometry-1"
+      ]
+    },
+    {
+      "id": "parametric-equations-2",
+      "topicId": "parametric-equations",
+      "front": "How do you find a tangent to a parametric curve?",
+      "back": "Find x and y at the given t, calculate dy/dx there, then use point-gradient form.",
+      "difficulty": 3
+    },
+    {
+      "id": "parametric-equations-3",
+      "topicId": "parametric-equations",
+      "front": "Why can eliminating the parameter lose information?",
+      "back": "The Cartesian equation may include points not reached by the allowed parameter interval or may hide direction and restrictions.",
+      "difficulty": 3
+    },
+    {
+      "id": "parametric-equations-4",
+      "topicId": "parametric-equations",
+      "front": "If x=t² and y=t³, find dy/dx.",
+      "back": "dx/dt=2t, dy/dt=3t², so dy/dx=3t/2 for t≠0.",
+      "difficulty": 2
+    },
+    {
+      "id": "advanced-differentiation-1",
+      "topicId": "advanced-differentiation",
+      "front": "State the chain rule.",
+      "back": "If y=f(u) and u=g(x), dy/dx=(dy/du)(du/dx).",
+      "difficulty": 3,
+      "links": [
+        "differentiation-1"
+      ]
+    },
+    {
+      "id": "advanced-differentiation-2",
+      "topicId": "advanced-differentiation",
+      "front": "State the product rule.",
+      "back": "d(uv)/dx=u′v+uv′.",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-differentiation-3",
+      "topicId": "advanced-differentiation",
+      "front": "State the quotient rule.",
+      "back": "d(u/v)/dx=(vu′−uv′)/v².",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-differentiation-4",
+      "topicId": "advanced-differentiation",
+      "front": "Differentiate x²+y²=25 implicitly.",
+      "back": "2x+2y(dy/dx)=0, so dy/dx=−x/y.",
+      "difficulty": 2
+    },
+    {
+      "id": "numerical-methods-1",
+      "topicId": "numerical-methods",
+      "front": "What does a sign change f(a)f(b)<0 establish for continuous f?",
+      "back": "At least one root lies between a and b (the intermediate value theorem).",
+      "difficulty": 3
+    },
+    {
+      "id": "numerical-methods-2",
+      "topicId": "numerical-methods",
+      "front": "Describe fixed-point iteration.",
+      "back": "Rewrite f(x)=0 as x=g(x), choose x₀, then repeatedly calculate x_(n+1)=g(x_n).",
+      "difficulty": 3
+    },
+    {
+      "id": "numerical-methods-3",
+      "topicId": "numerical-methods",
+      "front": "State the Newton-Raphson formula.",
+      "back": "x_(n+1)=x_n−f(x_n)/f′(x_n).",
+      "difficulty": 3
+    },
+    {
+      "id": "numerical-methods-4",
+      "topicId": "numerical-methods",
+      "front": "Why can Newton-Raphson fail?",
+      "back": "The derivative may be zero or very small, the iteration may diverge, or it may converge to an unintended root.",
+      "difficulty": 2
+    },
+    {
+      "id": "advanced-integration-1",
+      "topicId": "advanced-integration",
+      "front": "State integration by parts.",
+      "back": "∫u dv/dx dx=uv−∫v du/dx dx.",
+      "difficulty": 3,
+      "links": [
+        "integration-1"
+      ]
+    },
+    {
+      "id": "advanced-integration-2",
+      "topicId": "advanced-integration",
+      "front": "What is the key step in integration by substitution?",
+      "back": "Choose u as an inner function, express dx in terms of du, and rewrite the whole integral in u; change limits for a definite integral.",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-integration-3",
+      "topicId": "advanced-integration",
+      "front": "How do you solve a separable differential equation?",
+      "back": "Rearrange to separate y and x, integrate both sides, include a constant, then use any initial condition.",
+      "difficulty": 3
+    },
+    {
+      "id": "advanced-integration-4",
+      "topicId": "advanced-integration",
+      "front": "Integrate ∫2x cos(x²) dx.",
+      "back": "Let u=x², du=2x dx. The integral is ∫cosu du=sin(x²)+C.",
+      "difficulty": 2
+    },
+    {
+      "id": "three-dimensional-vectors-1",
+      "topicId": "three-dimensional-vectors",
+      "front": "State the 3D scalar product.",
+      "back": "a·b=a_xb_x+a_yb_y+a_zb_z=|a||b|cosθ.",
+      "difficulty": 3,
+      "links": [
+        "vectors-1"
+      ]
+    },
+    {
+      "id": "three-dimensional-vectors-2",
+      "topicId": "three-dimensional-vectors",
+      "front": "What condition shows two vectors are perpendicular?",
+      "back": "Their scalar product is zero.",
+      "difficulty": 3
+    },
+    {
+      "id": "three-dimensional-vectors-3",
+      "topicId": "three-dimensional-vectors",
+      "front": "Write a vector equation of a line.",
+      "back": "r=a+λd, where a is a point position vector and d is a direction vector.",
+      "difficulty": 3
+    },
+    {
+      "id": "three-dimensional-vectors-4",
+      "topicId": "three-dimensional-vectors",
+      "front": "How do you find the angle between two direction vectors?",
+      "back": "cosθ=(a·b)/(|a||b|), then use inverse cosine and interpret the angle required.",
+      "difficulty": 2
+    },
+    {
+      "id": "data-collection-1",
+      "topicId": "data-collection",
+      "front": "Distinguish a population from a sample.",
+      "back": "The population is the entire group being studied; a sample is the subset from which data are collected.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-collection-2",
+      "topicId": "data-collection",
+      "front": "How does stratified sampling work?",
+      "back": "Divide the population into relevant strata and sample from each in proportion to its population size.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-collection-3",
+      "topicId": "data-collection",
+      "front": "Why can a voluntary-response sample be biased?",
+      "back": "People with strong opinions or particular characteristics may be more likely to respond.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-collection-4",
+      "topicId": "data-collection",
+      "front": "What is a sampling frame?",
+      "back": "The list or source from which the sample is selected.",
+      "difficulty": 2
+    },
+    {
+      "id": "measures-spread-1",
+      "topicId": "measures-spread",
+      "front": "How is the mean calculated?",
+      "back": "Mean=Σx/n, or Σfx/Σf for a frequency table.",
+      "difficulty": 3
+    },
+    {
+      "id": "measures-spread-2",
+      "topicId": "measures-spread",
+      "front": "What is the relationship between variance and standard deviation?",
+      "back": "Standard deviation is the positive square root of the variance.",
+      "difficulty": 3
+    },
+    {
+      "id": "measures-spread-3",
+      "topicId": "measures-spread",
+      "front": "What is the interquartile range?",
+      "back": "IQR=upper quartile−lower quartile=Q3−Q1.",
+      "difficulty": 3
+    },
+    {
+      "id": "measures-spread-4",
+      "topicId": "measures-spread",
+      "front": "Why is the median more resistant to outliers than the mean?",
+      "back": "It depends on the middle position rather than the magnitude of every value.",
+      "difficulty": 2
+    },
+    {
+      "id": "data-presentation-1",
+      "topicId": "data-presentation",
+      "front": "State the histogram frequency-density formula.",
+      "back": "Frequency density=frequency÷class width.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-presentation-2",
+      "topicId": "data-presentation",
+      "front": "Why can histogram bars have different widths?",
+      "back": "The horizontal widths represent class intervals; area, not height alone, represents frequency.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-presentation-3",
+      "topicId": "data-presentation",
+      "front": "What can a cumulative frequency graph estimate?",
+      "back": "The median, quartiles, percentiles and interquartile range.",
+      "difficulty": 3
+    },
+    {
+      "id": "data-presentation-4",
+      "topicId": "data-presentation",
+      "front": "What five values define a box plot?",
+      "back": "Minimum, lower quartile, median, upper quartile and maximum (or whisker endpoints if outliers are shown separately).",
+      "difficulty": 2
+    },
+    {
+      "id": "correlation-regression-1",
+      "topicId": "correlation-regression",
+      "front": "What does r=−1 indicate?",
+      "back": "Perfect negative linear correlation.",
+      "difficulty": 3
+    },
+    {
+      "id": "correlation-regression-2",
+      "topicId": "correlation-regression",
+      "front": "Does correlation prove causation?",
+      "back": "No. Association may arise from coincidence, confounding variables or reverse causation.",
+      "difficulty": 3
+    },
+    {
+      "id": "correlation-regression-3",
+      "topicId": "correlation-regression",
+      "front": "What does the regression line of y on x minimise?",
+      "back": "The sum of squared vertical residuals (observed y minus predicted y).",
+      "difficulty": 3
+    },
+    {
+      "id": "correlation-regression-4",
+      "topicId": "correlation-regression",
+      "front": "When is extrapolation risky?",
+      "back": "When predicting outside the observed x-range, because the relationship may not continue.",
+      "difficulty": 2
+    },
+    {
+      "id": "probability-1",
+      "topicId": "probability",
+      "front": "State the addition rule for two events.",
+      "back": "P(A∪B)=P(A)+P(B)−P(A∩B).",
+      "difficulty": 3,
+      "links": [
+        "binomial-distribution-1",
+        "normal-distribution-1",
+        "hypothesis-testing-1"
+      ]
+    },
+    {
+      "id": "probability-2",
+      "topicId": "probability",
+      "front": "What does mutually exclusive mean?",
+      "back": "The events cannot occur together, so P(A∩B)=0.",
+      "difficulty": 3
+    },
+    {
+      "id": "probability-3",
+      "topicId": "probability",
+      "front": "How do you test independence?",
+      "back": "Check whether P(A∩B)=P(A)P(B), equivalently P(A|B)=P(A) when defined.",
+      "difficulty": 3
+    },
+    {
+      "id": "probability-4",
+      "topicId": "probability",
+      "front": "State conditional probability.",
+      "back": "P(A|B)=P(A∩B)/P(B), provided P(B)>0.",
+      "difficulty": 2
+    },
+    {
+      "id": "binomial-distribution-1",
+      "topicId": "binomial-distribution",
+      "front": "State the conditions for a binomial model.",
+      "back": "Fixed number n of independent trials; two outcomes per trial; constant probability p of success.",
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "normal-distribution-1"
+      ]
+    },
+    {
+      "id": "binomial-distribution-2",
+      "topicId": "binomial-distribution",
+      "front": "State the binomial probability formula.",
+      "back": "P(X=r)=nCr p^r(1−p)^(n−r).",
+      "difficulty": 3
+    },
+    {
+      "id": "binomial-distribution-3",
+      "topicId": "binomial-distribution",
+      "front": "State the mean and variance of B(n,p).",
+      "back": "Mean=np; variance=np(1−p).",
+      "difficulty": 3
+    },
+    {
+      "id": "binomial-distribution-4",
+      "topicId": "binomial-distribution",
+      "front": "How do you calculate P(X≥1) efficiently?",
+      "back": "Use the complement: P(X≥1)=1−P(X=0)=1−(1−p)^n.",
+      "difficulty": 2
+    },
+    {
+      "id": "hypothesis-testing-1",
+      "topicId": "hypothesis-testing",
+      "front": "What is the null hypothesis?",
+      "back": "A statement about a population parameter, usually representing no change or a specified value, tested as the starting assumption.",
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "normal-distribution-1"
+      ]
+    },
+    {
+      "id": "hypothesis-testing-2",
+      "topicId": "hypothesis-testing",
+      "front": "What does a 5% significance level mean?",
+      "back": "If H0 is true, the probability of a result in the critical region is at most 0.05.",
+      "difficulty": 3
+    },
+    {
+      "id": "hypothesis-testing-3",
+      "topicId": "hypothesis-testing",
+      "front": "When do you reject H0 using a p-value?",
+      "back": "Reject H0 when p≤the significance level α.",
+      "difficulty": 3
+    },
+    {
+      "id": "hypothesis-testing-4",
+      "topicId": "hypothesis-testing",
+      "front": "How should a conclusion be written?",
+      "back": "In context, state whether there is sufficient evidence for H1; do not claim that H0 has been proved.",
+      "difficulty": 2
+    },
+    {
+      "id": "normal-distribution-1",
+      "topicId": "normal-distribution",
+      "front": "What do μ and σ represent in X~N(μ,σ²)?",
+      "back": "μ is the mean and σ is the standard deviation; the second parameter is the variance.",
+      "difficulty": 3,
+      "links": [
+        "probability-1",
+        "binomial-distribution-1",
+        "hypothesis-testing-1"
+      ]
+    },
+    {
+      "id": "normal-distribution-2",
+      "topicId": "normal-distribution",
+      "front": "How do you standardise a normal variable?",
+      "back": "Z=(X−μ)/σ, giving a standard normal variable with mean 0 and standard deviation 1.",
+      "difficulty": 3
+    },
+    {
+      "id": "normal-distribution-3",
+      "topicId": "normal-distribution",
+      "front": "What is the symmetry property of a normal distribution?",
+      "back": "P(X<μ−a)=P(X>μ+a) for a>0.",
+      "difficulty": 3
+    },
+    {
+      "id": "normal-distribution-4",
+      "topicId": "normal-distribution",
+      "front": "What is an inverse normal calculation?",
+      "back": "Finding a data value or z-score from a specified cumulative probability or percentile.",
+      "difficulty": 2
+    },
+    {
+      "id": "mechanics-modelling-1",
+      "topicId": "mechanics-modelling",
+      "front": "What is a particle model?",
+      "back": "An object whose mass is treated as concentrated at a point and whose size and rotation are ignored.",
+      "difficulty": 3
+    },
+    {
+      "id": "mechanics-modelling-2",
+      "topicId": "mechanics-modelling",
+      "front": "What does a light inextensible string imply?",
+      "back": "Its mass is negligible and its length does not change, so connected particles have equal acceleration magnitudes along the string.",
+      "difficulty": 3
+    },
+    {
+      "id": "mechanics-modelling-3",
+      "topicId": "mechanics-modelling",
+      "front": "What does a smooth surface imply?",
+      "back": "There is no frictional force at the contact.",
+      "difficulty": 3
+    },
+    {
+      "id": "mechanics-modelling-4",
+      "topicId": "mechanics-modelling",
+      "front": "Why state modelling assumptions?",
+      "back": "They explain simplifications and indicate when the mathematical result may not describe the real situation.",
+      "difficulty": 2
+    },
+    {
+      "id": "constant-acceleration-1",
+      "topicId": "constant-acceleration",
+      "front": "State the four SUVAT equations.",
+      "back": "v=u+at; s=ut+½at²; v²=u²+2as; s=½(u+v)t.",
+      "difficulty": 3,
+      "links": [
+        "forces-motion-1",
+        "projectiles-1",
+        "further-kinematics-1"
+      ]
+    },
+    {
+      "id": "constant-acceleration-2",
+      "topicId": "constant-acceleration",
+      "front": "What does the gradient of a velocity-time graph represent?",
+      "back": "Acceleration.",
+      "difficulty": 3
+    },
+    {
+      "id": "constant-acceleration-3",
+      "topicId": "constant-acceleration",
+      "front": "What does the signed area under a velocity-time graph represent?",
+      "back": "Displacement.",
+      "difficulty": 3
+    },
+    {
+      "id": "constant-acceleration-4",
+      "topicId": "constant-acceleration",
+      "front": "A body starts from rest and accelerates at 3 m s⁻² for 4 s. Find v.",
+      "back": "v=u+at=0+3×4=12 m s⁻¹.",
+      "difficulty": 2
+    },
+    {
+      "id": "forces-motion-1",
+      "topicId": "forces-motion",
+      "front": "State Newton's second law for constant mass.",
+      "back": "The resultant force on a body equals mass multiplied by acceleration: ΣF=ma.",
+      "difficulty": 3,
+      "links": [
+        "vectors-1",
+        "constant-acceleration-1",
+        "moments-1"
+      ]
+    },
+    {
+      "id": "forces-motion-2",
+      "topicId": "forces-motion",
+      "front": "Why do action-reaction forces not cancel each other?",
+      "back": "They act on different bodies, so they cannot cancel in one body's force equation.",
+      "difficulty": 3
+    },
+    {
+      "id": "forces-motion-3",
+      "topicId": "forces-motion",
+      "front": "How do you resolve a force F at angle θ above the horizontal?",
+      "back": "Horizontal component Fcosθ; vertical component Fsinθ.",
+      "difficulty": 3
+    },
+    {
+      "id": "forces-motion-4",
+      "topicId": "forces-motion",
+      "front": "What is the first step in a force problem?",
+      "back": "Draw a free-body diagram showing all forces acting on the chosen body.",
+      "difficulty": 2
+    },
+    {
+      "id": "variable-acceleration-1",
+      "topicId": "variable-acceleration",
+      "front": "State acceleration in differential form.",
+      "back": "a=dv/dt=d²s/dt².",
+      "difficulty": 3,
+      "links": [
+        "differentiation-1"
+      ]
+    },
+    {
+      "id": "variable-acceleration-2",
+      "topicId": "variable-acceleration",
+      "front": "How do you obtain displacement from velocity?",
+      "back": "Integrate v with respect to time and use the initial position or displacement condition.",
+      "difficulty": 3
+    },
+    {
+      "id": "variable-acceleration-3",
+      "topicId": "variable-acceleration",
+      "front": "How do you find total distance from a velocity-time function?",
+      "back": "Split the interval at times when v=0 and add the absolute displacement over each interval.",
+      "difficulty": 3
+    },
+    {
+      "id": "variable-acceleration-4",
+      "topicId": "variable-acceleration",
+      "front": "If v=6t−2, find a.",
+      "back": "a=dv/dt=6 m s⁻².",
+      "difficulty": 2
+    },
+    {
+      "id": "moments-1",
+      "topicId": "moments",
+      "front": "State the moment formula.",
+      "back": "Moment=force×perpendicular distance from pivot to line of action, in N m.",
+      "difficulty": 3,
+      "links": [
+        "forces-motion-1",
+        "friction-1"
+      ]
+    },
+    {
+      "id": "moments-2",
+      "topicId": "moments",
+      "front": "State the conditions for equilibrium of a rigid body in a plane.",
+      "back": "Resultant force is zero in each direction and total clockwise moment equals total anticlockwise moment.",
+      "difficulty": 3
+    },
+    {
+      "id": "moments-3",
+      "topicId": "moments",
+      "front": "Why choose the pivot at an unknown force?",
+      "back": "Its moment is zero, eliminating that unknown from the moment equation.",
+      "difficulty": 3
+    },
+    {
+      "id": "moments-4",
+      "topicId": "moments",
+      "front": "How is the centre of mass of a uniform symmetrical lamina located?",
+      "back": "At its geometric centre, where symmetry axes intersect.",
+      "difficulty": 2
+    },
+    {
+      "id": "friction-1",
+      "topicId": "friction",
+      "front": "State the limiting-friction equation.",
+      "back": "F=μR, where μ is the coefficient of friction and R is the normal reaction.",
+      "difficulty": 3,
+      "links": [
+        "moments-1"
+      ]
+    },
+    {
+      "id": "friction-2",
+      "topicId": "friction",
+      "front": "Is friction always equal to μR?",
+      "back": "No. It equals μR only at limiting equilibrium or impending slip; otherwise its magnitude is smaller as required.",
+      "difficulty": 3
+    },
+    {
+      "id": "friction-3",
+      "topicId": "friction",
+      "front": "Resolve weight on a plane inclined at θ.",
+      "back": "Parallel to plane: mg sinθ down slope; perpendicular: mg cosθ into plane.",
+      "difficulty": 3
+    },
+    {
+      "id": "friction-4",
+      "topicId": "friction",
+      "front": "What direction does friction act?",
+      "back": "Along the contact surface, opposing actual or impending relative motion.",
+      "difficulty": 2
+    },
+    {
+      "id": "projectiles-1",
+      "topicId": "projectiles",
+      "front": "What is the horizontal acceleration of an ideal projectile?",
+      "back": "Zero, if air resistance is neglected.",
+      "difficulty": 3,
+      "links": [
+        "vectors-1",
+        "constant-acceleration-1"
+      ]
+    },
+    {
+      "id": "projectiles-2",
+      "topicId": "projectiles",
+      "front": "What is the vertical acceleration of a projectile?",
+      "back": "Constant acceleration g downwards.",
+      "difficulty": 3
+    },
+    {
+      "id": "projectiles-3",
+      "topicId": "projectiles",
+      "front": "What is the vertical velocity at the highest point?",
+      "back": "Zero instantaneously; horizontal velocity is still present.",
+      "difficulty": 3
+    },
+    {
+      "id": "projectiles-4",
+      "topicId": "projectiles",
+      "front": "When is the range formula R=u²sin(2θ)/g valid?",
+      "back": "For launch and landing at the same height, with no air resistance and constant g.",
+      "difficulty": 2
+    },
+    {
+      "id": "applications-forces-1",
+      "topicId": "applications-forces",
+      "front": "What acceleration relationship applies to two particles joined by a taut light inextensible string?",
+      "back": "Their acceleration magnitudes along the string are equal.",
+      "difficulty": 3
+    },
+    {
+      "id": "applications-forces-2",
+      "topicId": "applications-forces",
+      "front": "What is the tension in an ideal light string over a smooth pulley?",
+      "back": "The tension has the same magnitude throughout the string.",
+      "difficulty": 3
+    },
+    {
+      "id": "applications-forces-3",
+      "topicId": "applications-forces",
+      "front": "Why write separate equations for connected particles?",
+      "back": "Each particle has a different set of external forces, although they share a linked acceleration.",
+      "difficulty": 3
+    },
+    {
+      "id": "applications-forces-4",
+      "topicId": "applications-forces",
+      "front": "What happens if a calculated tension is negative under an assumed direction?",
+      "back": "The assumed direction is inconsistent; interpret the force direction accordingly and re-check the model.",
+      "difficulty": 2
+    },
+    {
+      "id": "further-kinematics-1",
+      "topicId": "further-kinematics",
+      "front": "State the relationships between displacement, velocity and acceleration.",
+      "back": "v=ds/dt and a=dv/dt=d²s/dt².",
+      "difficulty": 3,
+      "links": [
+        "integration-1",
+        "constant-acceleration-1"
+      ]
+    },
+    {
+      "id": "further-kinematics-2",
+      "topicId": "further-kinematics",
+      "front": "How do you find a turning time?",
+      "back": "Solve v(t)=0 and check that the sign of velocity changes if a reversal is required.",
+      "difficulty": 3
+    },
+    {
+      "id": "further-kinematics-3",
+      "topicId": "further-kinematics",
+      "front": "How do you calculate total distance over an interval?",
+      "back": "Integrate |v(t)|, or split at velocity sign changes and add absolute displacements.",
+      "difficulty": 3
+    },
+    {
+      "id": "further-kinematics-4",
+      "topicId": "further-kinematics",
+      "front": "What are the units of s, v and a?",
+      "back": "Metres (m), metres per second (m s⁻¹), and metres per second squared (m s⁻²).",
+      "difficulty": 2
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "algebraic-expressions",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Use index laws only when their conditions are satisfied: for non-zero a, a^m a^n=a^(m+n), a^m/a^n=a^(m-n), (a^m)^n=a^(mn), and a^0=1. Fractional indices represent roots, while negative indices represent reciprocals. Surds are irrational roots left in exact form; simplify by extracting square factors and rationalise denominators when required. Expand brackets carefully and factorise by taking out common factors, using identities or grouping. Algebraic fractions require factorising before cancelling common factors; cancellation applies to factors, never individual terms.\n\nSpecification coverage: State the index laws for multiplication and division.; How is a negative or fractional index interpreted?; How do you simplify an algebraic fraction?; Simplify √72.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "quadratics",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A quadratic has form ax²+bx+c, a≠0. Solve by factorising, completing the square or using x=[−b±√(b²−4ac)]/(2a). Completing the square gives a(x−h)²+k, revealing the vertex and turning point. The discriminant Δ=b²−4ac determines the number of real roots: positive gives two, zero one repeated, negative none. In modelling, interpret roots and reject values outside the context.\n\nSpecification coverage: What does the discriminant b²−4ac tell you?; Write the quadratic formula.; What information does completed-square form a(x−h)²+k reveal?; Find the roots of x²−5x+6=0.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "equations-inequalities",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Solve simultaneous equations by substitution or elimination; when one equation is quadratic, intersections may give up to two solutions. For inequalities, find critical values, test intervals and represent the solution set clearly. Multiplying or dividing an inequality by a negative number reverses its direction. Modulus represents distance from zero: |x|=a gives x=±a for a≥0; inequalities require considering both sides of the boundary.\n\nSpecification coverage: What happens to an inequality when you multiply by a negative number?; Solve |x|=a for a>0.; How do you solve a linear and quadratic simultaneous system?; Solve x²−4<0.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "graphs-transformations",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Sketch using intercepts, stationary points, asymptotes, symmetry and end behaviour. For y=f(x)+a translate vertically; y=f(x+a) translates left by a; y=af(x) scales vertically by factor a; y=f(ax) scales horizontally by factor 1/a. y=−f(x) reflects in the x-axis and y=f(−x) in the y-axis. Apply transformations in a stated order and distinguish a stretch parallel to an axis from a translation.\n\nSpecification coverage: Describe y=f(x)+a.; Describe y=f(x+a).; What is the difference between y=−f(x) and y=f(−x)?; How does y=2f(x) change a graph?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "coordinate-geometry",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A straight line can be written y=mx+c, where m is gradient and c is the y-intercept. Gradient between two points is Δy/Δx. Parallel lines have equal gradients; perpendicular non-vertical lines have gradients whose product is −1. A circle with centre (a,b) and radius r has equation (x−a)²+(y−b)²=r². Complete the square to identify its centre and radius; use geometry and substitution to solve intersections.\n\nSpecification coverage: Find the gradient between (x₁,y₁) and (x₂,y₂).; What is the condition for two non-vertical lines to be perpendicular?; State the equation of a circle with centre (a,b) and radius r.; What is the centre and radius of x²+y²−6x+4y−12=0?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "algebraic-methods",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Polynomial division can express a rational function as a polynomial plus a proper fraction. The factor theorem states that (x−a) is a factor of f(x) exactly when f(a)=0. Partial fractions decompose a proper rational expression into simpler fractions, using distinct linear factors, repeated factors or irreducible quadratics as appropriate. Proof must be logically complete: state assumptions, show each implication and avoid assuming the conclusion.\n\nSpecification coverage: State the factor theorem.; What is a proper algebraic fraction?; When is polynomial division needed before partial fractions?; What makes a mathematical proof valid?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "binomial-expansion",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For positive integer n, (a+b)^n=Σ[nCr a^(n−r)b^r]. The coefficient of a term follows the binomial coefficients. For general real n, expand (1+x)^n=1+nx+n(n−1)x²/2!+… provided |x|<1; for a finite approximation, retain the required terms and estimate the size of the next term. Rewrite expressions into the form (1+u)^n before applying the series.\n\nSpecification coverage: State the general term in (a+b)^n.; What condition is needed for the expansion of (1+x)^n with non-integer n?; How do you find a specified term in a binomial expansion?; Write the first three terms of (1+x)^n.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "trigonometry",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Use exact values for standard angles and the unit circle to determine signs in each quadrant. The sine rule is a/sin A=b/sin B=c/sin C; the cosine rule is c²=a²+b²−2ab cos C. Triangle area is ½ab sin C. Solve trigonometric equations over the full requested interval, using periodicity and symmetry rather than giving only the calculator's principal value. Know that the sine rule can produce an ambiguous second angle.\n\nSpecification coverage: State the sine rule.; State the cosine rule.; State the area formula for a triangle using two sides and the included angle.; What are the exact values of sin 30°, cos 60° and tan 45°?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "vectors",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A vector has magnitude and direction; components can be added, subtracted and scaled. A position vector gives a point relative to an origin. The displacement from A to B is OB−OA. Collinearity can be shown by expressing direction vectors as scalar multiples. Geometric proofs often compare position vectors and use ratios along a straight line; keep vector direction and sign consistent.\n\nSpecification coverage: How do you find vector AB from position vectors a and b?; What does it mean for two non-zero vectors to be parallel?; How do you find the magnitude of a 2D vector (x,y)?; If OA=a and OB=b, write AB.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "differentiation",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For y=x^n, dy/dx=nx^(n−1); use linearity and constant multiples. The derivative gives gradient, so a tangent at x=a has gradient f′(a). A normal has gradient −1/f′(a), when defined. Stationary points satisfy f′(x)=0; classify using a sign change in f′ or the second derivative. In modelling, interpret the derivative as an instantaneous rate of change and include units.\n\nSpecification coverage: State the power rule for differentiation.; How do you find the equation of a tangent at x=a?; What condition defines a stationary point?; How can the second derivative classify a stationary point?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "integration",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Integration reverses differentiation: ∫x^n dx=x^(n+1)/(n+1)+C for n≠−1. A definite integral gives signed area; split at roots or intersections when finding total geometric area. Area between curves is ∫(upper−lower) dx over the interval. Include +C for indefinite integrals and substitute limits carefully for definite integrals.\n\nSpecification coverage: State the power rule for integration.; What does a definite integral represent geometrically?; How do you find area between two curves?; Find ∫(3x²−4) dx.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "exponentials-logarithms",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "The exponential function y=a^x (a>0, a≠1) is positive and has inverse logarithm log_a x. Laws include log_a(xy)=log_a x+log_a y, log_a(x/y)=log_a x−log_a y and log_a(x^n)=n log_a x. Natural logarithms use base e. To solve exponential equations, rewrite with a common base or take logarithms, then check domain restrictions.\n\nSpecification coverage: State three logarithm laws.; What is the relationship between exponential and logarithmic functions?; What is ln x?; Solve 3^x=10.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "functions-graphs",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A function maps each allowed input to exactly one output. The domain is the set of allowed inputs and the range is the set of outputs. For composite fg(x), evaluate g first, then f. The inverse f⁻¹ reverses the mapping and exists as a function only when f is one-to-one on the chosen domain. Modulus functions reflect negative parts above the x-axis for |f(x)|; f(|x|) duplicates the right-hand side across the y-axis.\n\nSpecification coverage: What is the domain of a function?; How do you evaluate fg(x) when fg means f∘g?; When does an inverse function exist?; Distinguish |f(x)| from f(|x|).",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "sequences-series",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "An arithmetic sequence has constant difference d and nth term a+(n−1)d; its first n terms sum to n/2[2a+(n−1)d]. A geometric sequence has constant ratio r and nth term ar^(n−1); its finite sum is a(1−r^n)/(1−r), r≠1. The sum to infinity is a/(1−r) only when |r|<1. Sigma notation specifies a sum and modelling requires interpreting parameters in context.\n\nSpecification coverage: State the nth term of an arithmetic sequence.; State the sum of the first n terms of an arithmetic sequence.; State the nth term and finite sum of a geometric sequence.; When does a geometric series have a sum to infinity?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "radians",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Radians measure angle using arc length: θ=s/r. A full turn is 2π radians and a right angle is π/2. For θ in radians, arc length s=rθ and sector area A=½r²θ. Small-angle approximations sinθ≈θ, tanθ≈θ and cosθ≈1−θ²/2 are useful only when θ is small and measured in radians.\n\nSpecification coverage: How is an angle in radians defined?; State the arc length formula.; State the sector area formula.; State the small-angle approximations.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "advanced-trigonometry",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Compound-angle identities are sin(A±B)=sinAcosB±cosAsinB and cos(A±B)=cosAcosB∓sinAsinB. Double-angle identities follow by setting A=B. Expressions a sinθ+b cosθ can be written R sin(θ+α), where R=√(a²+b²) and choose α to match coefficients. Use identities to simplify expressions and solve equations, checking the full interval.\n\nSpecification coverage: State sin(A±B).; State cos(A±B).; State the double-angle identities for sin2θ and cos2θ.; How is a sinθ+b cosθ rewritten as R sin(θ+α)?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "parametric-equations",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A parametric curve gives x and y in terms of a parameter t. To find dy/dx, use (dy/dt)/(dx/dt), provided dx/dt≠0. A tangent at a parameter value uses the corresponding point and gradient. Eliminate t to obtain a Cartesian equation where possible, but remember this may lose restrictions on the allowed parameter interval.\n\nSpecification coverage: How do you find dy/dx for parametric equations?; How do you find a tangent to a parametric curve?; Why can eliminating the parameter lose information?; If x=t² and y=t³, find dy/dx.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "advanced-differentiation",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "The chain rule differentiates a function of a function: dy/dx=(dy/du)(du/dx). The product rule is (uv)′=u′v+uv′; the quotient rule is (u/v)′=(vu′−uv′)/v². Implicit differentiation treats y as a function of x, so d(y^n)/dx=ny^(n−1)dy/dx. State where denominators or derivatives are undefined.\n\nSpecification coverage: State the chain rule.; State the product rule.; State the quotient rule.; Differentiate x²+y²=25 implicitly.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "numerical-methods",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A sign change in a continuous function over [a,b] guarantees at least one root in the interval. Fixed-point iteration rearranges f(x)=0 into x=g(x) and repeats x_(n+1)=g(x_n); convergence depends on the chosen rearrangement and starting value. Newton-Raphson uses x_(n+1)=x_n−f(x_n)/f′(x_n). Iterations give approximations, so check convergence and quote suitable accuracy.\n\nSpecification coverage: What does a sign change f(a)f(b)<0 establish for continuous f?; Describe fixed-point iteration.; State the Newton-Raphson formula.; Why can Newton-Raphson fail?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "advanced-integration",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Integration by parts: ∫u(dv/dx)dx=uv−∫v(du/dx)dx. Substitution reverses the chain rule and requires changing limits for definite integrals if using the new variable. Partial fractions simplify rational functions before integration. A separable first-order differential equation can be rearranged to put y terms with dy and x terms with dx, then integrated and fitted to an initial condition.\n\nSpecification coverage: State integration by parts.; What is the key step in integration by substitution?; How do you solve a separable differential equation?; Integrate ∫2x cos(x²) dx.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "three-dimensional-vectors",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "In 3D, vectors have i, j and k components. A line through point a with direction d is r=a+λd. The scalar product a·b=a_xb_x+a_yb_y+a_zb_z=|a||b|cosθ. Perpendicular vectors have zero scalar product. To find the angle between lines, use their direction vectors and the scalar-product formula; distinguish the acute angle from its supplement where required.\n\nSpecification coverage: State the 3D scalar product.; What condition shows two vectors are perpendicular?; Write a vector equation of a line.; How do you find the angle between two direction vectors?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "data-collection",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A population is the complete group of interest; a sample is a subset. Simple random sampling gives each member an equal chance; systematic sampling selects at regular intervals; stratified sampling reflects population subgroups in proportion. Convenience and voluntary-response samples can be biased. Identify the sampling frame, possible non-response and whether the sample represents the target population.\n\nSpecification coverage: Distinguish a population from a sample.; How does stratified sampling work?; Why can a voluntary-response sample be biased?; What is a sampling frame?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "measures-spread",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Mean uses all values and is sensitive to extreme values; median is the middle ordered value and is more resistant. Variance measures mean squared deviation; standard deviation is its square root and uses the data's units. For grouped data, use class midpoints to estimate the mean and variance. Quartiles divide ordered data into four parts; the interquartile range is Q3−Q1.\n\nSpecification coverage: How is the mean calculated?; What is the relationship between variance and standard deviation?; What is the interquartile range?; Why is the median more resistant to outliers than the mean?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "data-presentation",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A histogram represents continuous grouped data with area proportional to frequency. Frequency density=frequency/class width, so bar height is frequency density. Cumulative frequency graphs estimate medians, quartiles and percentiles. Box plots show minimum, lower quartile, median, upper quartile and maximum; compare centre and spread while considering scale and outliers.\n\nSpecification coverage: State the histogram frequency-density formula.; Why can histogram bars have different widths?; What can a cumulative frequency graph estimate?; What five values define a box plot?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "correlation-regression",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "The product moment correlation coefficient r measures strength and direction of linear association, with −1≤r≤1. Correlation does not establish causation. The least-squares regression line of y on x predicts y from x and minimises squared vertical residuals. Use interpolation within the data range; extrapolation may be unreliable. Outliers can strongly affect r and the fitted line.\n\nSpecification coverage: What does r=−1 indicate?; Does correlation prove causation?; What does the regression line of y on x minimise?; When is extrapolation risky?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "probability",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For events A and B, P(A∪B)=P(A)+P(B)−P(A∩B). Mutually exclusive events have intersection probability zero. Independent events satisfy P(A∩B)=P(A)P(B). Conditional probability P(A|B)=P(A∩B)/P(B), for P(B)>0. Use tree diagrams and tables carefully, updating probabilities when events are dependent.\n\nSpecification coverage: State the addition rule for two events.; What does mutually exclusive mean?; How do you test independence?; State conditional probability.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "binomial-distribution",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "X~B(n,p) models the number of successes in n independent trials, each with two outcomes and constant success probability p. P(X=r)=nCr p^r(1−p)^(n−r). Mean=np and variance=np(1−p). For cumulative questions, use the complement where it is shorter, and distinguish exactly, at least and at most.\n\nSpecification coverage: State the conditions for a binomial model.; State the binomial probability formula.; State the mean and variance of B(n,p).; How do you calculate P(X≥1) efficiently?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "hypothesis-testing",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "A hypothesis test starts with a null hypothesis H0 and an alternative H1. Choose a significance level before testing; calculate a test statistic or probability under H0 and compare with a critical region or p-value. If p≤α, reject H0; otherwise there is insufficient evidence to reject it. A result is statistically significant, not proof that H1 is true.\n\nSpecification coverage: What is the null hypothesis?; What does a 5% significance level mean?; When do you reject H0 using a p-value?; How should a conclusion be written?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "normal-distribution",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For X~N(μ,σ²), the distribution is symmetric about μ and has standard deviation σ. Standardise using Z=(X−μ)/σ, where Z~N(0,1). Use symmetry and complements to find tail probabilities. Inverse normal problems start with a probability or percentile and find the corresponding value; sketch the region to avoid choosing the wrong tail.\n\nSpecification coverage: What do μ and σ represent in X~N(μ,σ²)?; How do you standardise a normal variable?; What is the symmetry property of a normal distribution?; What is an inverse normal calculation?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "mechanics-modelling",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Mechanics models simplify real situations. A particle has mass but negligible size; a light inextensible string has negligible mass and fixed length; a smooth contact has no friction; a rigid body does not deform. Draw a clear force diagram, define positive directions and state assumptions. Use SI units and check that calculated forces and motion are physically plausible.\n\nSpecification coverage: What is a particle model?; What does a light inextensible string imply?; What does a smooth surface imply?; Why state modelling assumptions?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "constant-acceleration",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For constant acceleration, use v=u+at, s=ut+½at², v²=u²+2as and s=½(u+v)t. Choose an equation containing the known quantities and required unknown. Define a consistent positive direction; signs represent direction. On a velocity-time graph, gradient is acceleration and signed area is displacement.\n\nSpecification coverage: State the four SUVAT equations.; What does the gradient of a velocity-time graph represent?; What does the signed area under a velocity-time graph represent?; A body starts from rest and accelerates at 3 m s⁻² for 4 s. Find v.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "forces-motion",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Newton's first law links zero resultant force to constant velocity. The second law gives resultant force=mass×acceleration (F=ma). The third law describes equal and opposite forces acting on different bodies. Resolve forces into perpendicular components, draw free-body diagrams and apply F=ma separately in each direction. For connected particles, use a common acceleration magnitude and account for tension.\n\nSpecification coverage: State Newton's second law for constant mass.; Why do action-reaction forces not cancel each other?; How do you resolve a force F at angle θ above the horizontal?; What is the first step in a force problem?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "variable-acceleration",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "When acceleration varies, a=dv/dt and v=ds/dt. Integrate acceleration with respect to time to obtain velocity, using an initial condition; integrate velocity to obtain displacement. Differentiate a given velocity or displacement function to find acceleration or velocity. Distinguish displacement from total distance when velocity changes sign.\n\nSpecification coverage: State acceleration in differential form.; How do you obtain displacement from velocity?; How do you find total distance from a velocity-time function?; If v=6t−2, find a.",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "moments",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "The moment of a force about a point is force multiplied by perpendicular distance from the point to the force's line of action. For equilibrium, resultant force is zero and total clockwise moment equals total anticlockwise moment about any point. Centre of mass is the point at which the body's weight may be considered to act; symmetry and weighted averages help locate it.\n\nSpecification coverage: State the moment formula.; State the conditions for equilibrium of a rigid body in a plane.; Why choose the pivot at an unknown force?; How is the centre of mass of a uniform symmetrical lamina located?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "friction",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Friction acts parallel to the contact surface and opposes impending or actual relative motion. Limiting friction F=μR, where μ is the coefficient of friction and R is the normal reaction. Actual friction is at most μR and adjusts to the required value while surfaces remain at rest. On an inclined plane, resolve weight into mg sinθ down the slope and mg cosθ perpendicular to it.\n\nSpecification coverage: State the limiting-friction equation.; Is friction always equal to μR?; Resolve weight on a plane inclined at θ.; What direction does friction act?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "projectiles",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Resolve projectile motion into independent horizontal and vertical components. With no air resistance, horizontal acceleration is zero and vertical acceleration is −g if upwards is positive. Use x=u_x t and y=u_y t−½gt². At the highest point vertical velocity is zero, but horizontal velocity remains unchanged. State whether launch and landing heights are equal before using simplified range formulae.\n\nSpecification coverage: What is the horizontal acceleration of an ideal projectile?; What is the vertical acceleration of a projectile?; What is the vertical velocity at the highest point?; When is the range formula R=u²sin(2θ)/g valid?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "applications-forces",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "Apply Newton's laws to systems involving connected particles, inclined planes and variable forces. For each body, draw a separate force diagram and choose axes that simplify resolution. For connected bodies joined by a light inextensible string, accelerations have equal magnitudes; tension is common in an ideal string over a smooth pulley. Check limiting cases and whether the string remains taut.\n\nSpecification coverage: What acceleration relationship applies to two particles joined by a taut light inextensible string?; What is the tension in an ideal light string over a smooth pulley?; Why write separate equations for connected particles?; What happens if a calculated tension is negative under an assumed direction?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    },
+    {
+      "topicId": "further-kinematics",
+      "kind": "revision-notes",
+      "title": "Core notes and methods",
+      "content": "For motion in a straight line, v=ds/dt and a=dv/dt. Integrating velocity gives displacement; integrating speed gives distance. If velocity changes sign, split the interval at turning points to calculate total distance. Use derivative and integral relationships with initial conditions, and attach correct units to each quantity.\n\nSpecification coverage: State the relationships between displacement, velocity and acceleration.; How do you find a turning time?; How do you calculate total distance over an interval?; What are the units of s, v and a?",
+      "source": "Pearson Edexcel A-level Mathematics (9MA0) specification and enhanced content guidance"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "formula-1",
+      "topicId": "quadratics",
+      "name": "Quadratic formula",
+      "expression": "x = (−b ± √(b²−4ac))/(2a)",
+      "units": "a, b, c are coefficients; x is a root",
+      "conditions": "For ax²+bx+c=0, a≠0"
+    },
+    {
+      "id": "formula-2",
+      "topicId": "quadratics",
+      "name": "Discriminant",
+      "expression": "Δ = b²−4ac",
+      "units": "Coefficient values as above",
+      "conditions": "Δ>0 two real roots; Δ=0 repeated; Δ<0 no real roots"
+    },
+    {
+      "id": "formula-3",
+      "topicId": "trigonometry",
+      "name": "Sine rule",
+      "expression": "a/sin A = b/sin B = c/sin C",
+      "units": "Sides a,b,c opposite angles A,B,C",
+      "conditions": "Triangle geometry"
+    },
+    {
+      "id": "formula-4",
+      "topicId": "trigonometry",
+      "name": "Cosine rule",
+      "expression": "c² = a²+b²−2ab cos C",
+      "units": "Sides and included angle",
+      "conditions": "Triangle geometry"
+    },
+    {
+      "id": "formula-5",
+      "topicId": "trigonometry",
+      "name": "Triangle area",
+      "expression": "Area = ½ab sin C",
+      "units": "a,b in same length unit",
+      "conditions": "C is included angle"
+    },
+    {
+      "id": "formula-6",
+      "topicId": "radians",
+      "name": "Arc length",
+      "expression": "s = rθ",
+      "units": "s,r in length units; θ in radians",
+      "conditions": "Radians only"
+    },
+    {
+      "id": "formula-7",
+      "topicId": "radians",
+      "name": "Sector area",
+      "expression": "A = ½r²θ",
+      "units": "r in length units; θ in radians",
+      "conditions": "Radians only"
+    },
+    {
+      "id": "formula-8",
+      "topicId": "differentiation",
+      "name": "Power rule",
+      "expression": "d(xⁿ)/dx = nxⁿ⁻¹",
+      "units": "x variable",
+      "conditions": "Differentiate term by term"
+    },
+    {
+      "id": "formula-9",
+      "topicId": "integration",
+      "name": "Power rule",
+      "expression": "∫xⁿ dx = xⁿ⁺¹/(n+1)+C",
+      "units": "n≠−1",
+      "conditions": "Indefinite integration"
+    },
+    {
+      "id": "formula-10",
+      "topicId": "advanced-differentiation",
+      "name": "Chain rule",
+      "expression": "dy/dx = (dy/du)(du/dx)",
+      "units": "Derivatives with respect to stated variables",
+      "conditions": "Composite functions"
+    },
+    {
+      "id": "formula-11",
+      "topicId": "advanced-differentiation",
+      "name": "Product rule",
+      "expression": "(uv)' = u'v+uv'",
+      "units": "u and v differentiable",
+      "conditions": "Product of functions"
+    },
+    {
+      "id": "formula-12",
+      "topicId": "advanced-differentiation",
+      "name": "Quotient rule",
+      "expression": "(u/v)' = (vu'−uv')/v²",
+      "units": "v≠0",
+      "conditions": "Quotient of functions"
+    },
+    {
+      "id": "formula-13",
+      "topicId": "advanced-integration",
+      "name": "Integration by parts",
+      "expression": "∫u dv/dx dx = uv−∫v du/dx dx",
+      "units": "Choose u and v appropriately",
+      "conditions": ""
+    },
+    {
+      "id": "formula-14",
+      "topicId": "numerical-methods",
+      "name": "Newton-Raphson iteration",
+      "expression": "xₙ₊₁ = xₙ−f(xₙ)/f'(xₙ)",
+      "units": "f'(xₙ)≠0",
+      "conditions": "Numerical root approximation"
+    },
+    {
+      "id": "formula-15",
+      "topicId": "sequences-series",
+      "name": "Arithmetic nth term",
+      "expression": "uₙ = a+(n−1)d",
+      "units": "a first term; d common difference",
+      "conditions": ""
+    },
+    {
+      "id": "formula-16",
+      "topicId": "sequences-series",
+      "name": "Geometric nth term",
+      "expression": "uₙ = arⁿ⁻¹",
+      "units": "a first term; r common ratio",
+      "conditions": ""
+    },
+    {
+      "id": "formula-17",
+      "topicId": "sequences-series",
+      "name": "Geometric sum to infinity",
+      "expression": "S∞ = a/(1−r)",
+      "units": "a first term; r common ratio",
+      "conditions": "Only when |r|<1"
+    },
+    {
+      "id": "formula-18",
+      "topicId": "probability",
+      "name": "Conditional probability",
+      "expression": "P(A|B)=P(A∩B)/P(B)",
+      "units": "P(B)>0",
+      "conditions": ""
+    },
+    {
+      "id": "formula-19",
+      "topicId": "binomial-distribution",
+      "name": "Binomial mean and variance",
+      "expression": "E(X)=np; Var(X)=np(1−p)",
+      "units": "X~B(n,p)",
+      "conditions": ""
+    },
+    {
+      "id": "formula-20",
+      "topicId": "normal-distribution",
+      "name": "Standardisation",
+      "expression": "Z=(X−μ)/σ",
+      "units": "μ mean; σ standard deviation",
+      "conditions": "X normal"
+    },
+    {
+      "id": "formula-21",
+      "topicId": "constant-acceleration",
+      "name": "SUVAT",
+      "expression": "v=u+at; s=ut+½at²; v²=u²+2as; s=½(u+v)t",
+      "units": "SI units",
+      "conditions": "Constant acceleration"
+    },
+    {
+      "id": "formula-22",
+      "topicId": "forces-motion",
+      "name": "Newton's second law",
+      "expression": "ΣF = ma",
+      "units": "N, kg, m s⁻²",
+      "conditions": "Constant mass"
+    },
+    {
+      "id": "formula-23",
+      "topicId": "moments",
+      "name": "Moment",
+      "expression": "M = Fd",
+      "units": "N m; d perpendicular distance",
+      "conditions": "About a chosen pivot"
+    }
+  ]
+}
