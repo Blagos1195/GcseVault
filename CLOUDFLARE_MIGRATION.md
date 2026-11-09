@@ -4,15 +4,19 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
 
 ## Before deploying
 
+The owner reports that migrations `0001` through `0004` are already applied to production. Migration `0005_revision_leaderboard.sql` is expected to be the only outstanding migration, but verify the remote migration history before proceeding. The tracked Wrangler migration command applies only migrations not already recorded as applied; do not manually rerun migrations.
+
 1. Back up the current D1 database:
 
    `npx wrangler d1 export leaderboard --remote --output=leaderboard-backup.sql`
 
-2. Apply the tracked migrations:
+2. Back up the `REVISION` and `THEMES` KV data before changing production. Keep those backups separate from the live namespaces.
+
+3. Apply the tracked migrations:
 
    `npx wrangler d1 migrations apply leaderboard --remote`
 
-3. Confirm all five tracked migrations completed:
+4. Confirm all five tracked migrations completed:
 
    - `0001_admin_roles.sql`
    - `0002_persistent_user_data.sql`
@@ -20,11 +24,11 @@ The Worker now uses D1 as the primary store for revision sync data and custom th
    - `0004_password_accounts.sql`
    - `0005_revision_leaderboard.sql`
 
-4. Deploy the Worker:
+5. Deploy the Worker:
 
    `npx wrangler deploy`
 
-Do not deploy the new Worker before applying all five migrations. It expects the account role, storage and password-session tables to exist.
+Do not deploy the new Worker until the remote migration history confirms that all five migrations are applied. In particular, the new Worker expects the `revision_leaderboard` table from migration 0005.
 
 ## Initial owner setup
 
