@@ -2,7 +2,7 @@
 
 ## Intended data layout
 
-The repository targets this layout. The owner has applied all five tracked D1 migrations and deployed the current Worker. The owner-controlled KV-to-D1 data copy and browser verification are still pending.
+The repository targets this layout. The owner has applied all five tracked D1 migrations and deployed the current Worker. The owner-controlled KV-to-D1 data copy is complete. First-owner setup is complete and the `ADMIN_KEY` secret has been removed. Browser verification is still pending.
 
 | Data | Intended primary store | Legacy or local copy |
 |---|---|---|
@@ -60,10 +60,13 @@ Production backups have now been created and locally checked by the owner:
 - `THEMES` KV: the key listing returned an empty array, so there were no values to export.
 - These backup files are untracked local files and must not be committed or uploaded publicly.
 
+## Production data migration status
+
+The owner completed first-owner setup, removed the `ADMIN_KEY` Worker secret, and ran **Migrate existing storage to D1**. The Admin Panel reported: `Migration complete: 3 copied, 1 already present, 0 skipped. Original KV copies remain available.` This is consistent with the four private Revision sync/leaderboard records being processed; the public Revision record remains in KV by design, and the `THEMES` namespace was empty. KV source records and local backups are being retained pending browser and cross-device verification.
+
 ## Remaining work
 
-1. **Owner setup and storage migration.** Complete first-owner setup, remove the `ADMIN_KEY` secret after successful setup, then run the owner-controlled storage migration. Compare scanned, migrated, already-present and skipped counts with the five original `REVISION` keys. The empty `THEMES` namespace should require no theme imports. Keep all KV records and local backups.
-2. **Live endpoint and browser verification.** Check Worker health and test QuoteVault, DateVault and Revision flows after owner setup and storage migration.
+1. **Live endpoint and browser verification.** Check Worker health and test QuoteVault, DateVault and Revision flows. For Revision, verify sync, leaderboard updates, account switching and cross-device persistence. Keep all KV records and local backups until these checks pass.
 3. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
 4. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
 5. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
