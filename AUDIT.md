@@ -2,7 +2,7 @@
 
 ## Intended data layout
 
-The repository now targets this layout. Production rollout is incomplete, so this table describes the code's intended storage rather than independently verified live state.
+The repository targets this layout. The owner has applied all five tracked D1 migrations and deployed the current Worker. The owner-controlled KV-to-D1 data copy and browser verification are still pending.
 
 | Data | Intended primary store | Legacy or local copy |
 |---|---|---|
@@ -47,7 +47,12 @@ GCSE Vault's existing account system uses a private user key as a bearer credent
 
 ## Production rollout status
 
-The owner reports that `npx wrangler d1 migrations list leaderboard --remote` returned `No migrations to apply!`. This indicates Wrangler considers all five tracked migrations applied in the remote database. The repository connection cannot independently inspect Cloudflare's live migration history or database contents.
+The owner reports the following successful production steps:
+- Applied `0005_revision_leaderboard.sql` to the remote `leaderboard` D1 database. Wrangler reported all three SQL statements executed and marked the migration successful.
+- Re-ran `npx wrangler d1 migrations list leaderboard --remote`; Wrangler returned `No migrations to apply!`.
+- Deployed the Worker successfully to `https://quotevault-api.noah-l-barker.workers.dev` (version `fb9b7e72-07c9-44c0-a8e0-4d19ec2c7b8e`).
+
+These outputs were supplied by the owner; the repository connection cannot independently inspect Cloudflare's live database or deployment.
 
 Production backups have now been created and locally checked by the owner:
 - D1 export: `leaderboard-backup.sql` downloaded successfully (38,033 bytes).
@@ -57,8 +62,8 @@ Production backups have now been created and locally checked by the owner:
 
 ## Remaining work
 
-1. **Worker deployment.** The latest Worker code has not been confirmed deployed. Deploy it only after confirming the D1 export and remote migration history remain available.
-2. **Owner setup and storage migration.** After deploying the Worker, complete first-owner setup, remove the `ADMIN_KEY` secret after successful setup, then run the owner-controlled storage migration. Compare scanned, migrated, already-present and skipped counts with the five original `REVISION` keys. The empty `THEMES` namespace should require no theme imports.
+1. **Owner setup and storage migration.** Complete first-owner setup, remove the `ADMIN_KEY` secret after successful setup, then run the owner-controlled storage migration. Compare scanned, migrated, already-present and skipped counts with the five original `REVISION` keys. The empty `THEMES` namespace should require no theme imports. Keep all KV records and local backups.
+2. **Live endpoint and browser verification.** Check Worker health and test QuoteVault, DateVault and Revision flows after owner setup and storage migration.
 3. **Password account rollout checks.** Browser-level testing is still required across all three Vaults. Existing users must add a password using their current account key before they can use password login on another device.
 4. **Moderation consistency.** Regression tests cover D1 failures and retry-safe ordering. Browser-level verification and monitoring are still required.
 5. **End-to-end checks.** CI covers Worker regressions and frontend JavaScript syntax, not full browser behaviour. Test QuoteVault, DateVault and Revision, especially offline, account switching and multi-device flows.
@@ -68,7 +73,7 @@ Production backups have now been created and locally checked by the owner:
 - Latest repository commit: `74d31db2660171ebfb80f6dedaf2b4816390d632`.
 - GitHub Actions test run `42669345855` for that exact commit: successful.
 - GitHub Pages build and deployment run `42667329513`: successful for application commit `d6c996e735f7a49171ae1be2c2bd3345c8067764`. The later `e7b91a1` and `74d31db` commits only changed migration and audit documentation; the application code deployed by the Pages run is unchanged.
-- These results verify repository tests and the Pages deployment only. They do not verify the Cloudflare Worker deployment or owner-controlled production data migration.
+- These results verify repository tests and the Pages deployment only. The Worker deployment is separately confirmed by the owner's Wrangler output; the owner-controlled production data migration and browser behaviour remain unverified.
 
 ## UI scope
 
