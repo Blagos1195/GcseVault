@@ -1122,22 +1122,38 @@ function practiceImport(input){
   if(c.type!=='revision-course-pack'||c.version!==1||!c.subject||!c.examBoard||!Array.isArray(c.cards)||!Array.isArray(c.resources)||c.cards.length>1000||c.resources.length>500)throw new Error('Unsupported course pack format.');
   const subject=String(c.subject).slice(0,100),catalogueId=String(c.catalogueId||normalizeTopic(c.examBoard+' '+subject).replace(/\s+/g,'-')).slice(0,100),catalogue=p.catalogues[catalogueId];
   if(!catalogue)throw new Error('Import the matching subject catalogue first.');
-  const topicById=new Map(catalogue.topics.map(t=>[t.id,t])),existing=new Set(state.cards.map(card=>(String(card.subject)+'|'+String(card.title)).toLowerCase()));
-  const incoming=c.cards.filter(card=>card&&(card.front||card.title)&&(card.back||card.answer)),idMap=new Map(incoming.map((card,index)=>[String(card.id||index),'cp'+Date.now()+Math.random().toString(36).slice(2,8)+index]));
-  const imported=incoming.filter(card=>!existing.has((subject+'|'+String(card.front||card.title)).toLowerCase())).map(card=>{
+  const topicById=new Map(catalogue.topics.map(t=>[t.id,t]));
+  const incoming=c.cards.filter(card=>card&&(card.front||card.title)&&(card.back||card.answer));
+  const cardKey=card=>(String(card.subject)+'|'+String(card.title)).toLowerCase();
+  const existingCards=new Map(state.cards.map(card=>[cardKey(card),card]));
+  const idMap=new Map();
+  incoming.forEach((card,index)=>{
+   const key=(subject+'|'+String(card.front||card.title)).toLowerCase(),existing=existingCards.get(key);
+   idMap.set(String(card.id||index),existing?.id||'cp'+Date.now()+Math.random().toString(36).slice(2,8)+index);
+  });
+  const imported=incoming.filter(card=>!existingCards.has((subject+'|'+String(card.front||card.title)).toLowerCase())).map(card=>{
    const topic=topicById.get(String(card.topicId||''));if(!topic)throw new Error('A flashcard refers to an unknown topic: '+String(card.topicId||''));
    return{id:idMap.get(String(card.id||incoming.indexOf(card))),subject,topic:topic.name,title:String(card.front||card.title).slice(0,400),answer:String(card.back||card.answer).slice(0,1200),source:String(card.source||c.source||'Course pack').slice(0,300),links:(Array.isArray(card.links)?card.links.map(id=>idMap.get(String(id))).filter(Boolean):[]),difficulty:Math.max(1,Math.min(5,Number(card.difficulty)||2))};
   });
+  incoming.forEach(card=>{
+   const existing=existingCards.get((subject+'|'+String(card.front||card.title)).toLowerCase());
+   if(existing&&Array.isArray(card.links))existing.links=[...new Set([...(existing.links||[]),...card.links.map(id=>idMap.get(String(id))).filter(Boolean)])];
+  });
   const resources=c.resources.map((item,index)=>{
    const topic=topicById.get(String(item.topicId||''));if(!topic)throw new Error('A resource refers to an unknown topic: '+String(item.topicId||''));
-   return{id:'cr'+Date.now()+Math.random().toString(36).slice(2,7)+index,subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
+   return{subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
   }).filter(item=>item.content);
-  const formulas=(Array.isArray(c.formulas)?c.formulas:[]).map((item,index)=>{
+  const formulas=(Array.isArray(c.formulas)?c.formulas:[]).map(item=>{
    const topic=topicById.get(String(item.topicId||''));if(!topic)throw new Error('A formula refers to an unknown topic: '+String(item.topicId||''));
-   return{id:'cf'+Date.now()+Math.random().toString(36).slice(2,7)+index,subjectId:catalogueId,topicId:topic.id,name:String(item.name||'').slice(0,120),expression:String(item.expression||'').slice(0,300),units:String(item.units||'').slice(0,160),conditions:String(item.conditions||'').slice(0,300)};
+   return{subjectId:catalogueId,topicId:topic.id,name:String(item.name||'').slice(0,120),expression:String(item.expression||'').slice(0,300),units:String(item.units||'').slice(0,160),conditions:String(item.conditions||'').slice(0,300)};
   }).filter(item=>item.name&&item.expression);
-  p.resources.push(...resources);p.resources=p.resources.slice(-500);p.formulas.push(...formulas);p.formulas=p.formulas.slice(-300);state.cards.push(...imported);
-  saveRevision();state.setMessage='Imported '+imported.length+' flashcards, '+resources.length+' learning resources and '+formulas.length+' formulas for '+subject+'.';state.view='resources';renderRevision();
+  const resourceKey=item=>[item.subjectId,item.topicId,item.kind,item.title].join('|').toLowerCase();
+  const formulaKey=item=>[item.subjectId,item.topicId,item.name].join('|').toLowerCase();
+  const mergeByKey=(current,updates,key)=>{const positions=new Map(current.map((item,index)=>[key(item),index]));updates.forEach(item=>{const position=positions.get(key(item));if(position===undefined){positions.set(key(item),current.length);current.push({...item,id:'cr'+Date.now()+Math.random().toString(36).slice(2,8)});}else current[position]={...current[position],...item};});};
+  mergeByKey(p.resources,resources,resourceKey);
+  mergeByKey(p.formulas,formulas,formulaKey);
+  state.cards.push(...imported);
+  saveRevision();state.setMessage='Imported '+imported.length+' new flashcards, updated or added '+resources.length+' learning resources and '+formulas.length+' formulas for '+subject+'. Existing cards and review history were preserved.';state.view='resources';renderRevision();
  }catch(e){state.setMessage=e.message||'Could not import resource file.';renderRevision();}};
  reader.readAsText(file);
 }
