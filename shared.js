@@ -1142,6 +1142,7 @@ const AdminManager = {
         let cursor = null;
         let processed = 0;
         let migrated = 0;
+        let alreadyPresent = 0;
         do {
           const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
             method: 'POST',
@@ -1152,16 +1153,17 @@ const AdminManager = {
           const result = await response.json();
           processed += result.processed || 0;
           migrated += result.migrated || 0;
+          alreadyPresent += result.alreadyPresent || 0;
           skipped += result.skipped || 0;
           if (!result.complete && !result.cursor) throw new Error(`The ${phase} migration stopped without a continuation cursor.`);
           cursor = result.cursor || null;
-          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied, ${skipped} skipped...`;
+          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped...`;
           if (typeof window.render === 'function') window.render();
         } while (cursor);
       }
       this.migrationStatus = skipped
-        ? `Migration finished with ${skipped} records skipped. Review them before relying on D1-only data. Original KV copies remain available.`
-        : 'Migration complete. Original KV copies have been retained as backups.';
+        ? `Migration finished: ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.`
+        : `Migration complete: ${migrated} copied, ${alreadyPresent} already present, 0 skipped. Original KV copies remain available.`;
     } catch (error) {
       this.error = error.message;
       this.migrationStatus = 'Migration paused. You can safely run it again.';
