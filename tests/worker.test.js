@@ -186,9 +186,11 @@ test("DateVault rejection keeps the pending submission when D1 cleanup fails", a
     : null;
   env.DV_PENDING.delete = async () => { pendingDeleted = true; };
   env.DB.prepare = sql => ({
-    bind: () => sql.startsWith("SELECT")
-      ? { all: async () => ({ results: [row] }) }
-      : { run: async () => { throw new Error("D1 unavailable"); } }
+    bind: () => sql.includes("SELECT user_key, username, role FROM users")
+      ? { first: async () => ({ user_key: "admin-key", username: "owner", role: "owner" }) }
+      : sql.startsWith("SELECT")
+        ? { all: async () => ({ results: [row] }) }
+        : { run: async () => { throw new Error("D1 unavailable"); } }
   });
 
   const response = await call("/dv/reject", env, { id: "fact-1" }, { "X-Session-Token": "test-session" });
