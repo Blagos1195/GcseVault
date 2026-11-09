@@ -56,9 +56,9 @@ GCSE Vault's existing account system uses a private user key as a bearer credent
 
 ## Latest repository verification
 
-- Main branch head: `9be9ec5b85c3644709bf21929d30ac255ffa4ac8`.
-- GitHub Actions test run for that exact commit: successful.
-- GitHub Pages build and deployment run for that exact commit: successful.
+- Latest application-code commit: `5024d08355c976f70fe271db22e95cea7f0c739c`.
+- GitHub Actions test run `42667435819` for that exact commit: successful, including the new regression test for the three-phase migration summary.
+- GitHub Pages build and deployment run `42667435288` for that exact commit: successful.
 - These results verify the repository tests and Pages deployment only. They do not verify the Cloudflare Worker deployment or production D1/KV migration.
 
 ## UI scope
