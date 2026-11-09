@@ -1449,7 +1449,6 @@ export default {
                 id: String(item.id || "").slice(0, 100), subjectId: String(item.subjectId || "").slice(0, 100), topicId: String(item.topicId || "").slice(0, 100),
                 name: String(item.name || "").slice(0, 120), expression: String(item.expression || "").slice(0, 300), units: String(item.units || "").slice(0, 160), conditions: String(item.conditions || "").slice(0, 300)
               })) : [],
-              formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas.slice(-300) : []
             } : { catalogues: {}, attempts: [], mistakes: [], formulas: [] }
           }))
         : [];
