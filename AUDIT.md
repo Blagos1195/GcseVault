@@ -65,9 +65,9 @@ Production backups have now been created and locally checked by the owner:
 
 ## Latest repository verification
 
-- Latest repository commit: `e7b91a1587170b9ab472b6b9f979f93579eafcc4`.
-- GitHub Actions test run `42667661045` for that exact commit: successful.
-- GitHub Pages build and deployment run `42667329513`: successful for application commit `d6c996e735f7a49171ae1be2c2bd3345c8067764`. The later `e7b91a1` commit only corrected migration documentation numbering.
+- Latest repository commit: `74d31db2660171ebfb80f6dedaf2b4816390d632`.
+- GitHub Actions test run `42669345855` for that exact commit: successful.
+- GitHub Pages build and deployment run `42667329513`: successful for application commit `d6c996e735f7a49171ae1be2c2bd3345c8067764`. The later `e7b91a1` and `74d31db` commits only changed migration and audit documentation; the application code deployed by the Pages run is unchanged.
 - These results verify repository tests and the Pages deployment only. They do not verify the Cloudflare Worker deployment or owner-controlled production data migration.
 
 ## UI scope
