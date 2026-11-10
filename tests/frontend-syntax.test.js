@@ -21,9 +21,12 @@ for (const file of files) {
     }
     const scripts = [...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
       .filter(match => !/\bsrc\s*=/.test(match[1]));
-    assert.ok(scripts.length, `No inline scripts found in ${file}`);
-    for (let index = 0; index < scripts.length; index++) {
-      new vm.Script(scripts[index][2], { filename: `${file}:script-${index + 1}` });
+    if (scripts.length) {
+      for (let index = 0; index < scripts.length; index++) {
+        new vm.Script(scripts[index][2], { filename: `${file}:script-${index + 1}` });
+      }
+    } else {
+      assert.match(source, /<script\\b[^>]*\\bsrc=/, `No scripts found in ${file}`);
     }
   });
 }
