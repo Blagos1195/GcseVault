@@ -779,8 +779,8 @@ const ThemeManager = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userKey, theme: key })
       });
-      if (!response.ok) {
-        const data = await VaultUser.readResponse(response);
+      const data = await VaultUser.readResponse(response);
+      if (!response.ok || data.success === false) {
         throw new Error(data.error || data.message || `Theme sync failed (HTTP ${response.status}).`);
       }
       return { synced: true };
