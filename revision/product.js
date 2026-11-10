@@ -116,7 +116,7 @@ document.addEventListener('click',event=>{if(!event.target.closest('.global-sear
 function updateRevisionSyncStatus(){
  const target=document.getElementById('sync-status');if(!target)return;
  const status=!navigator.onLine?'offline':state.syncStatus||'local';
- const labels={local:'Saved on this device',pending:'Saved here · waiting to sync',syncing:'Syncing…',synced:'Synced across devices',failed:'Sync needs attention',conflict:'Sync conflict',offline:'Offline · saved on this device'};
+ const labels={local:'Local save',pending:'Sync queued',syncing:'Syncing',synced:'Synced',failed:'Sync issue',conflict:'Conflict',offline:'Offline'};
  target.textContent=labels[status]||labels.local;target.dataset.status=status;
  target.title=status==='local'?'Your work is stored in this browser. Sign in to sync across devices.':labels[status];
 }
