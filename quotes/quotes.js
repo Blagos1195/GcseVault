@@ -1647,7 +1647,7 @@ function rSRS(){
     ${renderFilters({showThemes:true})}
     <div class="ps">All caught up! No quotes due for the current filter.</div>
     <div class="card" style="text-align:center;padding:24px">
-      <div style="font-size:2rem;margin-bottom:8px"></div>
+      
       <div style="color:var(--text2)">No quotes due for review right now.</div>
       <div style="font-size:.72rem;color:var(--text3);margin-top:6px">Check back later or study with Flashcards.</div>
     </div></div>`;
