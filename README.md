@@ -21,7 +21,7 @@ Each site section keeps its page structure, stylesheet and application code sepa
 - DateVault: `dates/index.html`, `dates/dates.css`, `dates/dates.js`
 - Revision: `revision/index.html`, `revision/revision.css`, `revision/app.js`, `revision/practice.js`
 
-Revision course catalogues and importable course packs are kept in `revision/catalogues/` and `revision/course-packs/`.
+Revision course catalogues and importable course packs are kept in `revision/catalogues/` and `revision/course-packs/`. Revision includes a daily plan, evidence-based topic health, global content search, resource review tracking, exam-practice history and full-set JSON backups.
 
 ## Local checks
 
