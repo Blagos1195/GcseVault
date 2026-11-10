@@ -283,7 +283,7 @@ test("course pack imports preserve existing cards and deduplicate cards, resourc
     Map,
     Set
   };
-  vm.runInNewContext(source.slice(start, end) + "\\nglobalThis.runImport = practiceImport;", context);
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.runImport = practiceImport;", context);
   context.runImport({ files: [{ name: "pack.json" }] });
   assert.equal(state.cards.length, 2);
   assert.equal(state.cards[0].id, "saved-card");
