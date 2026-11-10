@@ -196,7 +196,7 @@ html,body{
   transition:color .18s, transform .18s;
 }
 
-.vault-card:hover .card-arrow{
+.vault-card:focus-visible{outline:2px solid var(--purple2);outline-offset:4px}\n.vault-card:hover .card-arrow{
   transform:translate(3px,-3px);
 }
 .vault-card.qv:hover .card-arrow{color:var(--purple3)}
@@ -224,7 +224,7 @@ html,body{
   .cards{grid-template-columns:1fr}
   .header{margin-bottom:40px}
 }
-</style>
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}\n</style>
 </head>
 <body>
 
@@ -233,44 +233,44 @@ html,body{
 <div class="wrap">
 
   <div class="header">
-    <div class="kicker">GCSE · Edexcel</div>
+    <div class="kicker">GCSE & A-LEVEL REVISION</div>
     <div class="logo">GCSE <em>Vault</em></div>
-    <div class="tagline">Your revision toolkit — quotes, dates & more</div>
+    <div class="tagline">A place to organise what you are learning and keep track of what needs work.</div>
   </div>
 
   <div class="cards">
 
     <a class="vault-card qv" href="/GcseVault/quotes/">
-      <span class="card-icon">💬</span>
+      <span class="card-icon">01</span>
       <div class="card-title">QuoteVault</div>
-      <div class="card-desc">Master key historical quotes with flashcards, spaced repetition, and timed challenges.</div>
+      <div class="card-desc">Revise AQA GCSE English Literature quotations with recall practice, analysis and spaced repetition.</div>
       <span class="card-arrow">↗</span>
     </a>
 
     <a class="vault-card dv" href="/GcseVault/dates/">
-      <span class="card-icon">🏛</span>
+      <span class="card-icon">02</span>
       <div class="card-title">DateVault</div>
-      <div class="card-desc">Learn and retain critical dates across every GCSE History topic with smart review.</div>
+      <div class="card-desc">Build confidence with Edexcel GCSE History dates, events and significance.</div>
       <span class="card-arrow">↗</span>
     </a>
 
     <a class="vault-card fb" href="/GcseVault/feedback/">
-      <span class="card-icon">📋</span>
+      <span class="card-icon">03</span>
       <div class="card-title">Feedback</div>
-      <div class="card-desc">Report bugs, suggest features, or share general thoughts on the vaults.</div>
+      <div class="card-desc">Report a problem or suggest an improvement to the site.</div>
       <span class="card-arrow">↗</span>
     </a>
 
     <a class="vault-card qv" href="/GcseVault/revision/">
-      <span class="card-icon">🧠</span>
+      <span class="card-icon">04</span>
       <div class="card-title">Revision</div>
-      <div class="card-desc">Build linked flashcards, explore connected ideas, and generate study guides.</div>
+      <div class="card-desc">Organise flashcards, course materials, exam practice and connected topics.</div>
       <span class="card-arrow">↗</span>
     </a>
 
   </div>
 
-  <div class="footer">Built for GCSE Edexcel History &nbsp;·&nbsp; blagos1195.github.io</div>
+  <div class="footer">GCSE Vault · Study tools for your courses</div>
 
 </div>
 
