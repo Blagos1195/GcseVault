@@ -26,7 +26,7 @@ for (const file of files) {
         new vm.Script(scripts[index][2], { filename: `${file}:script-${index + 1}` });
       }
     } else {
-      assert.match(source, /<script\\b[^>]*\\bsrc=/, `No scripts found in ${file}`);
+      assert.ok(source.includes("<script src="), `No scripts found in ${file}`);
     }
   });
 }
