@@ -352,6 +352,6 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.match(app, /aria-current=/);
     assert.match(app, /scrollTop=0/);
     assert.match(app, /class="library-results"/);
-    assert.match(css, /library-results[\\s\\S]*?overflow-y:auto/);
+    assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
   }
 });
