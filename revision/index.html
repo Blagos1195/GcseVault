@@ -224,7 +224,14 @@ function normalizeRevisionSet(set, fallbackId){
     published: Boolean(set && set.published),
     syllabus: Array.isArray(set && set.syllabus) ? set.syllabus : [],
     syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === 'object' ? set.syllabusDone : {},
-    reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog : []
+    reviewLog: Array.isArray(set && set.reviewLog) ? set.reviewLog : [],
+    practice: set && set.practice && typeof set.practice === 'object' ? {
+      catalogues: set.practice.catalogues && typeof set.practice.catalogues === 'object' ? set.practice.catalogues : {},
+      attempts: Array.isArray(set.practice.attempts) ? set.practice.attempts : [],
+      mistakes: Array.isArray(set.practice.mistakes) ? set.practice.mistakes : [],
+      formulas: Array.isArray(set.practice.formulas) ? set.practice.formulas : [],
+      resources: Array.isArray(set.practice.resources) ? set.practice.resources : []
+    } : {catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]}
   };
 }
 const existingRevisionSets = JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null');
