@@ -5,9 +5,15 @@ import vm from "node:vm";
 
 const files = [
   "shared.js",
+  "index.html",
   "quotes/index.html",
+  "quotes/quotes.js",
   "dates/index.html",
-  "revision/index.html"
+  "dates/dates.js",
+  "revision/index.html",
+  "revision/app.js",
+  "revision/product.js",
+  "revision/practice.js"
 ];
 
 for (const file of files) {
@@ -19,9 +25,12 @@ for (const file of files) {
     }
     const scripts = [...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
       .filter(match => !/\bsrc\s*=/.test(match[1]));
-    assert.ok(scripts.length, `No inline scripts found in ${file}`);
-    for (let index = 0; index < scripts.length; index++) {
-      new vm.Script(scripts[index][2], { filename: `${file}:script-${index + 1}` });
+    if (scripts.length) {
+      for (let index = 0; index < scripts.length; index++) {
+        new vm.Script(scripts[index][2], { filename: `${file}:script-${index + 1}` });
+      }
+    } else {
+      assert.ok(source.includes("<script src="), `No scripts found in ${file}`);
     }
   });
 }
@@ -191,22 +200,24 @@ test("A-level course packs cover their catalogues and include usable revision da
 test("Revision sync retains private exam-practice data", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const practice = fs.readFileSync(new URL("../revision/practice.js", import.meta.url), "utf8");
   assert.match(worker, /practice:\s*set\s*&&\s*set\.practice/);
   assert.match(worker, /formulas:\s*Array\.isArray\(set\.practice\.formulas\)/);
-  assert.match(revision, /practiceRecommend/);
-  assert.match(revision, /practiceImport/);
-  assert.match(revision, /practiceConnections/);
-  assert.match(revision, /importPublicNote = async function/);
-  assert.match(revision, /revision-course-pack/);
-  assert.match(revision, /practiceResourcesView/);
-  assert.match(revision, /resources:Array\.isArray\(practice\.resources\)/);
+  assert.match(practice, /practiceRecommend/);
+  assert.match(practice, /practiceImport/);
+  assert.match(practice, /practiceConnections/);
+  assert.match(app, /async function importPublicNote/);
+  assert.match(practice, /revision-course-pack/);
+  assert.match(practice, /practiceResourcesView/);
+  assert.match(app, /resources: Array\.isArray\(set\.practice\.resources\)/);
   assert.match(worker, /resources: Array\.isArray\(set\.practice\.resources\)/);
 });
 
 
 test("Revision themes sync across devices without discarding local themes", () => {
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
-  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   assert.match(shared, /'barker-orange':\s*\{/);
   assert.match(shared, /'bricked-device':\s*\{/);
   assert.match(shared, /const merged = \{ \.\.\.remote \};/);
@@ -220,10 +231,128 @@ test("Revision themes sync across devices without discarding local themes", () =
 
 
 test("Revision account dialog has working modal helpers", () => {
-  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
-  assert.match(revision, /function openModal\(html\)[\s\S]*?modal\.innerHTML=html[\s\S]*?backdrop\.classList\.add\('open'\)/);
-  assert.match(revision, /function closeModal\(\)[\s\S]*?classList\.remove\('open'\)/);
-  assert.match(revision, /window\.openModal=openModal/);
-  assert.match(revision, /window\.closeModal=closeModal/);
-  assert.match(revision, /VaultUser\.showAccountDialog\(\)/);
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /function openModal\(html\)[\s\S]*?modal\.innerHTML=html[\s\S]*?backdrop\.classList\.add\('open'\)/);
+  assert.match(app, /function closeModal\(\)[\s\S]*?classList\.remove\('open'\)/);
+  assert.match(app, /window\.openModal=openModal/);
+  assert.match(app, /window\.closeModal=closeModal/);
+  assert.match(app, /VaultUser\.showAccountDialog\(\)/);
+});
+
+test("Revision uses separate files, accessible navigation and contained lists", () => {
+  const html = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(html, /revision\.css/);
+  assert.match(html, /app\.js/);
+  assert.match(html, /practice\.js/);
+  assert.match(html, /<button type="button" class="ni/);
+  assert.doesNotMatch(html, /maximum-scale/);
+  assert.ok(html.trimEnd().endsWith("</html>"));
+  assert.equal((html.match(/name="viewport"/g)||[]).length,1);
+  assert.match(css, /knowledge-list[\s\S]*?max-height:[^;]+;overflow-y:auto/);
+  assert.match(css, /overview-hero/);
+  assert.match(app, /aria-current/);
+  assert.match(app, /scrollTop = 0/);
+});
+
+
+test("Revision product tools provide search, daily planning, resource tracking and sync status", () => {
+  const html=fs.readFileSync(new URL("../revision/index.html",import.meta.url),"utf8");
+  const product=fs.readFileSync(new URL("../revision/product.js",import.meta.url),"utf8");
+  assert.match(html,/id="revision-search"/);
+  assert.match(html,/id="sync-status"/);
+  assert.match(product,/function searchRevision\(/);
+  assert.match(product,/function practiceDailyPlan\(/);
+  assert.match(product,/function practiceToggleResource\(/);
+  assert.match(product,/Next action \(optional\)/);
+  assert.match(product,/relatedResourceIds/);
+  assert.match(product,/state\.publicNotes/);
+  assert.match(product,/Not enough data/);
+});
+
+test("course pack imports preserve existing cards and deduplicate cards, resources and formulas", () => {
+  const source = fs.readFileSync(new URL("../revision/practice.js", import.meta.url), "utf8");
+  const start = source.indexOf("function practiceImport(input){");
+  const end = source.indexOf("function practiceResourcesView()", start);
+  assert.ok(start >= 0 && end > start);
+  const state = {
+    cards: [{ id: "saved-card", subject: "Chemistry", topic: "Amount of substance", title: "Moles in a solution", answer: "Keep this answer", links: [] }],
+    view: "settings",
+    setMessage: ""
+  };
+  const practice = {
+    catalogues: { chemistry: { topics: [{ id: "amount", name: "Amount of substance" }] } },
+    resources: [],
+    formulas: []
+  };
+  const pack = {
+    type: "revision-course-pack",
+    version: 1,
+    subject: "Chemistry",
+    examBoard: "AQA",
+    catalogueId: "chemistry",
+    cards: [
+      { id: "existing", topicId: "amount", front: "Moles in a solution!", back: "New content should not replace a student's card", links: ["new"] },
+      { id: "new", topicId: "amount", front: "Calculate concentration", back: "Use amount divided by volume", links: ["existing"] },
+      { id: "duplicate", topicId: "amount", front: "Calculate concentration", back: "Duplicate in same pack" }
+    ],
+    resources: [
+      { topicId: "amount", kind: "notes", title: "Concentration", content: "Course notes" },
+      { topicId: "amount", kind: "notes", title: "Concentration", content: "Duplicate course notes" }
+    ],
+    formulas: [
+      { topicId: "amount", name: "Concentration", expression: "c = n / V" },
+      { topicId: "amount", name: "Concentration", expression: "c = n ÷ V" }
+    ]
+  };
+  const context = {
+    state,
+    practiceStore: () => practice,
+    normalizeTopic: value => String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    saveRevision() {},
+    renderRevision() {},
+    cardById: id => state.cards.find(card => card.id === id),
+    FileReader: function () {
+      this.readAsText = () => { this.result = JSON.stringify(pack); this.onload(); };
+    },
+    Date,
+    Math,
+    JSON,
+    String,
+    Array,
+    Map,
+    Set
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.runImport = practiceImport;", context);
+  context.runImport({ files: [{ name: "pack.json" }] });
+  assert.equal(state.cards.length, 2);
+  assert.equal(state.cards[0].id, "saved-card");
+  assert.equal(state.cards[0].answer, "Keep this answer");
+  assert.equal(state.cards[1].title, "Calculate concentration");
+  assert.ok(state.cards[0].links.includes(state.cards[1].id));
+  assert.ok(state.cards[1].links.includes("saved-card"));
+  assert.equal(practice.resources.length, 1);
+  assert.equal(practice.formulas.length, 1);
+  assert.equal(practice.formulas[0].expression, "c = n ÷ V");
+});
+
+
+test("QuoteVault and DateVault use separate scripts, accessible navigation and contained libraries", () => {
+  for (const [page, script, stylesheet] of [
+    ["quotes/index.html", "quotes/quotes.js", "quotes/quotes.css"],
+    ["dates/index.html", "dates/dates.js", "dates/dates.css"]
+  ]) {
+    const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), "utf8");
+    const app = fs.readFileSync(new URL(`../${script}`, import.meta.url), "utf8");
+    const css = fs.readFileSync(new URL(`../${stylesheet}`, import.meta.url), "utf8");
+    assert.ok(html.includes(script.split("/").pop()));
+    assert.ok(html.includes(stylesheet.split("/").pop()));
+    assert.doesNotMatch(html, /maximum-scale/);
+    assert.match(app, /<button type="button" class="ni/);
+    assert.match(app, /aria-current=/);
+    assert.match(app, /scrollTop=0/);
+    assert.match(app, /class="library-results"/);
+    assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
+  }
 });
