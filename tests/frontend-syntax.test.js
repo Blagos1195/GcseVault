@@ -5,6 +5,7 @@ import vm from "node:vm";
 
 const files = [
   "shared.js",
+  "index.html",
   "quotes/index.html",
   "quotes/quotes.js",
   "dates/index.html",
