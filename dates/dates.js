@@ -984,7 +984,7 @@ function updateSB(){
   document.getElementById('sb-lv').textContent=Math.floor(S.xp/1000)+1;
   document.getElementById('sb-str').textContent=S.streak;
   const dc=dueCount();
-  document.getElementById('sb-due').textContent=dc>0?`📅 ${dc} due for review`:'';
+  document.getElementById('sb-due').textContent=dc>0?`${dc} due for review`:'';
 }
 function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';}
 function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';}
@@ -1086,14 +1086,14 @@ function addMPts(id, delta){
     S.mastered.add(id);S.learning.delete(id);
     addXP(0);// save happens in onMastery/save chain
     onMastery();
-    toast('⭐ Mastered! +10 XP');addXP(10);
+    toast('Mastered. +10 XP');addXP(10);
   } else if(next>=30&&!wasLearning&&!wasMastered){
     S.learning.add(id);
   } else if(next<30&&wasLearning&&!wasMastered){
     S.learning.delete(id);
   } else if(next<50&&wasMastered){
     S.mastered.delete(id);S.learning.add(id);
-    toast('📉 Mastery lost — keep practising');
+    toast('Mastery lost. Keep practising.');
   }
   save();
 }
@@ -1277,9 +1277,9 @@ function rLib(){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div class="dc-date">${q.year}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">⏳ Pending</span>`:''}
+        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">Pending</span>`:''}
         ${S.hidden.has(q.id)
-          ? `<button class="btn bsm" style="color:var(--amber);border-color:var(--amber);opacity:.7" onclick="toggleHidden('${q.id}')" title="Unhide">👁 Hidden</button>`
+          ? `<button class="btn bsm" style="color:var(--amber);border-color:var(--amber);opacity:.7" onclick="toggleHidden('${q.id}')" title="Unhide">Hidden</button>`
           : S.mastered.has(q.id)
             ? `<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="removeMastery('${q.id}')">−Mastery</button>`
             : ''}
@@ -1332,7 +1332,7 @@ function toggleMastered(id){
   } else if(S.learning.has(id)){
     // Force-master: set to 100
     S.masteryPts[id]=100;S.mastered.add(id);S.learning.delete(id);
-    addXP(10);toast('⭐ Mastered! +10 XP');onMastery();save();render();
+    addXP(10);toast('Mastered. +10 XP');onMastery();save();render();
   } else {
     S.learning.add(id);S.masteryPts[id]=30;save();render();
   }
@@ -1379,7 +1379,7 @@ function rSRS(){
     </div>
     ${allDue.length===0
       ?`<div class="card" style="text-align:center;padding:24px;color:var(--teal2)">
-          <div style="font-size:1.8rem;margin-bottom:8px">✅</div>
+          <div style="font-size:1.8rem;margin-bottom:8px">Correct</div>
           <div style="font-size:.88rem">No cards due${srsTopic!=='All'?' for '+srsTopic:''}!</div>
           <div style="font-size:.72rem;color:var(--text3);margin-top:5px">Come back later, or switch topic to review more.</div>
         </div>`
@@ -1457,7 +1457,7 @@ function toggleHidden(id){
   save();render();
 }
 function removeMastery(id){
-  S.mastered.delete(id);S.learning.delete(id);S.masteryPts[id]=0;save();render();toast('🗑 Mastery reset for this date');
+  S.mastered.delete(id);S.learning.delete(id);S.masteryPts[id]=0;save();render();toast('Mastery reset for this date');
 }
 function rateSRS(id,grade){
   // grade: 1=Blackout, 2=Hard, 3=Good, 4=Easy, 5=Perfect
@@ -1543,7 +1543,7 @@ function rFC(){
   <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
     <button class="btn" onclick="S.fc.idx=Math.max(0,S.fc.idx-1);S.fc.flipped=false;render()">← Prev</button>
     <button class="btn bp" onclick="S.fc.idx++;S.fc.flipped=false;render()">Next →</button>
-    <button class="btn" onclick="fcRandom()">🔀 Random</button>
+    <button class="btn" onclick="fcRandom()">Random</button>
   </div>
   </div>`;
 }
@@ -1581,7 +1581,7 @@ function rQuizSetup(){
   <div class="card" style="max-width:400px">
     <div class="fg"><label>Topic</label><select id="qw">${topics().map(t=>`<option>${t}</option>`).join('')}</select></div>
     <div class="fg"><label>Quiz type</label><select id="qt">
-      <option value="adaptive">🎯 Adaptive (gets harder — recommended)</option>
+      <option value="adaptive"> Adaptive (gets harder — recommended)</option>
       <option value="date_to_event">Date given → what happened?</option>
       <option value="event_to_date">Event given → what year/date?</option>
       <option value="significance">Event given → explain significance</option>
@@ -1613,10 +1613,10 @@ function getAdaptiveType(idx,total){
 }
 
 function getDiffLabel(type){
-  if(type==='period'||type==='section')return`<span class="diff-badge diff-easy">🟢 Easy</span>`;
-  if(type==='date_to_event')return`<span class="diff-badge diff-med">🟡 Medium</span>`;
-  if(type==='event_to_date')return`<span class="diff-badge diff-hard">🔴 Hard</span>`;
-  if(type==='significance')return`<span class="diff-badge diff-hard">🔴 Hardest</span>`;
+  if(type==='period'||type==='section')return`<span class="diff-badge diff-easy">Easy</span>`;
+  if(type==='date_to_event')return`<span class="diff-badge diff-med">Medium</span>`;
+  if(type==='event_to_date')return`<span class="diff-badge diff-hard">Hard</span>`;
+  if(type==='significance')return`<span class="diff-badge diff-hard">Hardest</span>`;
   return'';
 }
 
@@ -1667,7 +1667,7 @@ function rQuizQ(){
     const fbClass=ok?'qok':close?'qfb':'qwr';
     const fbStyle=close?'background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);':'';
     feedback=`<div class="qfb ${fbClass}" style="${fbStyle}">
-      ${ok?'✅ Correct! +15 XP':close?'🟡 Close — nearly right! +5 XP':'❌ Not quite — +2 XP for trying'}
+      ${ok?'Correct: Correct! +15 XP':close?'Close — nearly right! +5 XP':'Not quite: Not quite — +2 XP for trying'}
       <div style="margin-top:6px;font-size:.78rem"><strong style="color:var(--gold)">Answer:</strong><br>${correct}</div>
       ${type!=='significance'?`<div style="margin-top:5px;font-size:.73rem;color:var(--text2)">${q.significance.slice(0,180)}…</div>`:''}
     </div>
@@ -1708,7 +1708,7 @@ function rQuizEnd(){
   ${backBtn()}
   <div class="pt">Quiz Complete!</div>
   <div class="card" style="text-align:center;max-width:340px;margin:12px auto">
-    <div style="font-size:2rem;margin-bottom:6px">${p>=80?'🏆':p>=60?'⭐':'📚'}</div>
+    <div style="font-size:2rem;margin-bottom:6px">${p>=80?'Excellent':p>=60?'Good':'Keep going'}</div>
     <div style="font-size:1.8rem;font-family:'Playfair Display',serif;color:var(--gold)">${score} / ${qs.length}</div>
     <div style="color:var(--text2);margin-top:4px">${p>=80?'Excellent!':p>=60?'Good work!':p>=40?'Keep going!':'More revision needed'}</div>
     <div class="pb" style="margin:9px 0"><div class="pbf pg" style="width:${p}%"></div></div>
@@ -1736,7 +1736,7 @@ function rTimed(){
         <option value="date_to_event">Date → Name the event</option>
         <option value="period">Event → Name the period</option>
       </select></div>
-      <button class="btn bg bblk" onclick="startTC()">Start! ⏱</button>
+      <button class="btn bg bblk" onclick="startTC()">Start! </button>
     </div></div>`;
   }
   if(S.tc.tLeft<=0)return rTCEnd();
@@ -1765,7 +1765,7 @@ function rTimed(){
     <button class="btn" onclick="skipTC()">Skip →</button>
     <button class="btn bsm" style="margin-left:auto;color:var(--coral)" onclick="endTC()">End</button>
   </div>
-  ${S.tc.result?`<div class="qfb ${S.tc.result.ok?'qok':S.tc.result.close?'qfb':'qwr'}" style="${S.tc.result.close?'background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);margin-top:8px':' margin-top:8px'}">${S.tc.result.ok?'✅ Correct!':S.tc.result.close?'🟡 Close!':'❌ Answer: '+S.tc.result.correct}</div>`:''}
+  ${S.tc.result?`<div class="qfb ${S.tc.result.ok?'qok':S.tc.result.close?'qfb':'qwr'}" style="${S.tc.result.close?'background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);margin-top:8px':' margin-top:8px'}">${S.tc.result.ok?'Correct: Correct!':S.tc.result.close?'Close!':'Not quite: Answer: '+S.tc.result.correct}</div>`:''}
   </div>`;
 }
 function startTC(){
@@ -1808,10 +1808,10 @@ function checkTC(){
   S.tc.idx++;
   if(el){el.value='';el.focus();}
   const res=document.querySelector('.qfb');
-  if(res){res.className='qfb '+(ok?'qok':'qwr');res.innerHTML=(ok?'✅ Correct! +5 XP':'❌ Answer: '+correct);}
+  if(res){res.className='qfb '+(ok?'qok':'qwr');res.innerHTML=(ok?'Correct: Correct! +5 XP':'Not quite: Answer: '+correct);}
   else{
     const qEl=document.querySelector('.qq');
-    if(qEl){const r=document.createElement('div');r.className='qfb '+(ok?'qok':'qwr');r.style.marginTop='8px';r.textContent=(ok?'✅ Correct! +5 XP':'❌ Answer: '+correct);qEl.parentNode.insertBefore(r,qEl.nextSibling.nextSibling||null);}
+    if(qEl){const r=document.createElement('div');r.className='qfb '+(ok?'qok':'qwr');r.style.marginTop='8px';r.textContent=(ok?'Correct: Correct! +5 XP':'Not quite: Answer: '+correct);qEl.parentNode.insertBefore(r,qEl.nextSibling.nextSibling||null);}
   }
   setTimeout(()=>{
     const nextQ=S.tc.qs[S.tc.idx%S.tc.qs.length];
@@ -1834,7 +1834,7 @@ function rTCEnd(){
   ${backBtn()}
   <div class="pt">Time's Up!</div>
   <div class="card" style="text-align:center;max-width:320px;margin:12px auto">
-    <div style="font-size:2rem;margin-bottom:6px">${S.tc.score>=15?'🏆':S.tc.score>=8?'⭐':S.tc.score>=3?'👍':'📚'}</div>
+    <div style="font-size:2rem;margin-bottom:6px">${S.tc.score>=15?'Excellent':S.tc.score>=8?'Good':S.tc.score>=3?'Keep going':'Practice more'}</div>
     <div style="font-size:1.8rem;font-family:'Playfair Display',serif;color:var(--gold)">${S.tc.score} correct</div>
     <div style="color:var(--text2);margin-top:4px">in ${S.tc.total} seconds · +${S.tc.score*5} XP</div>
   </div>
@@ -1872,7 +1872,7 @@ function rTimeline(){
     ${periodList.map(p=>`<button class="fbtn${(S.tl.period||'All')===p?' active':''}" onclick="S.tl.period='${p}';render()">${p}</button>`).join('')}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-    <button class="btn bp" onclick="S.tl.mode='drag';S.tl.checked=false;S.tl.placed={};render()">🎯 Drag & Drop Challenge</button>
+    <button class="btn bp" onclick="S.tl.mode='drag';S.tl.checked=false;S.tl.placed={};render()"> Drag & Drop Challenge</button>
   </div>
   <div style="font-size:.68rem;color:var(--text3);margin-bottom:6px"><span style="color:var(--teal2)">●</span> Mastered <span style="color:var(--gold)">●</span> Learning <span style="color:var(--purple3)">●</span> New</div>
   <div id="tl-outer">
@@ -1888,7 +1888,7 @@ function rTimeline(){
     <div class="tl-detail-box" id="tl-detail"><span style="color:var(--text3);font-size:.72rem">Tap any event dot for details</span></div>
   </div>
   <div class="card" style="margin-top:10px">
-    <div class="sec" style="margin-top:0">📅 All Dates for ${selTopic} — tap to highlight</div>
+    <div class="sec" style="margin-top:0">All Dates for ${selTopic} — tap to highlight</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px;max-height:180px;overflow-y:auto;padding:2px">
     ${allTopicDates.map(q=>`<button onclick="tlHighlightDate('${q.id}')" style="background:${S.mastered.has(q.id)?'rgba(44,182,125,.2)':S.learning.has(q.id)?'rgba(232,197,71,.15)':'var(--bg4)'};border:1px solid ${S.mastered.has(q.id)?'var(--teal)':S.learning.has(q.id)?'var(--gold)':'var(--border2)'};color:${S.mastered.has(q.id)?'var(--teal2)':S.learning.has(q.id)?'var(--gold)':'var(--text2)'};border-radius:5px;padding:3px 8px;font-size:.65rem;cursor:pointer;font-family:'DM Mono',monospace;white-space:nowrap" title="${q.event}">${q.year}</button>`).join('')}
     </div>
@@ -2118,21 +2118,21 @@ function rTimelineDrag(){
 
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
     <button class="btn" onclick="S.tl.mode='browse';render()">← Browse View</button>
-    <button class="btn" onclick="S.tl.placed={};S.tl.checked=false;render()">🔄 Reset</button>
-    <button id="dd-check-btn" class="btn bg" onclick="checkDDTimeline()" style="${Object.keys(placed).length>0?'':'display:none'}">${checked?'🔄 Re-check Answers':'✅ Check Answers'}${!allPlaced&&!checked?' ('+Object.keys(placed).length+'/'+CARDS.length+' placed)':''}</button>
+    <button class="btn" onclick="S.tl.placed={};S.tl.checked=false;render()"> Reset</button>
+    <button id="dd-check-btn" class="btn bg" onclick="checkDDTimeline()" style="${Object.keys(placed).length>0?'':'display:none'}">${checked?' Re-check Answers':'Correct: Check Answers'}${!allPlaced&&!checked?' ('+Object.keys(placed).length+'/'+CARDS.length+' placed)':''}</button>
     ${checked?`<div style="font-size:.8rem;font-weight:600">
-      <span style="color:var(--teal2)">🟢 ${correctCount} perfect</span> ·
-      <span style="color:var(--amber)">🟡 ${closeCount} close</span> ·
-      <span style="color:var(--coral2)">🔴 ${Object.keys(placed).length-correctCount-closeCount} off</span>
+      <span style="color:var(--teal2)">${correctCount} perfect</span> ·
+      <span style="color:var(--amber)">${closeCount} close</span> ·
+      <span style="color:var(--coral2)">${Object.keys(placed).length-correctCount-closeCount} off</span>
       · +${correctCount*15+closeCount*5} XP
     </div>`:''}
   </div>
 
   <div style="font-size:.68rem;color:var(--text3);margin-bottom:5px;line-height:1.6">
-    🖱 Drag a card from the bank below, then drop it onto the timeline at the right year.<br>
+    Drag a card from the bank below, then drop it onto the timeline at the right year.<br>
     Scroll/pinch to zoom the timeline · pan by dragging the timeline itself (not a card).<br>
     ${checked
-      ?`<span style="color:var(--teal2)">🟢 Correct</span> = within ${Math.round(tolerance)}y · <span style="color:var(--amber)">🟡 Close</span> = within a decade · <span style="color:var(--coral2)">🔴 Wrong</span> = too far off`
+      ?`<span style="color:var(--teal2)">Correct</span> = within ${Math.round(tolerance)}y · <span style="color:var(--amber)">Close</span> = within a decade · <span style="color:var(--coral2)">Wrong</span> = too far off`
       :`<span id="dd-placed-counter" style="color:var(--blue)">${Object.keys(placed).length}/${CARDS.length} placed</span> · ${Object.keys(placed).length>0?'You can check answers now or keep placing':'Drag cards onto the timeline to begin'}`}
   </div>
 
@@ -2157,12 +2157,12 @@ function rTimelineDrag(){
   </div>
 
   <div style="margin-top:8px">
-    <div class="sec" style="margin-top:0">📦 Event Bank — drag onto timeline above</div>
+    <div class="sec" style="margin-top:0">Event Bank — drag onto timeline above</div>
     <div style="font-size:.68rem;color:var(--text3);margin-bottom:6px">${bankCards.length} remaining · placed cards appear as dots on the timeline · check answers any time</div>
     <div class="tl-bank" id="dd-bank"
       ondragover="event.preventDefault()"
       ondrop="ddDropToBank(event)">
-      ${bankHTML||'<div style="font-size:.75rem;color:var(--teal2);padding:8px">✅ All cards placed! Press Check Answers.</div>'}
+      ${bankHTML||'<div style="font-size:.75rem;color:var(--teal2);padding:8px">Correct: All cards placed! Press Check Answers.</div>'}
     </div>
   </div>
   </div>`;
@@ -2400,7 +2400,7 @@ function ddUpdateUI(){
   const bank=document.getElementById('dd-bank');
   if(bank){
     bank.innerHTML=allPlaced
-      ?'<div style="font-size:.75rem;color:var(--teal2);padding:8px">✅ All cards placed! Press Check Answers.</div>'
+      ?'<div style="font-size:.75rem;color:var(--teal2);padding:8px">Correct: All cards placed! Press Check Answers.</div>'
       :bankCards.map(q=>`<div style="background:var(--card);border:1px solid var(--border2);border-radius:7px;padding:5px 9px;font-size:.72rem;cursor:grab;line-height:1.4;max-width:180px;flex-shrink:0" id="dcard-${q.id}" draggable="true" ondragstart="dragStart('${q.id}',event)" ontouchstart="ddTouchStart('${q.id}',event)" ontouchmove="ddTouchMove(event)" ontouchend="ddTouchEnd(event)"><div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${q.period||''}</div><div style="font-weight:500">${q.event.slice(0,50)}${q.event.length>50?'…':''}</div></div>`).join('');
   }
   // Update placed counter
@@ -2412,7 +2412,7 @@ function ddUpdateUI(){
     const n=Object.keys(placed).length;
     if(n>0){
       btn.style.display='';
-      btn.textContent=S.tl.checked?'🔄 Re-check Answers':'✅ Check Answers'+((!allPlaced&&!S.tl.checked)?' ('+n+'/'+pool.length+' placed)':'');
+      btn.textContent=S.tl.checked?' Re-check Answers':'Correct: Check Answers'+((!allPlaced&&!S.tl.checked)?' ('+n+'/'+pool.length+' placed)':'');
     } else {
       btn.style.display='none';
     }
@@ -2524,12 +2524,12 @@ function rDump(){
   </div>`:`
   <button class="bback" onclick="S.dump.done=false;render()">← Try again</button>
   <div class="g3" style="margin-bottom:10px">
-    <div class="scard"><div class="snum" style="color:var(--teal)">${S.dump.results.filter(r=>r.s==='ok').length}</div><div class="slbl">✅ Correct</div></div>
+    <div class="scard"><div class="snum" style="color:var(--teal)">${S.dump.results.filter(r=>r.s==='ok').length}</div><div class="slbl">Correct: Correct</div></div>
     <div class="scard"><div class="snum" style="color:var(--amber)">${S.dump.results.filter(r=>r.s==='near').length}</div><div class="slbl">⚠ Nearly</div></div>
-    <div class="scard"><div class="snum" style="color:var(--coral)">${S.dump.results.filter(r=>r.s==='miss').length}</div><div class="slbl">❌ Not found</div></div>
+    <div class="scard"><div class="snum" style="color:var(--coral)">${S.dump.results.filter(r=>r.s==='miss').length}</div><div class="slbl">Not quite: Not found</div></div>
   </div>
   ${S.dump.results.map(r=>`<div class="dr ${r.s==='ok'?'dr-ok':r.s==='near'?'dr-near':'dr-miss'}">
-    <span>${r.s==='ok'?'✅':r.s==='near'?'⚠️':'❌'}</span> <em>${r.input}</em>
+    <span>${r.s==='ok'?'Correct':r.s==='near'?'⚠️':'Not quite'}</span> <em>${r.input}</em>
     ${r.s!=='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">Closest: ${r.match.year} — ${r.match.event}</div>`:''}
     ${r.s==='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">${r.match.year} · ${r.match.topic}</div>`:''}
     ${r.match?`<button class="btn bsm" onclick="openDateModal('${r.match.id}')" style="margin-top:5px;color:var(--purple3);border-color:var(--purple);font-size:.62rem">More info</button>`:''}
@@ -2579,14 +2579,14 @@ function rAdd(){
     <div class="fg"><label>Importance</label><select id="a-st"><option value="5">⭐⭐⭐⭐⭐ Essential</option><option value="4">⭐⭐⭐⭐ Important</option><option value="3" selected>⭐⭐⭐ Medium</option><option value="2">⭐⭐ Minor</option></select></div>
     <div class="fg"><label>Note (optional)</label><input type="text" id="a-no" placeholder="Common errors, exam tips…"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-      <button class="btn bg" onclick="saveFact()">📬 Submit for Review</button>
+      <button class="btn bg" onclick="saveFact()">Submit for Review</button>
       <button class="btn" onclick="checkDupFact()">Check duplicate</button>
     </div>
     <div id="add-fb" style="margin-top:10px"></div>
   </div>
   ${myPending.length>0?`
   <div class="div"></div>
-  <div class="sec">📬 My Pending Submissions</div>
+  <div class="sec">My Pending Submissions</div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">These facts are visible to you while awaiting admin approval. You can withdraw any that are still pending.</div>
   ${myPending.map(q=>`
   <div class="dc" style="border-left:3px solid var(--amber);max-width:540px;margin-bottom:7px">
@@ -2596,7 +2596,7 @@ function rAdd(){
         <div class="dc-event">${q.event}</div>
         <div style="font-size:.7rem;color:var(--text2);margin-top:3px">${(q.significance||'').slice(0,100)}${(q.significance||'').length>100?'…':''}</div>
       </div>
-      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">⏳ Pending</span>
+      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">Pending</span>
     </div>
     ${q.submittedAt?`<div style="font-size:.62rem;color:var(--text3);margin-top:5px">Submitted: ${new Date(q.submittedAt).toLocaleString('en-GB')}</div>`:''}
     <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingFact('${q.id}')">✕ Withdraw</button>
@@ -2635,7 +2635,7 @@ async function saveFact(){
     yearNum:parseInt(yr.match(/\d+/)?.[0])||0,submittedAt:new Date().toISOString(),
     _submittedByMe:true,_status:'pending'};
   const fbEl=document.getElementById('add-fb');
-  fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)">⏳ Submitting…</div>`;
+  fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
     const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
@@ -2645,12 +2645,12 @@ async function saveFact(){
     S.pending.push(q);
     save();
     lbUpdate();
-    toast('📬 Fact submitted! Showing in your library while awaiting review.');
-    fbEl.innerHTML=`<div class="qfb" style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);color:var(--purple3)">📬 Submitted! Visible in your library now — an admin must approve it to appear for everyone.</div>`;
+    toast('Fact submitted. It will appear in your library while awaiting review.');
+    fbEl.innerHTML=`<div class="qfb" style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);color:var(--purple3)">Submitted! Visible in your library now — an admin must approve it to appear for everyone.</div>`;
     ['a-yr','a-ev','a-sig','a-pe','a-sec','a-no'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     document.getElementById('live-dup').innerHTML='';
     buildNav();render();
-  }catch(e){fbEl.innerHTML=`<div class="qfb qwr">❌ Submission failed — ${e.message}</div>`;}
+  }catch(e){fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — ${e.message}</div>`;}
 }
 
 async function deletePendingFact(id){
@@ -2666,7 +2666,7 @@ async function deletePendingFact(id){
     }catch(e){/* non-fatal */}
   }
   S.pending = S.pending.filter(p=>String(p.id)!==String(id));
-  save(); lbUpdate(); buildNav(); toast('🗑 Submission removed'); render();
+  save(); lbUpdate(); buildNav(); toast('Submission removed'); render();
 }
 
 // ════════════════════════════════════════════════
@@ -2695,8 +2695,8 @@ function rLeaderboard(){
     ?`<div class="card" style="margin-bottom:10px;border-left:3px solid var(--gold);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Your username</div>
-          <div style="font-size:.95rem;color:var(--gold);font-weight:600">👤 ${myName}</div>
-          <div style="font-size:.7rem;color:var(--amber);margin-top:2px">🔥 ${S.streak} day streak · 🏅 ${S.maxStreak} best</div>
+          <div style="font-size:.95rem;color:var(--gold);font-weight:600">${myName}</div>
+          <div style="font-size:.7rem;color:var(--amber);margin-top:2px">${S.streak} day streak · ${S.maxStreak} best</div>
         </div>
         ${myRank>0?`<div style="text-align:center"><div style="font-size:1.3rem">${medal(myRank-1)}</div><div style="font-size:.62rem;color:var(--text3)">rank</div></div>`:''}
         <button class="btn bsm" onclick="showUsernameModal()" style="color:var(--text2)">Change name</button>
@@ -2706,24 +2706,24 @@ function rLeaderboard(){
         <button class="btn bp" onclick="showUsernameModal()">Set username</button>
       </div>`}
   <div class="fbar" style="margin-bottom:10px">
-    <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">🏛 Dates</button>
-    <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">⚡ XP</button>
+    <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">Dates</button>
+    <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">XP</button>
     <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">Streak</button>
   </div>
   ${_lbLoading&&!_lbCache
-    ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">⏳ Loading leaderboard…</div>`
+    ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem"> Loading leaderboard…</div>`
     :users.length===0
     ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">No users yet — be the first!</div>`
     :S._lbTab==='mastered'
     ?`<div class="card" style="margin-bottom:10px">
-    <div class="sec" style="margin-top:0">🏛 Dates Mastered</div>
+    <div class="sec" style="margin-top:0">Dates Mastered</div>
     ${users.slice().sort((a,b)=>(b.dv_mastered||0)-(a.dv_mastered||0)).slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
       return`<div style="${rowStyle(u)}">
         <div style="font-size:.85rem;min-width:26px;text-align:center">${medal(i)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:${isMe?600:400};color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.username}${isMe?' (you)':''}</div>
-          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">🏛 ${u.dv_mastered||0} dates mastered</div>
+          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">${u.dv_mastered||0} dates mastered</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.88rem;color:var(--teal2);font-weight:600">${u.dv_mastered||0}</div>
@@ -2733,7 +2733,7 @@ function rLeaderboard(){
   </div>`
     :S._lbTab==='xp'
     ?`<div class="card">
-    <div class="sec" style="margin-top:0">⚡ Combined XP</div>
+    <div class="sec" style="margin-top:0">Combined XP</div>
     ${users.slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
       const totalXP=(u.qv_xp||0)+(u.dv_xp||0);
@@ -2762,7 +2762,7 @@ function rLeaderboard(){
         <div style="font-size:.85rem;min-width:26px;text-align:center">${medal(i)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:${isMe?600:400};color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.username}${isMe?' (you)':''}</div>
-          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">🔥 ${cs} current · 🏅 ${ms} best</div>
+          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">${cs} current · ${ms} best</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.88rem;color:var(--amber);font-weight:600">${ms}</div>
@@ -2806,7 +2806,7 @@ function rStats(){
     <div class="scard"><div class="snum" style="color:var(--gold)">${qs.length}</div><div class="slbl">Total Dates</div></div>
     <div class="scard"><div class="snum" style="color:var(--teal)">${S.mastered.size}</div><div class="slbl">Mastered</div></div>
     <div class="scard"><div class="snum" style="color:var(--purple3)">${S.xp}</div><div class="slbl">Total XP</div></div>
-    <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak 🔥</div></div>
+    <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak </div></div>
   </div>
   <div class="card" style="margin-bottom:10px">
     <div class="sec" style="margin-top:0">Activity Heatmap — last 60 days</div>
@@ -2832,7 +2832,7 @@ function rStats(){
   </div>
   <div class="g2" style="margin-bottom:10px">
     <div class="card">
-      <div class="sec" style="margin-top:0">🌟 Best Remembered</div>
+      <div class="sec" style="margin-top:0"> Best Remembered</div>
       ${bestRemembered.map(q=>`<div style="padding:5px 0;border-bottom:1px solid var(--border)">
         <div style="font-family:'DM Mono',monospace;font-size:.78rem;color:var(--gold)">${q.year}</div>
         <div style="font-size:.75rem;margin-top:1px">${q.event.slice(0,55)}${q.event.length>55?'…':''}</div>
@@ -2845,7 +2845,7 @@ function rStats(){
         <div style="font-family:'DM Mono',monospace;font-size:.78rem;color:var(--gold)">${q.year}</div>
         <div style="font-size:.75rem;margin-top:1px">${q.event.slice(0,55)}${q.event.length>55?'…':''}</div>
         <div style="font-size:.65rem;color:var(--text3);margin-top:2px">${q.topic}</div>
-      </div>`).join(''):'<div style="font-size:.75rem;color:var(--teal2)">All 5-star dates mastered! 🎉</div>'}
+      </div>`).join(''):'<div style="font-size:.75rem;color:var(--teal2)">All 5-star dates mastered! </div>'}
     </div>
   </div>
   </div>`;
@@ -2856,19 +2856,19 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'📅',n:'First Date',d:'Mastered your first fact',e:S.mastered.size>=1},
-    {i:'🗓',n:'Chronologist',d:'Mastered 10 dates',e:S.mastered.size>=10},
-    {i:'📚',n:'Historian',d:'Mastered 30 dates',e:S.mastered.size>=30},
-    {i:'🌟',n:'Scholar',d:'Mastered 60 dates',e:S.mastered.size>=60},
-    {i:'⭐',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
-    {i:'💫',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
-    {i:'💥',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
-    {i:'🔥',n:'On Fire',d:'3-day streak',e:S.streak>=3},
-    {i:'🏆',n:'Dedicated',d:'7-day streak',e:S.streak>=7},
-    {i:'📅',n:'Timeline Master',d:'Placed 5 cards correctly',e:(S.tl.score||0)>=5},
-    {i:'💡',n:'Brain Dump',d:'Completed a Brain Dump',e:S.dump.done},
-    {i:'⏱',n:'Speed Demon',d:'Scored 10+ in Timed Challenge',e:(S.tc.score||0)>=10},
-    {i:'🔁',n:'SRS Master',d:'Reviewed 10 SRS cards',e:Object.keys(S.srsData).length>=10},
+    {i:'01',n:'First Date',d:'Mastered your first fact',e:S.mastered.size>=1},
+    {i:'02',n:'Chronologist',d:'Mastered 10 dates',e:S.mastered.size>=10},
+    {i:'03',n:'Historian',d:'Mastered 30 dates',e:S.mastered.size>=30},
+    {i:'04',n:'Scholar',d:'Mastered 60 dates',e:S.mastered.size>=60},
+    {i:'05',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
+    {i:'06',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
+    {i:'07',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
+    {i:'08',n:'On Fire',d:'3-day streak',e:S.streak>=3},
+    {i:'09',n:'Dedicated',d:'7-day streak',e:S.streak>=7},
+    {i:'10',n:'Timeline Master',d:'Placed 5 cards correctly',e:(S.tl.score||0)>=5},
+    {i:'11',n:'Brain Dump',d:'Completed a Brain Dump',e:S.dump.done},
+    {i:'12',n:'Speed Demon',d:'Scored 10+ in Timed Challenge',e:(S.tc.score||0)>=10},
+    {i:'13',n:'SRS Master',d:'Reviewed 10 SRS cards',e:Object.keys(S.srsData).length>=10},
   ];
   // Persist newly unlocked achievements
   achs.forEach(a=>{if(a.e&&!S.achievements.has(a.n)){S.achievements.add(a.n);save();}});
@@ -2943,7 +2943,7 @@ function rSett(){
     </div>
     ${customCards?`<div style="font-size:.63rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Your themes</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px">${customCards}</div>`:''}
-    <button class="btn" style="color:var(--purple3);border-color:var(--purple)" onclick="openThemeBuilder('')">🎨 Create Custom Theme</button>
+    <button class="btn" style="color:var(--purple3);border-color:var(--purple)" onclick="openThemeBuilder('')">Create custom theme</button>
     ${VaultUser.getAccountSession()?`<button class="btn bsm" style="color:var(--teal2);border-color:var(--teal);margin-left:4px" onclick="loadServerCustomThemes().then(()=>render()).then(()=>toast('☁️ Themes synced'))">☁️ Sync</button>`:''}
   </div>
 
@@ -3060,7 +3060,7 @@ async function loadCloudDates(){
       if(approvedFromPending.length>0){
         const customIds=new Set(S.custom.map(q=>String(q.id)));
         approvedFromPending.forEach(q=>{if(!customIds.has(String(q.id)))S.custom.push(q);});
-        toast(`✅ ${approvedFromPending.length} of your submitted fact${approvedFromPending.length===1?'':'s'} got approved!`,4000);
+        toast(`Correct: ${approvedFromPending.length} of your submitted fact${approvedFromPending.length===1?'':'s'} got approved!`,4000);
       }
       if(newFacts.length>0){S.custom=[...S.custom,...newFacts];}
       if(newFacts.length>0||approvedFromPending.length>0){save();render();}
