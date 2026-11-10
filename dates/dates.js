@@ -762,10 +762,10 @@ function promptRejectedFacts(rejected,allRejectedIds){
     ?`Your submitted fact ${names} was reviewed and not approved. Would you like to remove it from your library?`
     :`${rejected.length} of your submitted facts were not approved: ${names}. Would you like to remove them from your library?`;
   openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--coral);margin-bottom:8px">📋 Submission Update</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--coral);margin-bottom:8px">Submission update</div>
     <div style="font-size:.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6">${msg}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn br" onclick="dismissRejectedFacts(true)">🗑 Remove from my library</button>
+      <button class="btn br" onclick="dismissRejectedFacts(true)">Remove from my library</button>
       <button class="btn" onclick="dismissRejectedFacts(false)">Keep for now</button>
     </div>
   </div>`);
@@ -823,7 +823,7 @@ function showUsernameModal(onConfirm){
   const suggestion = getUsername() ? ` value="${getUsername()}"` : '';
   
   openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">Join the leaderboard</div>
     <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
       Choose a username to appear on the leaderboard.<br>
       <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · password required for leaderboard access</span>
@@ -929,7 +929,7 @@ async function lbConfirmUsername(){
   // Update local storage first for instant UI feedback
   setUsername(v);
   closeModal();
-  toast('👤 Username '+(oldName&&!isSameUser?'changed to: ':'set: ')+v);
+  toast('Username '+(oldName&&!isSameUser?'changed to: ':'set: ')+v);
   if(window._lbCb){window._lbCb();window._lbCb=null;}
   // Push to worker — sends our stable userKey so it updates the same KV entry, not create a new one
   lbUpdate();
@@ -1185,7 +1185,7 @@ function rDash(){
     <div class="scard"><div class="snum" style="color:${dc>0?'var(--coral)':'var(--text2)'}">${dc}</div><div class="slbl">Due Today</div></div>
   </div>
   <div class="card" style="margin-bottom:10px;border-left:3px solid var(--gold)">
-    <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">📅 Fact of the Day</div>
+    <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Fact of the day</div>
     <div style="font-family:'DM Mono',monospace;font-size:1rem;color:var(--gold);margin-bottom:3px">${qotd.year}</div>
     <div style="font-size:.88rem;margin-bottom:4px">${qotd.event}</div>
     <div style="font-size:.7rem;color:var(--text3)">${qotd.topic} · ${qotd.period}</div>
@@ -1207,12 +1207,12 @@ function rDash(){
     <div class="card">
       <div class="sec" style="margin-top:0">Quick Start</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${dc>0?`<button class="btn bp bblk" onclick="go('srs')">🔁 SRS Review (${dc} due)</button>`:''}
+        ${dc>0?`<button class="btn bp bblk" onclick="go('srs')">SRS Review (${dc} due)</button>`:''}
         <button class="btn bblk" onclick="go('flashcards')">🃏 Flashcards</button>
-        <button class="btn bblk" onclick="go('quiz')">🧠 Quiz</button>
-        <button class="btn bblk" onclick="go('timed')">⏱ Timed Challenge</button>
-        <button class="btn bg bblk" onclick="go('timeline')">📅 Timeline Drag</button>
-        <button class="btn bblk" onclick="go('braindump')">💡 Brain Dump</button>
+        <button class="btn bblk" onclick="go('quiz')">Quiz</button>
+        <button class="btn bblk" onclick="go('timed')">Timed challenge</button>
+        <button class="btn bg bblk" onclick="go('timeline')">Timeline</button>
+        <button class="btn bblk" onclick="go('braindump')">Brain dump</button>
       </div>
     </div>
   </div>
@@ -1285,7 +1285,7 @@ function rLib(){
             : ''}
         ${q._submittedByMe&&q._status==='pending'
           ?`<button class="btn bsm" onclick="deletePendingFact('${q.id}')" style="color:var(--coral);border-color:var(--coral);padding:3px 6px" title="Withdraw">✕</button>`
-          :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'👁':'🚫'}</button>`}
+          :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'Unhide':'Hide'}</button>`}
       </div>
     </div>
     <div class="dc-event">${q.event}</div>
@@ -1306,7 +1306,7 @@ function rLib(){
       ${isDue(srs)?'<span class="bd">Due</span>':''}
     </div>
     ${q.note?`<div class="dc-note">⚠ ${q.note}</div>`:''}
-    <button class="btn bsm" onclick="openDateModal('${q.id}')" style="margin-top:6px;color:var(--purple3);border-color:var(--purple);font-size:.65rem">📖 More Info</button>
+    <button class="btn bsm" onclick="openDateModal('${q.id}')" style="margin-top:6px;color:var(--purple3);border-color:var(--purple);font-size:.65rem">More info</button>
   </div>`}).join('')}
   </div>`;
 }
@@ -1358,7 +1358,7 @@ function rSRS(){
       You rate how well you remembered each card (Blackout → Perfect) and the app schedules it to reappear
       at the optimal time — soon if you struggled, later if you found it easy.
       Cards you know well come back in weeks; difficult ones come back tomorrow.
-      This means you spend more time on what you actually need to learn. 🧠
+      This means you spend more time on what you actually need to learn. 
     </div>
     <div class="fbar">
       ${topicList.map(t=>`<button class="fbtn${srsTopic===t?' active':''}" onclick="S.srs.topic='${t}';render()">${t}</button>`).join('')}
@@ -1673,7 +1673,7 @@ function rQuizQ(){
     </div>
     <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
       <button class="btn bp" onclick="nextQQ()">Next →</button>
-      <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple)">📖 More Info</button>
+      <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple)">More info</button>
     </div>`;
   }
 
@@ -2020,7 +2020,7 @@ function tlShowDetail(q){
         <span class="tag tp">${q.topic}</span><span class="tag tb">${q.period||''}</span>
         ${q.section?`<span class="tag tg">${q.section}</span>`:''}
         ${S.mastered.has(q.id)?'<span class="bm">Mastered</span>':S.learning.has(q.id)?'<span class="bl">Learning</span>':'<span class="bn">New</span>'}
-        <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple);font-size:.62rem;padding:2px 8px">📖 More Info</button>
+        <button class="btn bsm" onclick="openDateModal('${q.id}')" style="color:var(--purple3);border-color:var(--purple);font-size:.62rem;padding:2px 8px">More info</button>
       </div>
     </div>
   </div>`;
@@ -2532,7 +2532,7 @@ function rDump(){
     <span>${r.s==='ok'?'✅':r.s==='near'?'⚠️':'❌'}</span> <em>${r.input}</em>
     ${r.s!=='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">Closest: ${r.match.year} — ${r.match.event}</div>`:''}
     ${r.s==='ok'&&r.match?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">${r.match.year} · ${r.match.topic}</div>`:''}
-    ${r.match?`<button class="btn bsm" onclick="openDateModal('${r.match.id}')" style="margin-top:5px;color:var(--purple3);border-color:var(--purple);font-size:.62rem">📖 More Info</button>`:''}
+    ${r.match?`<button class="btn bsm" onclick="openDateModal('${r.match.id}')" style="margin-top:5px;color:var(--purple3);border-color:var(--purple);font-size:.62rem">More info</button>`:''}
   </div>`).join('')}
   `}
   </div>`;
@@ -2678,7 +2678,7 @@ function rLeaderboard(){
   if(!_lbCache&&!_lbLoading){_lbLoading=true;loadLeaderboard();}
   const users=_lbCache||[];
   const myRank=myName?users.findIndex(u=>u.username.toLowerCase()===myName.toLowerCase())+1:0;
-  const medal=(i)=>i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+  const medal=(i)=>`${i+1}.`;
   const rowStyle=(u)=>{
     const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
     return`border-bottom:1px solid var(--border);padding:8px 4px;display:flex;align-items:center;gap:8px;${isMe?'background:rgba(232,197,71,.07);border-left:2px solid var(--gold);padding-left:8px;':''}`;
@@ -2688,7 +2688,7 @@ function rLeaderboard(){
   ${backBtn()}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;flex-wrap:wrap;gap:8px">
     <div class="pt">Leaderboard</div>
-    <button class="btn bsm" onclick="_lbCache=null;_lbLoading=false;render()" style="color:var(--blue);border-color:var(--blue)">🔄 Refresh</button>
+    <button class="btn bsm" onclick="_lbCache=null;_lbLoading=false;render()" style="color:var(--blue);border-color:var(--blue)">Refresh</button>
   </div>
   <div class="ps">Combined stats across DateVault &amp; QuoteVault</div>
   ${myName
@@ -2703,12 +2703,12 @@ function rLeaderboard(){
       </div>`
     :`<div class="card" style="margin-bottom:10px;border-left:3px solid var(--purple);text-align:center;padding:14px">
         <div style="font-size:.85rem;margin-bottom:8px">Set a username to appear on the leaderboard</div>
-        <button class="btn bp" onclick="showUsernameModal()">👤 Set Username</button>
+        <button class="btn bp" onclick="showUsernameModal()">Set username</button>
       </div>`}
   <div class="fbar" style="margin-bottom:10px">
     <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">🏛 Dates</button>
     <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">⚡ XP</button>
-    <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">🔥 Streak</button>
+    <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">Streak</button>
   </div>
   ${_lbLoading&&!_lbCache
     ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">⏳ Loading leaderboard…</div>`
@@ -2753,7 +2753,7 @@ function rLeaderboard(){
       </div>`;}).join('')}
   </div>`
     :`<div class="card">
-    <div class="sec" style="margin-top:0">🔥 Longest Streak</div>
+    <div class="sec" style="margin-top:0">Longest streak</div>
     <div style="font-size:.68rem;color:var(--text3);margin-bottom:8px">Best ever consecutive day streak (breaks if a day is missed)</div>
     ${users.slice().sort((a,b)=>(b.max_streak||0)-(a.max_streak||0)).slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
