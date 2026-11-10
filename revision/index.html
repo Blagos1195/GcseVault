@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Revision</title>
 <link rel="icon" href="data:,">
-<script src="../shared.js?v=20261109-ai-permissions"></script>
+<script src="../shared.js?v=20261110-theme-sync"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -669,25 +669,38 @@ function awardRevisionXP(){
   if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}
 }
 async function syncRevisionTheme(){
-  if(!revisionUserKey())return;
+  if(!revisionUserKey()||!VaultUser.getAccountSession())return;
   try{
     const response=await fetch(`${ThemeManager.WORKER_URL}/lb/get?userKey=${encodeURIComponent(revisionUserKey())}`);
+    if(!response.ok)throw new Error(`Could not load the shared theme (HTTP ${response.status}).`);
     const data=await response.json();
-    if(data.found&&data.user?.theme){
-      await ThemeManager.loadServerCustomThemes('global');
-      if(ThemeManager.getAllThemes('global')[data.user.theme])ThemeManager.applyTheme(data.user.theme,'global');
+    if(!data.found||!data.user?.theme)return;
+    const themesResult=await ThemeManager.loadServerCustomThemes('global');
+    if(!themesResult.synced)throw themesResult.error||new Error('Could not sync saved themes.');
+    if(ThemeManager.getAllThemes('global')[data.user.theme]){
+      await ThemeManager.applyTheme(data.user.theme,'global',false);
+      state.themeMessage=`${ThemeManager.getAllThemes('global')[data.user.theme].label||data.user.theme} loaded from your shared account.`;
+    }else{
+      state.themeMessage='Your shared account has a theme that is not available on this device.';
     }
-  }catch(error){console.warn('Revision theme sync failed:',error);}
+    renderRevision();
+  }catch(error){
+    console.warn('Revision theme sync failed:',error);
+    state.themeMessage='Could not sync your shared theme. Your current theme has been kept.';
+    renderRevision();
+  }
 }
 async function syncRevisionThemes(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   state.themeMessage='Syncing themes…';renderRevision();
-  await ThemeManager.loadServerCustomThemes('global');
-  state.themeMessage='Saved themes synced from your shared account.';renderRevision();
+  const result=await ThemeManager.loadServerCustomThemes('global');
+  state.themeMessage=result.synced?'Saved themes synced with your shared account.':(result.error?.message||'Theme sync failed. Your local themes have been kept.');
+  renderRevision();
 }
-function applyRevisionTheme(key){
-  ThemeManager.applyTheme(key,'global');
-  state.themeMessage=`${ThemeManager.getAllThemes('global')[key]?.label||key} theme saved to your shared account.`;
+async function applyRevisionTheme(key){
+  const result=await ThemeManager.applyTheme(key,'global');
+  const label=ThemeManager.getAllThemes('global')[key]?.label||key;
+  state.themeMessage=result.synced?`${label} theme synced to your shared account.`:result.error?`${label} applied here, but could not sync: ${result.error.message}`:`${label} applied on this device. Sign in to sync it across devices.`;
   renderRevision();
 }
 function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}

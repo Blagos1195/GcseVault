@@ -462,6 +462,7 @@ const VaultUser = {
         window.closeModal();
         if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
         if (typeof window.loadRevision === 'function') await window.loadRevision();
+        if (typeof window.syncRevisionTheme === 'function') await window.syncRevisionTheme();
         if (typeof window.render === 'function') window.render();
         if (typeof window.renderRevision === 'function') window.renderRevision();
       };
@@ -715,6 +716,30 @@ const ThemeManager = {
       '--teal': '#1a7860', '--teal2': '#22a07a',
       '--coral': '#c82c18', '--coral2': '#e04830',
       '--blue': '#1a58b0', '--pink': '#b02878', '--amber': '#b86000', '--green': '#1e7840', '--red': '#b81818'
+    },
+    'barker-orange': {
+      label: 'Barker Orange',
+      desc: 'For those who know 💀',
+      '--bg': '#ff9500', '--bg2': '#ff0000', '--bg3': '#ff9f0a', '--bg4': '#ffa712', '--bg5': '#ffaf1a',
+      '--card': '#c800ff', '--border': 'rgba(255,255,255,0.07)', '--border2': 'rgba(255,255,255,0.13)', '--border3': 'rgba(255,255,255,0.22)',
+      '--text': '#000000', '--text2': '#242334', '--text3': '#060516',
+      '--gold': '#00ff11', '--gold2': '#0fff20', '--gold3': '#00eb00',
+      '--purple': '#05ffd5', '--purple2': '#00eeff', '--purple3': '#c4aaff',
+      '--teal': '#2cb67d', '--teal2': '#3ec88f',
+      '--coral': '#e85d4a', '--coral2': '#f76c59',
+      '--blue': '#ff00c8', '--pink': '#d4549a', '--amber': '#f5a623', '--green': '#3ecf8e', '--red': '#ff4d4d'
+    },
+    'bricked-device': {
+      label: 'Bricked Device',
+      desc: 'Good luck 💀',
+      '--bg': '#000000', '--bg2': '#000000', '--bg3': '#000000', '--bg4': '#000000', '--bg5': '#000000',
+      '--card': '#000000', '--border': 'rgba(0,0,0,0)', '--border2': 'rgba(0,0,0,0)', '--border3': 'rgba(0,0,0,0)',
+      '--text': '#000000', '--text2': '#000000', '--text3': '#000000',
+      '--gold': '#000000', '--gold2': '#000000', '--gold3': '#000000',
+      '--purple': '#000000', '--purple2': '#000000', '--purple3': '#000000',
+      '--teal': '#000000', '--teal2': '#000000',
+      '--coral': '#000000', '--coral2': '#000000',
+      '--blue': '#000000', '--pink': '#000000', '--amber': '#000000', '--green': '#000000', '--red': '#000000'
     }
   },
 
@@ -736,24 +761,32 @@ const ThemeManager = {
     return { ...this.defaultThemes, ...this.getCustomThemes(scope) };
   },
 
-  applyTheme(key, scope = 'global') {
+  async applyTheme(key, scope = 'global', sync = true) {
     const all = this.getAllThemes(scope);
+    if (!all[key]) key = 'default';
     const theme = all[key] || this.defaultThemes.default;
     const root = document.documentElement.style;
     Object.entries(theme).forEach(([k, v]) => {
       if (k.startsWith('--')) root.setProperty(k, v);
     });
-
     localStorage.setItem('vt_theme', key);
     VaultUser.saveProfile({ theme: key });
-
     const userKey = VaultUser.getKey();
-    if (userKey) {
-      fetch(`${this.WORKER_URL}/lb/update-theme`, {
+    if (!sync || !userKey || !VaultUser.getAccountSession()) return { synced: false };
+    try {
+      const response = await fetch(`${this.WORKER_URL}/lb/update-theme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userKey, theme: key })
-      }).catch(() => {});
+      });
+      const data = await VaultUser.readResponse(response);
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || data.message || `Theme sync failed (HTTP ${response.status}).`);
+      }
+      return { synced: true };
+    } catch (error) {
+      console.warn('Theme sync failed:', error);
+      return { synced: false, error };
     }
   },
 
@@ -873,7 +906,7 @@ const ThemeManager = {
     });
   },
 
-  saveCustomTheme(editKey, scope = 'global') {
+  async saveCustomTheme(editKey, scope = 'global') {
     const name = (document.getElementById('tc-name')?.value.trim() || 'My Theme');
     const desc = (document.getElementById('tc-desc')?.value.trim() || '');
     const key = editKey || `${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`;
@@ -882,43 +915,69 @@ const ThemeManager = {
     const customThemes = this.getCustomThemes(scope);
     customThemes[key] = theme;
     this.saveCustomThemes(customThemes, scope);
-    this.syncCustomThemeToWorker(key, theme);
     if (typeof closeModal === 'function') closeModal();
-    this.applyTheme(key, scope);
+    const synced = await this.syncCustomThemeToWorker(key, theme);
+    await this.applyTheme(key, scope, synced);
     if (typeof render === 'function') render();
-    if (window.toast) window.toast('🎨 Theme saved & applied!');
+    if (window.toast) window.toast(synced ? '🎨 Theme saved and synced!' : '🎨 Theme saved on this device. Sign in to sync it.');
   },
 
   async syncCustomThemeToWorker(key, theme) {
     const userKey = VaultUser.getKey();
-    if (!userKey) return;
+    if (!userKey || !VaultUser.getAccountSession()) return false;
     try {
-      await fetch(`${this.WORKER_URL}/themes/save`, {
+      const response = await fetch(`${this.WORKER_URL}/themes/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userKey, key, theme })
       });
+      if (!response.ok) {
+        const data = await VaultUser.readResponse(response);
+        throw new Error(data.error || data.message || `Theme upload failed (HTTP ${response.status}).`);
+      }
+      return true;
     } catch (error) {
       console.warn('Theme sync failed:', error);
+      return false;
     }
   },
 
   async loadServerCustomThemes(scope = 'global') {
     const userKey = VaultUser.getKey();
-    if (!userKey) return;
+    if (!userKey || !VaultUser.getAccountSession()) return { synced: false, error: new Error('Sign in to sync themes.') };
     try {
       const response = await fetch(`${this.WORKER_URL}/themes/list?userKey=${encodeURIComponent(userKey)}`);
-      if (!response.ok) return;
-      const data = await response.json();
-      if (data.themes && typeof data.themes === 'object') {
-        this.saveCustomThemes(data.themes, scope);
-        const activeKey = localStorage.getItem('vt_theme') || (window.S && window.S.settings && window.S.settings.theme) || 'default';
-        const allNow = this.getAllThemes(scope);
-        this.applyTheme(allNow[activeKey] ? activeKey : 'default', scope);
-        if (typeof render === 'function') render();
+      if (!response.ok) {
+        const data = await VaultUser.readResponse(response);
+        throw new Error(data.error || data.message || `Theme download failed (HTTP ${response.status}).`);
       }
+      const data = await response.json();
+      const remote = data.themes && typeof data.themes === 'object' ? data.themes : {};
+      const merged = { ...remote };
+      const uploads = [];
+      const local = this.getCustomThemes(scope);
+      for (const [key, theme] of Object.entries(local)) {
+        if (!merged[key]) {
+          merged[key] = theme;
+          uploads.push([key, theme]);
+        } else if (JSON.stringify(merged[key]) !== JSON.stringify(theme)) {
+          let preservedKey = `${key}_local_${Date.now()}`;
+          while (merged[preservedKey] || local[preservedKey]) preservedKey += '_copy';
+          merged[preservedKey] = { ...theme, label: `${theme.label || key} (local copy)` };
+          uploads.push([preservedKey, merged[preservedKey]]);
+        }
+      }
+      this.saveCustomThemes(merged, scope);
+      for (const [key, theme] of uploads) {
+        if (!await this.syncCustomThemeToWorker(key, theme)) {
+          return { synced: false, error: new Error(`Could not upload theme "${theme.label || key}".`) };
+        }
+      }
+      if (typeof render === 'function') render();
+      return { synced: true, count: Object.keys(merged).length, uploaded: uploads.length };
     } catch (error) {
       console.warn('Theme load failed:', error);
+      return { synced: false, error };
     }
   },
 

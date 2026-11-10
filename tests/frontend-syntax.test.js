@@ -202,3 +202,18 @@ test("Revision sync retains private exam-practice data", () => {
   assert.match(revision, /resources:Array\.isArray\(practice\.resources\)/);
   assert.match(worker, /resources: Array\.isArray\(set\.practice\.resources\)/);
 });
+
+
+test("Revision themes sync across devices without discarding local themes", () => {
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  assert.match(shared, /'barker-orange':\s*\{/);
+  assert.match(shared, /'bricked-device':\s*\{/);
+  assert.match(shared, /const merged = \{ \.\.\.remote \};/);
+  assert.match(shared, /uploads\.push\(\[key, theme\]\)/);
+  assert.match(shared, /if \(!response\.ok\)/);
+  assert.match(shared, /async applyTheme\(key, scope = 'global', sync = true\)/);
+  assert.match(revision, /await ThemeManager\.applyTheme\(data\.user\.theme,'global',false\)/);
+  assert.match(revision, /Your current theme has been kept/);
+  assert.match(shared, /await window\.syncRevisionTheme\(\)/);
+});
