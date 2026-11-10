@@ -238,3 +238,6 @@ details.knowledge-item>summary{cursor:pointer;list-style-position:inside}
 .graph-node:hover,.graph-node.active{border-color:var(--purple2)}
 @media(max-width:900px){.overview-grid{grid-template-columns:1fr}.overview-hero{padding:22px}}
 @media(max-width:520px){.overview-hero{grid-template-columns:1fr;gap:16px;padding:18px}.overview-hero-count{min-width:0;text-align:left;padding:12px 0 0;border-left:0;border-top:1px solid var(--border2)}.overview-hero-count strong{font-size:2.5rem}.overview-stats{gap:7px}.overview-stats .scard{padding:11px}}
+
+.ni{appearance:none;width:calc(100% - 16px);border:0;background:transparent;font-family:inherit;text-align:left}
+.ni:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
