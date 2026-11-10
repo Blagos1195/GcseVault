@@ -97,7 +97,8 @@ function searchRevision(query){
  p.resources.forEach(item=>{if((item.title+' '+item.topic+' '+item.content+' '+item.source).toLowerCase().includes(q))add('resource',item.id,item.title,item.subject+' · '+item.topic);});
  p.formulas.forEach(item=>{if((item.name+' '+item.expression+' '+item.units+' '+item.conditions).toLowerCase().includes(q))add('formula',item.id,item.name,item.expression);});
  p.mistakes.filter(item=>!item.resolved).forEach(item=>{if((item.topic+' '+item.description+' '+(item.nextAction||'')).toLowerCase().includes(q))add('mistake',item.id,item.topic,'Open mistake · '+item.description);});
- p.attempts.forEach(item=>{if((item.topic+' '+item.source+' '+item.notes).toLowerCase().includes(q))add('attempt',item.id,item.topic,'Exam attempt · '+item.marks+'/'+item.maxMarks);});
+ p.attempts.forEach(item=>{if((item.topic+' '+item.source+' '+item.notes+' '+(item.nextAction||'')).toLowerCase().includes(q))add('attempt',item.id,item.topic,'Exam attempt · '+item.marks+'/'+item.maxMarks);});
+ (state.publicNotes||[]).forEach(note=>{if((note.title+' '+note.subject+' '+(note.cards||[]).map(card=>(card.title||'')+' '+(card.answer||'')).join(' ')).toLowerCase().includes(q))add('public',note.id,note.title,'Public notes · '+(note.subject||'General'));});
  Object.entries(p.catalogues).forEach(([subjectId,catalogue])=>(catalogue.topics||[]).forEach(topic=>{if((topic.name+' '+(topic.subtopics||[]).join(' ')).toLowerCase().includes(q))add('topic',subjectId+'|'+topic.id,topic.name,catalogue.subject+' · '+catalogue.examBoard);}));
  panel.innerHTML=results.length?results.map(item=>'<button type="button" class="search-result" onclick="openRevisionSearchResult(\''+item.type+'\',\''+encodeURIComponent(String(item.id))+'\')"><span class="search-result-title">'+escapeRevision(item.title)+'</span><span class="search-result-meta">'+escapeRevision(item.meta)+'</span></button>').join(''):'<div class="search-empty">No matching revision content.</div>';
  panel.hidden=false;
@@ -109,6 +110,7 @@ function openRevisionSearchResult(type,encodedId){
  if(type==='resource'){state.resourceFocus=id;state.view='resources';renderRevision();return;}
  if(type==='formula'){state.view='analytics';renderRevision();document.getElementById('formula-'+id)?.scrollIntoView({behavior:'smooth',block:'center'});return;}
  if(type==='mistake'||type==='attempt'){state.view='analytics';renderRevision();return;}
+ if(type==='public'){state.view='public';renderRevision();return;}
  if(type==='topic'){const [subjectId,topicId]=id.split('|');practiceSelectTopic(subjectId,topicId);return;}
 }
 document.getElementById('revision-search')?.addEventListener('keydown',event=>{if(event.key==='Escape'){event.target.value='';searchRevision('');}});
