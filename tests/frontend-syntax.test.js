@@ -12,6 +12,7 @@ const files = [
   "dates/dates.js",
   "revision/index.html",
   "revision/app.js",
+  "revision/product.js",
   "revision/practice.js"
 ];
 
@@ -216,7 +217,7 @@ test("Revision sync retains private exam-practice data", () => {
 
 test("Revision themes sync across devices without discarding local themes", () => {
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
-  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const practice = fs.readFileSync(new URL("../revision/practice.js", import.meta.url), "utf8");
   assert.match(shared, /'barker-orange':\s*\{/);
