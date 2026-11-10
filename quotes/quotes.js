@@ -677,7 +677,7 @@ function removeMastery(id){
   S.mastered.delete(key);S.mastered.delete(String(key));
   S.learning.delete(key);S.learning.delete(String(key));
   S.masteryPts[key]=0;S.masteryPts[String(key)]=0;
-  save();render();toast('🗑 Mastery reset for this quote');
+  save();render();toast('Mastery reset for this quote');
 }
 
 function save(){
@@ -880,10 +880,10 @@ function promptRejectedQuotes(rejected,allRejectedIds){
     ?`Your submitted quote ${names} was reviewed and not approved. Would you like to remove it from your library?`
     :`${rejected.length} of your submitted quotes were not approved: ${names}. Would you like to remove them from your library?`;
   openModal(`<div>
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--coral);margin-bottom:8px">📋 Submission Update</div>
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--coral);margin-bottom:8px">Submission update</div>
     <div style="font-size:.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6">${msg}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn br" onclick="dismissRejected(true)">🗑 Remove from my library</button>
+      <button class="btn br" onclick="dismissRejected(true)">Remove from my library</button>
       <button class="btn" onclick="dismissRejected(false)">Keep for now</button>
     </div>
   </div>`);
@@ -932,7 +932,7 @@ function onMastery(){
 function showUsernameModal(onConfirm){
   const suggestion = "";
  openModal(`<div>
- <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">🏆 Join the Leaderboard!</div>
+ <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">Join the leaderboard</div>
  <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;line-height:1.6">
  You just mastered a quote! Choose a username to appear on the leaderboard.<br>
  <span style="color:var(--text3)">3–20 chars · letters, numbers, _ or - · password required for leaderboard access</span>
@@ -980,7 +980,7 @@ async function lbConfirmUsername(){
   }
   setUsername(v);
   closeModal();
-  toast('👤 Username '+(oldName&&!isSameUser?'changed to: ':'set: ')+v);
+  toast('Username '+(oldName&&!isSameUser?'changed to: ':'set: ')+v);
   if(window._lbCb){window._lbCb();window._lbCb=null;}
   await lbUpdate();
   if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();
@@ -1004,7 +1004,7 @@ function rLeaderboard(){
   if(!_lbCache&&!_lbLoading){_lbLoading=true;loadLeaderboard();}
   const users=_lbCache||[];
   const myRank=myName?users.findIndex(u=>u.username.toLowerCase()===myName.toLowerCase())+1:0;
-  const medal=(i)=>i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+  const medal=(i)=>`${i+1}.`;
   const rowStyle=(u)=>{
     const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
     return`border-bottom:1px solid var(--border);padding:8px 4px;display:flex;align-items:center;gap:8px;${isMe?'background:rgba(232,197,71,.07);border-left:2px solid var(--gold);padding-left:8px;':''}`;
@@ -1014,7 +1014,7 @@ function rLeaderboard(){
   ${backBtn()}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;flex-wrap:wrap;gap:8px">
     <div class="pt">Leaderboard</div>
-    <button class="btn bsm" onclick="_lbCache=null;_lbLoading=false;render()" style="color:var(--blue);border-color:var(--blue)">🔄 Refresh</button>
+    <button class="btn bsm" onclick="_lbCache=null;_lbLoading=false;render()" style="color:var(--blue);border-color:var(--blue)">Refresh</button>
   </div>
   <div class="ps">Combined stats across QuoteVault &amp; DateVault</div>
   ${myName
@@ -1029,12 +1029,12 @@ function rLeaderboard(){
       </div>`
     :`<div class="card" style="margin-bottom:10px;border-left:3px solid var(--purple);text-align:center;padding:14px">
         <div style="font-size:.85rem;margin-bottom:8px">Set a username to appear on the leaderboard</div>
-        <button class="btn bp" onclick="showUsernameModal()">👤 Set Username</button>
+        <button class="btn bp" onclick="showUsernameModal()">Set username</button>
       </div>`}
   <div class="fbar" style="margin-bottom:10px">
-    <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">📚 Quotes</button>
+    <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">Quotes</button>
     <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">⚡ XP</button>
-    <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">🔥 Streak</button>
+    <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">Streak</button>
   </div>
   ${_lbLoading&&!_lbCache
     ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">⏳ Loading leaderboard…</div>`
@@ -1042,7 +1042,7 @@ function rLeaderboard(){
     ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">No users yet — be the first!</div>`
     :S._lbTab==='mastered'
     ?`<div class="card" style="margin-bottom:10px">
-    <div class="sec" style="margin-top:0">📚 Quotes Mastered</div>
+    <div class="sec" style="margin-top:0">Quotes mastered</div>
     ${users.slice().sort((a,b)=>(b.qv_mastered||0)-(a.qv_mastered||0)).slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
       return`<div style="${rowStyle(u)}">
@@ -1079,7 +1079,7 @@ function rLeaderboard(){
       </div>`;}).join('')}
   </div>`
     :`<div class="card">
-    <div class="sec" style="margin-top:0">🔥 Longest Streak</div>
+    <div class="sec" style="margin-top:0">Longest streak</div>
     <div style="font-size:.68rem;color:var(--text3);margin-bottom:8px">Best ever consecutive day streak (breaks if a day is missed)</div>
     ${users.slice().sort((a,b)=>(b.max_streak||0)-(a.max_streak||0)).slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
@@ -1489,7 +1489,7 @@ function rDash(){
     <div class="scard"><div class="snum" style="color:${dc>0?'var(--coral)':'var(--text2)'}">${dc}</div><div class="slbl">Due Today</div></div>
   </div>
   <div class="card" style="margin-bottom:10px;border-left:3px solid var(--gold)">
-    <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">📖 Quote of the Day</div>
+    <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Quote of the day</div>
     <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:.95rem;margin-bottom:4px">"${qotd.text}"</div>
     <div style="font-size:.7rem;color:var(--text3)">${qotd.char} · ${qotd.work} · ${qotd.loc}</div>
     <div style="font-size:.7rem;color:var(--text2);margin-top:4px;line-height:1.5">${qotd.analysis.slice(0,120)}…</div>
@@ -1510,12 +1510,12 @@ function rDash(){
     <div class="card">
       <div class="sec" style="margin-top:0">Quick Start</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${dc>0?`<button class="btn bp bblk" onclick="go('srs')">🔁 SRS Review (${dc} due)</button>`:''}
+        ${dc>0?`<button class="btn bp bblk" onclick="go('srs')">SRS Review (${dc} due)</button>`:''}
         <button class="btn bblk" onclick="go('flashcards')">🃏 Flashcards</button>
-        <button class="btn bblk" onclick="go('quiz')">🧠 Quiz</button>
+        <button class="btn bblk" onclick="go('quiz')">Quiz</button>
         <button class="btn bblk" onclick="go('fill')">✍️ Fill Blanks</button>
-        <button class="btn bblk" onclick="go('timed')">⏱ Timed Challenge</button>
-        <button class="btn bg bblk" onclick="go('braindump')">💡 Brain Dump</button>
+        <button class="btn bblk" onclick="go('timed')">Timed challenge</button>
+        <button class="btn bg bblk" onclick="go('braindump')">Brain dump</button>
       </div>
     </div>
   </div>
@@ -1608,7 +1608,7 @@ function rLib(){
         <div style="display:flex;gap:4px;flex-shrink:0">
           ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">⏳ Pending</span>`:''}
           ${isMastered?`<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="removeMastery('${q.id}')">−Mastery</button>`:''}
-          ${q._submittedByMe&&q._status==='pending'?`<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="deletePendingQuote('${q.id}')" title="Withdraw submission">✕ Withdraw</button>`:`<button class="btn bsm" style="color:${isHidden?'var(--amber)':'var(--text3)'};border-color:${isHidden?'var(--amber)':'var(--border2)'};font-size:.6rem;padding:2px 6px" onclick="toggleHidden('${q.id}')" title="${isHidden?'Unhide':'Hide'}">${isHidden?'👁 Unhide':'🚫 Hide'}</button>`}
+          ${q._submittedByMe&&q._status==='pending'?`<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="deletePendingQuote('${q.id}')" title="Withdraw submission">✕ Withdraw</button>`:`<button class="btn bsm" style="color:${isHidden?'var(--amber)':'var(--text3)'};border-color:${isHidden?'var(--amber)':'var(--border2)'};font-size:.6rem;padding:2px 6px" onclick="toggleHidden('${q.id}')" title="${isHidden?'Unhide':'Hide'}">${isHidden?'Unhide':'Hide'}</button>`}
         </div>
       </div>
       <div class="qc-t">"${q.text}"</div>
