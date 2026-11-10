@@ -228,3 +228,70 @@ test("Revision account dialog has working modal helpers", () => {
   assert.match(revision, /window\.closeModal=closeModal/);
   assert.match(revision, /VaultUser\.showAccountDialog\(\)/);
 });
+
+
+test("course pack imports preserve existing cards and deduplicate cards, resources and formulas", () => {
+  const source = fs.readFileSync(new URL("../revision/revision.js", import.meta.url), "utf8");
+  const start = source.indexOf("function practiceImport(input){");
+  const end = source.indexOf("function practiceResourcesView()", start);
+  assert.ok(start >= 0 && end > start);
+  const state = {
+    cards: [{ id: "saved-card", subject: "Chemistry", topic: "Amount of substance", title: "Moles in a solution", answer: "Keep this answer", links: [] }],
+    view: "settings",
+    setMessage: ""
+  };
+  const practice = {
+    catalogues: { chemistry: { topics: [{ id: "amount", name: "Amount of substance" }] } },
+    resources: [],
+    formulas: []
+  };
+  const pack = {
+    type: "revision-course-pack",
+    version: 1,
+    subject: "Chemistry",
+    examBoard: "AQA",
+    catalogueId: "chemistry",
+    cards: [
+      { id: "existing", topicId: "amount", front: "Moles in a solution!", back: "New content should not replace a student's card", links: ["new"] },
+      { id: "new", topicId: "amount", front: "Calculate concentration", back: "Use amount divided by volume", links: ["existing"] },
+      { id: "duplicate", topicId: "amount", front: "Calculate concentration", back: "Duplicate in same pack" }
+    ],
+    resources: [
+      { topicId: "amount", kind: "notes", title: "Concentration", content: "Course notes" },
+      { topicId: "amount", kind: "notes", title: "Concentration", content: "Duplicate course notes" }
+    ],
+    formulas: [
+      { topicId: "amount", name: "Concentration", expression: "c = n / V" },
+      { topicId: "amount", name: "Concentration", expression: "c = n ÷ V" }
+    ]
+  };
+  const context = {
+    state,
+    practiceStore: () => practice,
+    normalizeTopic: value => String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    saveRevision() {},
+    renderRevision() {},
+    cardById: id => state.cards.find(card => card.id === id),
+    FileReader: function () {
+      this.readAsText = () => { this.result = JSON.stringify(pack); this.onload(); };
+    },
+    Date,
+    Math,
+    JSON,
+    String,
+    Array,
+    Map,
+    Set
+  };
+  vm.runInNewContext(source.slice(start, end) + "\\nglobalThis.runImport = practiceImport;", context);
+  context.runImport({ files: [{ name: "pack.json" }] });
+  assert.equal(state.cards.length, 2);
+  assert.equal(state.cards[0].id, "saved-card");
+  assert.equal(state.cards[0].answer, "Keep this answer");
+  assert.equal(state.cards[1].title, "Calculate concentration");
+  assert.ok(state.cards[0].links.includes(state.cards[1].id));
+  assert.ok(state.cards[1].links.includes("saved-card"));
+  assert.equal(practice.resources.length, 1);
+  assert.equal(practice.formulas.length, 1);
+  assert.equal(practice.formulas[0].expression, "c = n ÷ V");
+});
