@@ -117,7 +117,7 @@ function practiceImport(input){
    });
    p.formulas=p.formulas.slice(-300);
    saveRevision();
-   state.setMessage='Added '+imported.length+' flashcards, '+resources.length+' resources and '+addedFormulas+' formulas. Existing cards and review history were kept; '+updatedFormulas+' formulas updated.';
+   state.setMessage='Added '+imported.length+' flashcard'+(imported.length===1?'':'s')+', '+resources.length+' resource'+(resources.length===1?'':'s')+' and '+addedFormulas+' formula'+(addedFormulas===1?'':'s')+'. Existing cards and review history were kept; '+updatedFormulas+' formula'+(updatedFormulas===1?'':'s')+' updated.';
    state.view='resources';renderRevision();
   }catch(error){state.setMessage=error.message||'Could not import resource file.';renderRevision();}
  };
@@ -125,7 +125,7 @@ function practiceImport(input){
 }
 function practiceResourcesView(){
  const resources=practiceStore().resources||[],subjects=[...new Set(resources.map(item=>item.subject))];
- return '<div style="max-width:1000px;margin:0 auto"><div class="pt">Course materials</div><div class="ps">Notes, worked examples, practical guidance and other imported resources for this revision set.</div>'+ (resources.length?subjects.map(subject=>'<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">'+practiceEsc(subject)+'</div>'+resources.filter(item=>item.subject===subject).map(item=>'<details class="knowledge-item"><summary class="knowledge-title">'+practiceEsc(item.title)+' <span class="tag tb">'+practiceEsc(item.kind)+'</span><div class="knowledge-meta">'+practiceEsc(item.topic)+'</div></summary><div style="white-space:pre-wrap;font-size:.78rem;line-height:1.65;margin-top:10px">'+practiceEsc(item.content)+'</div><div class="knowledge-meta" style="margin-top:8px">Source: '+practiceEsc(item.source)+'</div></details>').join('')+'</div>').join(''):'<div class="card">No course materials imported yet. Import a course pack from Settings after its matching subject catalogue.</div>')+'</div>';
+ return '<div style="max-width:1000px;margin:0 auto"><div class="pt">Course materials</div><div class="ps">Notes, worked examples, practical guidance and other imported resources for this revision set.</div>'+ (resources.length?subjects.map(subject=>'<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">'+practiceEsc(subject)+'</div>'+'<div class="knowledge-list">'+resources.filter(item=>item.subject===subject).map(item=>'<details class="knowledge-item"><summary class="knowledge-title">'+practiceEsc(item.title)+' <span class="tag tb">'+practiceEsc(item.kind)+'</span><div class="knowledge-meta">'+practiceEsc(item.topic)+'</div></summary><div style="white-space:pre-wrap;font-size:.78rem;line-height:1.65;margin-top:10px">'+practiceEsc(item.content)+'</div><div class="knowledge-meta" style="margin-top:8px">Source: '+practiceEsc(item.source)+'</div></details>').join('')+'</div></div>').join(''):'<div class="card">No course materials imported yet. Import a course pack from Settings after its matching subject catalogue.</div>')+'</div>';
 }
 function practiceRemove(id){if(!confirm('Remove this subject and its associated practice history?'))return;const p=practiceStore();delete p.catalogues[id];p.attempts=p.attempts.filter(x=>x.subjectId!==id);p.mistakes=p.mistakes.filter(x=>x.subjectId!==id);saveRevision();renderRevision();}
 function practiceSettings(){
