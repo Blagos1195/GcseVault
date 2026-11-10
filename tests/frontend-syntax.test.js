@@ -330,6 +330,7 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     const css = fs.readFileSync(new URL(`../${stylesheet}`, import.meta.url), "utf8");
     assert.ok(html.includes(script));
     assert.ok(html.includes(stylesheet));
+    assert.doesNotMatch(html, /maximum-scale/);
     assert.match(app, /<button type="button" class="ni/);
     assert.match(app, /aria-current=/);
     assert.match(app, /scrollTop=0/);
