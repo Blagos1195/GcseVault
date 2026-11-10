@@ -36,10 +36,29 @@ practiceRecommend=function(){
  const p=practiceStore();
  if(!Object.keys(p.catalogues).length)return productOriginalRecommend();
  const topics=practiceTopics().map(topic=>({...topic,stats:practiceStats(topic)})).sort((a,b)=>b.stats.priority-a.stats.priority).slice(0,8);
- const original=productOriginalRecommend(),formStart=original.indexOf('<div class="sec">Log an exam attempt</div>');
+ const original=productOriginalRecommend(),formStart=original.indexOf('<div class="sec">Log an exam attempt</div>'),attemptForm=formStart>=0?original.slice(formStart).replace('<button class="btn bp" onclick="practiceRecord()">Save attempt</button>','<div class="fg"><label>Next action (optional)</label><textarea id="practice-next-action" rows="2" maxlength="600" placeholder="e.g. Revisit limiting reactants and try another question"></textarea></div><button class="btn bp" onclick="practiceRecord()">Save attempt</button>'):'</div>';
  const rows=topics.map(topic=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(topic.name)+' '+productHealthTag(topic.stats.health)+'</div><div class="knowledge-meta">'+practiceEsc(topic.subject)+' · '+practiceEsc(topic.stats.evidence)+' · '+(topic.stats.accuracy===null?'No exam marks yet':Math.round(topic.stats.accuracy*100)+'% exam accuracy')+'</div></div><div class="overview-selected-actions"><button class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Select</button><button class="btn bsm bp" onclick="practiceStartTopicReview(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Review cards</button></div></div>').join('');
- return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities use recorded marks, recall, recency and unresolved mistakes. Topics without enough evidence are labelled clearly.</div><div class="knowledge-list">'+rows+'</div>'+(formStart>=0?original.slice(formStart):'</div>');
+ return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities use recorded marks, recall, recency and unresolved mistakes. Topics without enough evidence are labelled clearly.</div><div class="knowledge-list">'+rows+'</div>'+attemptForm;
 };
+function practiceRecord(){
+ const subjectId=document.getElementById('practice-subject')?.value,topicId=document.getElementById('practice-topic')?.value;
+ const marks=Number(document.getElementById('practice-marks')?.value),maxMarks=Number(document.getElementById('practice-max')?.value);
+ const notes=String(document.getElementById('practice-notes')?.value||'').trim().slice(0,1200),nextAction=String(document.getElementById('practice-next-action')?.value||'').trim().slice(0,600),source=String(document.getElementById('practice-source')?.value||'').trim().slice(0,160);
+ const topic=practiceTopics().find(item=>item.subjectId===subjectId&&item.id===topicId);
+ if(!topic||!Number.isFinite(marks)||!Number.isFinite(maxMarks)||maxMarks<=0||marks<0||marks>maxMarks){state.setMessage='Enter a topic and valid marks before saving.';renderRevision();return;}
+ const p=practiceStore(),at=Date.now();
+ p.attempts.push({id:'pa-'+at,subjectId,topicId,topic:topic.name,marks,maxMarks,notes,nextAction,source,at});p.attempts=p.attempts.slice(-1000);
+ if(notes||nextAction){
+  const relatedCards=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name)).map(card=>card.id);
+  const relatedResources=p.resources.filter(item=>item.subjectId===subjectId&&item.topicId===topicId).map(item=>item.id);
+  const relatedFormulas=p.formulas.filter(item=>item.subjectId===subjectId&&item.topicId===topicId).map(item=>item.id);
+  p.mistakes.push({id:'pm-'+at,subjectId,topicId,topic:topic.name,description:notes||'Review this topic',nextAction,relatedCardIds:relatedCards,relatedResourceIds:relatedResources,relatedFormulaIds:relatedFormulas,at,resolved:false});
+  p.mistakes=p.mistakes.slice(-1000);
+ }
+ saveRevision();state.setMessage='Saved '+marks+'/'+maxMarks+' for '+topic.name+'.'+(notes||nextAction?' Added to your mistake notebook.':'');renderRevision();
+}
+function openMistakeResource(encodedId){state.resourceFocus=decodeURIComponent(encodedId);state.view='resources';renderRevision();}
+function openMistakeFormula(encodedId){const id=decodeURIComponent(encodedId);state.view='analytics';renderRevision();document.getElementById('formula-'+id)?.scrollIntoView({behavior:'smooth',block:'center'});}
 function practiceStartTopicReview(subjectId,topicId){
  const topic=practiceTopics().find(item=>item.subjectId===subjectId&&item.id===topicId);if(!topic)return;
  const cards=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name));
@@ -63,8 +82,10 @@ practiceFormulaWorkspace=function(){
 const productOriginalAnalytics=practiceAnalytics;
 practiceAnalytics=function(){
  const p=practiceStore(),attempts=p.attempts.slice().sort((a,b)=>b.at-a.at).slice(0,8);
- const recent=attempts.length?'<div class="card" style="margin-top:10px"><div class="sec">Recent exam attempts</div><div class="knowledge-list">'+attempts.map(item=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(item.topic)+' · '+item.marks+'/'+item.maxMarks+'</div><div class="knowledge-meta">'+new Date(item.at).toLocaleDateString()+' · '+practiceEsc(item.source||'Source not recorded')+'</div>'+(item.notes?'<div class="knowledge-meta">'+practiceEsc(item.notes)+'</div>':'')+'</div></div>').join('')+'</div></div>':'';
- return productOriginalAnalytics()+recent;
+ const recent=attempts.length?'<div class="card" style="margin-top:10px"><div class="sec">Recent exam attempts</div><div class="knowledge-list">'+attempts.map(item=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(item.topic)+' · '+item.marks+'/'+item.maxMarks+'</div><div class="knowledge-meta">'+new Date(item.at).toLocaleDateString()+' · '+practiceEsc(item.source||'Source not recorded')+'</div>'+(item.notes?'<div class="knowledge-meta">'+practiceEsc(item.notes)+'</div>':'')+(item.nextAction?'<div class="knowledge-meta">Next: '+practiceEsc(item.nextAction)+'</div>':'')+'</div></div>').join('')+'</div></div>':'';
+ const actions=p.mistakes.filter(item=>!item.resolved&&item.nextAction);
+ const actionPanel=actions.length?'<div class="card" style="margin-top:10px"><div class="sec">Next actions</div><div class="knowledge-list">'+actions.map(item=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(item.topic)+'</div><div class="knowledge-meta">'+practiceEsc(item.nextAction)+'</div><div class="knowledge-meta">'+(item.relatedCardIds||[]).length+' linked cards · '+(item.relatedResourceIds||[]).length+' resources · '+(item.relatedFormulaIds||[]).length+' formulas</div><div class="overview-selected-actions">'+((item.relatedCardIds||[]).length?'<button class="btn bsm" onclick="practiceStartTopicReview(\''+practiceEsc(item.subjectId)+'\',\''+practiceEsc(item.topicId)+'\')">Review cards</button>':'')+((item.relatedResourceIds||[]).length?'<button class="btn bsm" onclick="openMistakeResource(\''+encodeURIComponent(item.relatedResourceIds[0])+'\')">Open resource</button>':'')+((item.relatedFormulaIds||[]).length?'<button class="btn bsm" onclick="openMistakeFormula(\''+encodeURIComponent(item.relatedFormulaIds[0])+'\')">Open formula</button>':'')+'</div></div></div>').join('')+'</div></div>':'';
+ return productOriginalAnalytics()+recent+actionPanel;
 };
 function searchRevision(query){
  const panel=document.getElementById('revision-search-results');if(!panel)return;
@@ -75,7 +96,7 @@ function searchRevision(query){
  const p=practiceStore();
  p.resources.forEach(item=>{if((item.title+' '+item.topic+' '+item.content+' '+item.source).toLowerCase().includes(q))add('resource',item.id,item.title,item.subject+' · '+item.topic);});
  p.formulas.forEach(item=>{if((item.name+' '+item.expression+' '+item.units+' '+item.conditions).toLowerCase().includes(q))add('formula',item.id,item.name,item.expression);});
- p.mistakes.filter(item=>!item.resolved).forEach(item=>{if((item.topic+' '+item.description).toLowerCase().includes(q))add('mistake',item.id,item.topic,'Open mistake · '+item.description);});
+ p.mistakes.filter(item=>!item.resolved).forEach(item=>{if((item.topic+' '+item.description+' '+(item.nextAction||'')).toLowerCase().includes(q))add('mistake',item.id,item.topic,'Open mistake · '+item.description);});
  p.attempts.forEach(item=>{if((item.topic+' '+item.source+' '+item.notes).toLowerCase().includes(q))add('attempt',item.id,item.topic,'Exam attempt · '+item.marks+'/'+item.maxMarks);});
  Object.entries(p.catalogues).forEach(([subjectId,catalogue])=>(catalogue.topics||[]).forEach(topic=>{if((topic.name+' '+(topic.subtopics||[]).join(' ')).toLowerCase().includes(q))add('topic',subjectId+'|'+topic.id,topic.name,catalogue.subject+' · '+catalogue.examBoard);}));
  panel.innerHTML=results.length?results.map(item=>'<button type="button" class="search-result" onclick="openRevisionSearchResult(\''+item.type+'\',\''+encodeURIComponent(String(item.id))+'\')"><span class="search-result-title">'+escapeRevision(item.title)+'</span><span class="search-result-meta">'+escapeRevision(item.meta)+'</span></button>').join(''):'<div class="search-empty">No matching revision content.</div>';
