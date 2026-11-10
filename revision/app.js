@@ -770,7 +770,7 @@ function closeModal(){
 window.openModal=openModal;
 window.closeModal=closeModal;
 function renderRevision(){
-  document.querySelectorAll('.ni').forEach(item=>item.classList.toggle('active',item.dataset.view===state.view));
+  document.querySelectorAll('.ni').forEach(item=>{const active=item.dataset.view===state.view;item.classList.toggle('active',active);if(active)item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');});
   document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   document.getElementById('sidebar-stats').textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
   document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${state.cards.filter(card=>Number(state.progress[card.id]?.reviews)>0).length} reviewed`;
@@ -910,6 +910,7 @@ document.querySelectorAll('.ni').forEach(item => {
     const nextView = item.dataset.view || 'overview';
     state.view = nextView;
     renderRevision();
+    document.getElementById('page').scrollTop = 0;
     if (revisionSidebar) revisionSidebar.classList.remove('open');
     if (revisionOverlay) revisionOverlay.style.display = 'none';
   });
