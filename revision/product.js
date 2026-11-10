@@ -1,0 +1,122 @@
+const productBaseStats=practiceStats;
+practiceStats=function(topic){
+ const result=productBaseStats(topic),p=practiceStore();
+ const cards=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name));
+ const reviews=cards.reduce((n,card)=>n+Number(state.progress[card.id]?.reviews||0),0);
+ const correct=cards.reduce((n,card)=>n+Number(state.progress[card.id]?.correct||0),0);
+ const recall=reviews?correct/reviews:null;
+ const lastCard=cards.reduce((n,card)=>Math.max(n,Number(state.progress[card.id]?.lastReviewed)||0),0);
+ const lastAttempt=p.attempts.filter(item=>item.subjectId===topic.subjectId&&item.topicId===topic.id).reduce((n,item)=>Math.max(n,Number(item.at)||0),0);
+ const last=Math.max(lastCard,lastAttempt),daysSince=last?Math.max(0,Math.floor((Date.now()-last)/86400000)):null;
+ const enough=result.attempts>=2||reviews>=5;
+ const health=!enough?'Not enough data':((result.accuracy!==null&&result.accuracy<.65)||(reviews>=5&&recall<.65)||result.mistakes>0)?'Needs attention':((result.accuracy===null||result.accuracy>=.8)&&(reviews<5||recall>=.8)&&result.mistakes===0)?'On track':'In progress';
+ const evidence=[];if(result.attempts)evidence.push(result.attempts+' exam attempts');if(reviews)evidence.push(reviews+' flashcard reviews');if(result.mistakes)evidence.push(result.mistakes+' open mistakes');
+ const signals=[];if(result.accuracy!==null)signals.push({v:1-result.accuracy,w:.5});if(reviews>=3&&recall!==null)signals.push({v:1-recall,w:.25});if(daysSince!==null)signals.push({v:Math.min(1,daysSince/21),w:.15});if(result.mistakes)signals.push({v:Math.min(1,result.mistakes/3),w:.1});
+ const total=signals.reduce((n,item)=>n+item.w,0);
+ return {...result,reviews,recall,last,daysSince,health,evidence:evidence.join(' · ')||'No recorded practice yet',priority:total?signals.reduce((n,item)=>n+item.v*item.w,0)/total:.5};
+};
+function productHealthTag(health){
+ const cls=health==='Needs attention'?'tc-tag':health==='On track'?'tt':'tb';
+ return '<span class="tag '+cls+'">'+practiceEsc(health)+'</span>';
+}
+function practiceDailyPlan(){
+ const due=dueCards().length,p=practiceStore(),mistakes=p.mistakes.filter(item=>!item.resolved).length,unread=p.resources.filter(item=>!item.readAt).length;
+ const attention=practiceTopics().map(topic=>({...topic,stats:practiceStats(topic)})).filter(topic=>topic.stats.health==='Needs attention').slice(0,3);
+ if(!state.cards.length&&!Object.keys(p.catalogues).length&&!p.resources.length)return '';
+ return '<section class="daily-plan card"><div class="overview-section-heading"><h2>Today’s plan</h2><span>Based on your saved revision data</span></div><div class="daily-plan-grid"><div><strong>'+due+'</strong><span>flashcards due</span></div><div><strong>'+mistakes+'</strong><span>open mistakes</span></div><div><strong>'+unread+'</strong><span>unread resources</span></div></div>'+(attention.length?'<div class="daily-attention"><span>Topics needing attention</span>'+attention.map(topic=>'<button type="button" class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">'+practiceEsc(topic.name)+'</button>').join('')+'</div>':'')+(due?'<button type="button" class="btn bp" style="margin-top:12px" onclick="startStudySession(\'due\',20)">Start today’s review</button>':'')+(mistakes?'<button type="button" class="btn" style="margin:12px 0 0 7px" onclick="state.view=\'analytics\';renderRevision()">Review mistakes</button>':'')+'</section>';
+}
+const productOriginalOverview=renderOverview;
+renderOverview=function(){
+ let html=productOriginalOverview();
+ if(!state.cards.length)html=html.replace('Your revision space is ready','Set up your revision space').replace('Start with one flashcard, or import a course pack to add topics, notes, equations and cards together.','Import a subject catalogue and its matching course pack to add a structured topic list, flashcards, notes and equations. You can also build a set manually.');
+ return html+practiceDailyPlan();
+};
+const productOriginalRecommend=practiceRecommend;
+practiceRecommend=function(){
+ const p=practiceStore();
+ if(!Object.keys(p.catalogues).length)return productOriginalRecommend();
+ const topics=practiceTopics().map(topic=>({...topic,stats:practiceStats(topic)})).sort((a,b)=>b.stats.priority-a.stats.priority).slice(0,8);
+ const original=productOriginalRecommend(),formStart=original.indexOf('<div class="sec">Log an exam attempt</div>');
+ return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities use recorded marks, recall, recency and unresolved mistakes. Topics without enough evidence are labelled clearly.</div><div class="knowledge-list">'+topics.map(topic=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(topic.name)+' '+productHealthTag(topic.stats.health)+'</div><div class="knowledge-meta">'+practiceEsc(topic.subject)+' · '+practiceEsc(topic.stats.evidence)+' · '+(topic.stats.accuracy===null?'No exam marks yet':Math.round(topic.stats.accuracy*100)+'% exam accuracy')+'</div></div><div class="overview-selected-actions"><button class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Select</button><button class="btn bsm bp" onclick="practiceStartTopicReview(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Review cards</button></div></div>').join('')+'</div>'+(formStart>=0?original.slice(formStart):'')+'</div>';
+};
+function practiceStartTopicReview(subjectId,topicId){
+ const topic=practiceTopics().find(item=>item.subjectId===subjectId&&item.id===topicId);if(!topic)return;
+ const cards=state.cards.filter(card=>normalizeTopic(card.topic)===normalizeTopic(topic.name));
+ if(cards.length){startStudySession('all',Math.min(50,cards.length),topic.name);return;}
+ state.resourceFocus=null;state.view='resources';renderRevision();
+}
+function practiceToggleResource(id){
+ const item=practiceStore().resources.find(resource=>resource.id===id);if(!item)return;
+ item.readAt=item.readAt?0:Date.now();saveRevision();renderRevision();
+}
+function practiceResourcesView(){
+ const resources=practiceStore().resources||[],subjects=[...new Set(resources.map(item=>item.subject))],focus=state.resourceFocus,visible=focus?resources.filter(item=>item.id===focus):resources,unread=resources.filter(item=>!item.readAt).length;
+ return '<div style="max-width:1000px;margin:0 auto"><div class="pt">Course materials</div><div class="ps">Notes, worked examples, practical guidance and other resources for this revision set. '+unread+' unread.</div>'+ (resources.length?subjects.map(subject=>{const items=visible.filter(item=>item.subject===subject);if(!items.length)return '';return '<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">'+practiceEsc(subject)+'</div><div class="knowledge-list">'+items.map(item=>'<details class="knowledge-item" '+(item.id===focus?'open':'')+'><summary class="knowledge-title">'+practiceEsc(item.title)+' <span class="tag tb">'+practiceEsc(item.kind)+'</span> '+(item.readAt?'<span class="tag tt">Reviewed</span>':'<span class="tag bd">Unread</span>')+'<div class="knowledge-meta">'+practiceEsc(item.topic)+'</div></summary><div class="resource-content">'+practiceEsc(item.content)+'</div>'+(item.url&&/^https?:\/\//i.test(item.url)?'<div style="margin-top:9px"><a href="'+practiceEsc(item.url)+'" target="_blank" rel="noopener noreferrer">Open source resource</a></div>':'')+'<div class="knowledge-meta" style="margin-top:8px">Source: '+practiceEsc(item.source)+'</div><button class="btn bsm" style="margin-top:9px" onclick="event.preventDefault();event.stopPropagation();practiceToggleResource(\''+practiceEsc(item.id)+'\')">'+(item.readAt?'Mark unread':'Mark as reviewed')+'</button></details>').join('')+'</div></div>';}).join(''):'<div class="card">No course materials imported yet. Import a course pack from Settings after its matching subject catalogue.</div>')+'</div>';
+}
+const productOriginalAnalytics=practiceAnalytics;
+practiceAnalytics=function(){
+ const p=practiceStore(),attempts=p.attempts.slice().sort((a,b)=>b.at-a.at).slice(0,8);
+ const recent=attempts.length?'<div class="card" style="margin-top:10px"><div class="sec">Recent exam attempts</div><div class="knowledge-list">'+attempts.map(item=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(item.topic)+' · '+item.marks+'/'+item.maxMarks+'</div><div class="knowledge-meta">'+new Date(item.at).toLocaleDateString()+' · '+practiceEsc(item.source||'Source not recorded')+'</div>'+(item.notes?'<div class="knowledge-meta">'+practiceEsc(item.notes)+'</div>':'')+'</div></div>').join('')+'</div></div>':'';
+ return productOriginalAnalytics()+recent;
+};
+function searchRevision(query){
+ const panel=document.getElementById('revision-search-results');if(!panel)return;
+ const q=String(query||'').trim().toLowerCase();
+ if(!q){panel.hidden=true;panel.innerHTML='';return;}
+ const results=[],add=(type,id,title,meta)=>{if(results.length<16)results.push({type,id,title,meta});};
+ state.cards.forEach(card=>{if((card.title+' '+card.topic+' '+(card.subject||'')+' '+card.answer).toLowerCase().includes(q))add('card',card.id,card.title,(card.subject||'Flashcard')+' · '+card.topic);});
+ const p=practiceStore();
+ p.resources.forEach(item=>{if((item.title+' '+item.topic+' '+item.content+' '+item.source).toLowerCase().includes(q))add('resource',item.id,item.title,item.subject+' · '+item.topic);});
+ p.formulas.forEach(item=>{if((item.name+' '+item.expression+' '+item.units+' '+item.conditions).toLowerCase().includes(q))add('formula',item.id,item.name,item.expression);});
+ p.mistakes.filter(item=>!item.resolved).forEach(item=>{if((item.topic+' '+item.description).toLowerCase().includes(q))add('mistake',item.id,item.topic,'Open mistake · '+item.description);});
+ p.attempts.forEach(item=>{if((item.topic+' '+item.source+' '+item.notes).toLowerCase().includes(q))add('attempt',item.id,item.topic,'Exam attempt · '+item.marks+'/'+item.maxMarks);});
+ Object.entries(p.catalogues).forEach(([subjectId,catalogue])=>(catalogue.topics||[]).forEach(topic=>{if((topic.name+' '+(topic.subtopics||[]).join(' ')).toLowerCase().includes(q))add('topic',subjectId+'|'+topic.id,topic.name,catalogue.subject+' · '+catalogue.examBoard);}));
+ panel.innerHTML=results.length?results.map(item=>'<button type="button" class="search-result" onclick="openRevisionSearchResult(\''+item.type+'\',\''+encodeURIComponent(String(item.id))+'\')"><span class="search-result-title">'+escapeRevision(item.title)+'</span><span class="search-result-meta">'+escapeRevision(item.meta)+'</span></button>').join(''):'<div class="search-empty">No matching revision content.</div>';
+ panel.hidden=false;
+}
+function openRevisionSearchResult(type,encodedId){
+ const id=decodeURIComponent(encodedId),input=document.getElementById('revision-search');if(input)input.value='';
+ const panel=document.getElementById('revision-search-results');if(panel){panel.hidden=true;panel.innerHTML='';}
+ if(type==='card'){startStudy(id);return;}
+ if(type==='resource'){state.resourceFocus=id;state.view='resources';renderRevision();return;}
+ if(type==='formula'||type==='mistake'||type==='attempt'){state.view='analytics';renderRevision();return;}
+ if(type==='topic'){const [subjectId,topicId]=id.split('|');practiceSelectTopic(subjectId,topicId);return;}
+}
+document.addEventListener('click',event=>{if(!event.target.closest('.global-search')){const panel=document.getElementById('revision-search-results');if(panel)panel.hidden=true;}});
+function updateRevisionSyncStatus(){
+ const target=document.getElementById('sync-status');if(!target)return;
+ const status=!navigator.onLine?'offline':state.syncStatus||'local';
+ const labels={local:'Saved on this device',pending:'Saved here · waiting to sync',syncing:'Syncing…',synced:'Synced across devices',failed:'Sync needs attention',conflict:'Sync conflict',offline:'Offline · saved on this device'};
+ target.textContent=labels[status]||labels.local;target.dataset.status=status;
+ target.title=status==='local'?'Your work is stored in this browser. Sign in to sync across devices.':labels[status];
+}
+const productOriginalSave=saveRevision;
+saveRevision=function(remote=false){
+ productOriginalSave(remote);
+ if(!remote){state.syncStatus=VaultUser.getAccountSession()?'pending':'local';updateRevisionSyncStatus();}
+ if(typeof captureRevisionSnapshot==='function')captureRevisionSnapshot();
+};
+const productOriginalSyncSoon=syncRevisionSoon;
+syncRevisionSoon=function(){
+ if(!navigator.onLine){state.syncStatus='local';updateRevisionSyncStatus();return;}
+ if(revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()){state.syncStatus='pending';updateRevisionSyncStatus();}
+ productOriginalSyncSoon();
+};
+const productOriginalSync=syncRevision;
+syncRevision=async function(keepalive=false){
+ if(!navigator.onLine){state.syncStatus='local';updateRevisionSyncStatus();return;}
+ if(state.syncing)return;
+ if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()){state.syncStatus='local';updateRevisionSyncStatus();return;}
+ state.accountMessage='';state.syncStatus='syncing';updateRevisionSyncStatus();
+ await productOriginalSync(keepalive);
+ if(revisionSyncConflict)state.syncStatus='conflict';
+ else if(state.accountMessage)state.syncStatus='failed';
+ else state.syncStatus='synced';
+ updateRevisionSyncStatus();
+};
+window.addEventListener('online',()=>{if(revisionUserKey()&&VaultUser.getAccountSession())syncRevisionSoon();else updateRevisionSyncStatus();});
+window.addEventListener('offline',updateRevisionSyncStatus);
+const productOriginalSettings=renderSettings;
+renderSettings=function(){
+ return productOriginalSettings()+'<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Data backup</div><div class="ps">Export a complete copy of this revision set, including cards, review history, subject catalogues, practice attempts, mistakes, formulas and resources. Keep a copy somewhere safe.</div><div class="overview-selected-actions"><button class="btn" type="button" onclick="exportRevisionSet(\'json\')">Export full backup (JSON)</button><button class="btn" type="button" onclick="exportRevisionSet(\'csv\')">Export flashcards (CSV)</button><label class="btn" for="revision-backup-import">Import backup as a new set</label><input id="revision-backup-import" type="file" accept=".json,.csv,application/json,text/csv" hidden onchange="importRevisionFile(this)"></div></div>';
+};
