@@ -215,5 +215,5 @@ test("Revision themes sync across devices without discarding local themes", () =
   assert.match(shared, /async applyTheme\(key, scope = 'global', sync = true\)/);
   assert.match(revision, /await ThemeManager\.applyTheme\(data\.user\.theme,'global',false\)/);
   assert.match(revision, /Your current theme has been kept/);
-  assert.match(revision, /await window\.syncRevisionTheme\(\)/);
+  assert.match(shared, /await window\.syncRevisionTheme\(\)/);
 });
