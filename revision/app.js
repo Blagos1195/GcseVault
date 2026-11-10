@@ -328,7 +328,7 @@ function importRevisionFile(input){
       const importedProgress={};
       if(jsonData?.progress&&typeof jsonData.progress==='object')sourceCards.forEach((source,index)=>{const oldId=sourceId(source,index);const newId=idMap.get(oldId);if(newId&&jsonData.progress[oldId])importedProgress[newId]=jsonData.progress[oldId];});
       const reviewLog=Array.isArray(jsonData?.reviewLog)?jsonData.reviewLog.map(entry=>({...entry,cardId:idMap.get(String(entry.cardId||''))||entry.cardId})).slice(-5000):[];
-      const name=String(jsonData?.name||file.name.replace(/\.(json|csv)$/i,''));const imported=normalizeRevisionSet({id:`set-${Date.now()}`,name,cards:clean,progress:importedProgress,xp:Number(jsonData?.xp)||0,streak:Number(jsonData?.streak)||0,lastReview:jsonData?.lastReview||'',syllabus:jsonData?.syllabus||[],syllabusDone:jsonData?.syllabusDone||{},reviewLog});
+      const name=String(jsonData?.name||file.name.replace(/\.(json|csv)$/i,''));const imported=normalizeRevisionSet({id:`set-${Date.now()}`,name,cards:clean,progress:importedProgress,xp:Number(jsonData?.xp)||0,streak:Number(jsonData?.streak)||0,lastReview:jsonData?.lastReview||'',syllabus:jsonData?.syllabus||[],syllabusDone:jsonData?.syllabusDone||{},reviewLog,practice:jsonData?.practice});
       state.accountSets.push(imported);state.activeSetId=imported.id;state.cards=clean;state.progress=imported.progress;state.xp=imported.xp;state.streak=imported.streak;state.lastReview=imported.lastReview;state.view='overview';state.setMessage=`Imported ${clean.length} cards from ${file.name}, preserving connections and progress.`;saveRevision();renderRevision();
     }catch(error){state.setMessage=error.message||'Could not import this file.';renderRevision();}
   };
