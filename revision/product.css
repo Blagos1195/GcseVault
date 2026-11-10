@@ -19,5 +19,5 @@
 .daily-plan-grid span,.daily-attention>span{font-size:.72rem;color:var(--text2)}
 .daily-attention{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px}
 .resource-content{white-space:pre-wrap;font-size:.82rem;line-height:1.7;margin-top:10px}
-@media(max-width:760px){.global-search{flex:1;min-width:90px}.sync-status{display:none}#topbar{gap:7px}.global-search input{height:32px;font-size:.72rem}}
+@media(max-width:760px){.global-search{flex:1;min-width:80px}.sync-status{display:block;max-width:54px;font-size:.6rem;overflow:hidden;text-overflow:ellipsis}#topbar{gap:6px}.tb-title{max-width:90px}.global-search input{height:32px;font-size:.72rem}}
 @media(max-width:420px){.global-search{max-width:42vw}.daily-plan-grid{gap:6px}.daily-plan-grid>div{padding:8px 6px}.daily-plan-grid strong{font-size:1.1rem}.search-results{right:-58px}}
