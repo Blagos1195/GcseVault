@@ -552,7 +552,45 @@ function renderSessionSummary(){return `<div class="card" style="margin-top:10px
 function renderOverview(){
   const selected=cardById(state.selected);
   const due=dueSummary();
-  return `<div><div class="pt">Knowledge workspace</div><div class="ps">${escapeRevision(getActiveRevisionSet().name)} · ${due.due} cards due for review.</div><div class="card" style="margin-bottom:10px"><div class="sec" style="margin-top:0">Start a study session</div><div style="display:flex;gap:7px;align-items:end;flex-wrap:wrap"><div class="fg" style="margin:0;min-width:130px"><label for="session-length">Card limit</label><select id="session-length"><option value="10">10 cards</option><option value="20" selected>20 cards</option><option value="50">50 cards</option><option value="100">100 cards</option></select></div><button class="btn bp" onclick="startStudySession('due',document.getElementById('session-length').value)">Study due (${due.due})</button><button class="btn" onclick="startStudySession('all',document.getElementById('session-length').value)">Study all</button><button class="btn" onclick="startStudySession('weak',document.getElementById('session-length').value)">Review weak</button><button class="btn" onclick="state.view='analytics';renderRevision()">Progress & syllabus</button></div></div><div class="knowledge-layout"><div class="knowledge-panel"><div class="g3"><div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Cards</div></div><div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Connections</div></div><div class="scard"><div class="snum">${due.total-due.due}</div><div class="slbl">Scheduled</div></div></div><div class="sec">Your knowledge graph</div>${renderGraph()}${renderCardList()}</div><div class="knowledge-panel">${renderSuggestions()}${selected?`<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Selected idea</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.76rem;line-height:1.6;color:var(--text2);margin-top:7px">${escapeRevision(selected.answer)}</p>${selected.source?`<div class="knowledge-meta">Source: ${escapeRevision(selected.source)}</div>`:''}<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn bp" onclick="startStudy('${selected.id}')">Review</button>${linkedCards(selected).length?`<button class="btn" onclick="beginConnectionReview('${selected.id}')">Review links</button>`:''}<button class="btn" onclick="linkRevisionCard('${selected.id}')">＋ Link idea</button><button class="btn" onclick="editRevisionCard('${selected.id}')">✏ Edit</button><button class="btn br" onclick="deleteRevisionCard('${selected.id}')">Delete</button></div></div>`:''}</div></div></div>`;
+  const reviewed=state.cards.filter(card=>(Number(state.progress[card.id]?.reviews)||0)>0).length;
+  const weak=state.cards.some(card=>(Number(state.progress[card.id]?.reviews)||0)>0);
+  const hasCards=state.cards.length>0;
+  const heroTitle=!hasCards?'Build your revision set':due.due?due.due+' cards ready to review':'You are up to date';
+  const heroText=!hasCards?'Import a course pack or add a few cards to start tracking what you know.':due.due?'Work through the cards due today. Your review schedule updates as you go.':'Nothing is due right now. Use the time to revisit difficult cards or study a topic.';
+  return `<div class="overview">
+    <div class="pt">Overview</div>
+    <div class="ps">${escapeRevision(getActiveRevisionSet().name)} · Your revision activity and next steps.</div>
+    <section class="overview-hero">
+      <div class="overview-hero-copy">
+        <div class="overview-kicker">NEXT STEP</div>
+        <h2>${heroTitle}</h2>
+        <p>${heroText}</p>
+        <div class="overview-actions">
+          ${hasCards?'<div class="fg"><label for="session-length">Session size</label><select id="session-length"><option value="10">10 cards</option><option value="20" selected>20 cards</option><option value="50">50 cards</option><option value="100">100 cards</option></select></div>':''}
+          ${!hasCards?'<button class="btn bp" onclick="state.view=\'create\';renderRevision()">Add a flashcard</button><button class="btn" onclick="state.view=\'settings\';renderRevision()">Import a course pack</button>':due.due?'<button class="btn bp" onclick="startStudySession(\'due\',document.getElementById(\'session-length\').value)">Start review</button>':'<button class="btn bp" onclick="startStudySession(\'all\',document.getElementById(\'session-length\').value)">Study all cards</button>'}
+          ${hasCards&&weak?'<button class="btn" onclick="startStudySession(\'weak\',document.getElementById(\'session-length\').value)">Review difficult cards</button>':''}
+          ${hasCards?'<button class="btn" onclick="state.view=\'analytics\';renderRevision()">View progress</button>':''}
+        </div>
+      </div>
+      ${hasCards?'<div class="overview-hero-count"><strong>'+due.due+'</strong><span>due now</span></div>':'<div class="overview-hero-count"><strong>0</strong><span>cards added</span></div>'}
+    </section>
+    ${hasCards?`<div class="overview-stats">
+      <div class="scard"><div class="snum">${state.cards.length}</div><div class="slbl">Flashcards</div></div>
+      <div class="scard"><div class="snum">${reviewed}</div><div class="slbl">Cards reviewed</div></div>
+      <div class="scard"><div class="snum">${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0}</div><div class="slbl">Concept links</div></div>
+    </div>
+    <div class="overview-grid">
+      <section class="overview-section">
+        <div class="overview-section-heading"><h2>Your knowledge map</h2><span>${state.cards.length} cards</span></div>
+        ${renderGraph()}
+        ${renderCardList()}
+      </section>
+      <aside class="overview-section">
+        ${renderSuggestions()}
+        ${selected?`<div class="card" style="margin-top:14px"><div class="sec" style="margin-top:0">Selected card</div><div class="knowledge-title">${escapeRevision(selected.title)}</div><p style="font-size:.86rem;line-height:1.65;color:var(--text2);margin-top:8px">${escapeRevision(selected.answer)}</p>${selected.source?`<div class="knowledge-meta">Source: ${escapeRevision(selected.source)}</div>`:''}<div class="overview-selected-actions"><button class="btn bp" onclick="startStudy('${selected.id}')">Review card</button>${linkedCards(selected).length?`<button class="btn" onclick="beginConnectionReview('${selected.id}')">Review links</button>`:''}<button class="btn" onclick="linkRevisionCard('${selected.id}')">Link idea</button><button class="btn" onclick="editRevisionCard('${selected.id}')">Edit</button><button class="btn br" onclick="deleteRevisionCard('${selected.id}')">Delete</button></div></div>`:''}
+      </aside>
+    </div>`:'<div class="overview-empty"><h2>Your revision space is ready</h2><p>Start with one flashcard, or import a course pack to add topics, notes, equations and cards together.</p></div>'}
+  </div>`;
 }
 function renderCards(){
   const card=currentStudyCard();
