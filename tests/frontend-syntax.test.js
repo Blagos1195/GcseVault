@@ -207,10 +207,10 @@ test("Revision sync retains private exam-practice data", () => {
   assert.match(practice, /practiceRecommend/);
   assert.match(practice, /practiceImport/);
   assert.match(practice, /practiceConnections/);
-  assert.match(app, /importPublicNote = async function/);
+  assert.match(app, /async function importPublicNote/);
   assert.match(practice, /revision-course-pack/);
   assert.match(practice, /practiceResourcesView/);
-  assert.match(app, /resources:Array\.isArray\(practice\.resources\)/);
+  assert.match(app, /resources: Array\.isArray\(set\.practice\.resources\)/);
   assert.match(worker, /resources: Array\.isArray\(set\.practice\.resources\)/);
 });
 
@@ -218,8 +218,6 @@ test("Revision sync retains private exam-practice data", () => {
 test("Revision themes sync across devices without discarding local themes", () => {
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
   const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
-  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
-  const practice = fs.readFileSync(new URL("../revision/practice.js", import.meta.url), "utf8");
   assert.match(shared, /'barker-orange':\s*\{/);
   assert.match(shared, /'bricked-device':\s*\{/);
   assert.match(shared, /const merged = \{ \.\.\.remote \};/);
