@@ -916,8 +916,8 @@ const ThemeManager = {
     customThemes[key] = theme;
     this.saveCustomThemes(customThemes, scope);
     if (typeof closeModal === 'function') closeModal();
-    await this.applyTheme(key, scope);
     const synced = await this.syncCustomThemeToWorker(key, theme);
+    await this.applyTheme(key, scope, synced);
     if (typeof render === 'function') render();
     if (window.toast) window.toast(synced ? '🎨 Theme saved and synced!' : '🎨 Theme saved on this device. Sign in to sync it.');
   },
