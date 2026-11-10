@@ -999,8 +999,8 @@ function practiceImport(input){
    const resources=[];c.resources.forEach((item,index)=>{
     const topic=topicById.get(String(item.topicId||''));
     if(!topic)throw new Error('A resource refers to an unknown topic: '+String(item.topicId||''));
-    return{id:'cr'+Date.now()+Math.random().toString(36).slice(2,7)+index,subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
-    if(item.content&&!existingResources.has(resourceKey(item))){resources.push(item);existingResources.set(resourceKey(item),item);}
+    const resource={id:'cr'+Date.now()+Math.random().toString(36).slice(2,7)+index,subject,subjectId:catalogueId,topicId:topic.id,topic:topic.name,kind:String(item.kind||'notes').slice(0,40),title:String(item.title||topic.name).slice(0,180),content:String(item.content||'').slice(0,12000),source:String(item.source||c.source||'Course pack').slice(0,300)};
+    if(resource.content&&!existingResources.has(resourceKey(resource))){resources.push(resource);existingResources.set(resourceKey(resource),resource);}
    });
    p.resources.push(...resources);p.resources=p.resources.slice(-500);
    const formulaKey=item=>[item.subjectId,item.topicId,normal(item.name)].join('|');
