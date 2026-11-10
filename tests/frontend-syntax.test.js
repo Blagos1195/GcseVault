@@ -225,12 +225,28 @@ test("Revision themes sync across devices without discarding local themes", () =
 
 
 test("Revision account dialog has working modal helpers", () => {
-  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
-  assert.match(revision, /function openModal\(html\)[\s\S]*?modal\.innerHTML=html[\s\S]*?backdrop\.classList\.add\('open'\)/);
-  assert.match(revision, /function closeModal\(\)[\s\S]*?classList\.remove\('open'\)/);
-  assert.match(revision, /window\.openModal=openModal/);
-  assert.match(revision, /window\.closeModal=closeModal/);
-  assert.match(revision, /VaultUser\.showAccountDialog\(\)/);
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /function openModal\\(html\\)[\\s\\S]*?modal\\.innerHTML=html[\\s\\S]*?backdrop\\.classList\\.add\\('open'\\)/);
+  assert.match(app, /function closeModal\\(\\)[\\s\\S]*?classList\\.remove\\('open'\\)/);
+  assert.match(app, /window\\.openModal=openModal/);
+  assert.match(app, /window\\.closeModal=closeModal/);
+  assert.match(app, /VaultUser\\.showAccountDialog\\(\\)/);
+});
+
+test("Revision uses separate files, accessible navigation and contained lists", () => {
+  const html = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(html, /revision\\.css/);
+  assert.match(html, /app\\.js/);
+  assert.match(html, /practice\\.js/);
+  assert.match(html, /<button type="button" class="ni/);
+  assert.doesNotMatch(html, /maximum-scale/);
+  assert.ok(html.trimEnd().endsWith("</html>"));
+  assert.match(css, /knowledge-list[\\s\\S]*?max-height:[^;]+;overflow-y:auto/);
+  assert.match(css, /overview-hero/);
+  assert.match(app, /aria-current/);
+  assert.match(app, /scrollTop = 0/);
 });
 
 
