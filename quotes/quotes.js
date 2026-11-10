@@ -1021,8 +1021,8 @@ function rLeaderboard(){
     ?`<div class="card" style="margin-bottom:10px;border-left:3px solid var(--gold);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Your username</div>
-          <div style="font-size:.95rem;color:var(--gold);font-weight:600">👤 ${myName}</div>
-          <div style="font-size:.7rem;color:var(--amber);margin-top:2px">🔥 ${S.streak} day streak · 🏅 ${S.maxStreak} best</div>
+          <div style="font-size:.95rem;color:var(--gold);font-weight:600">${myName}</div>
+          <div style="font-size:.7rem;color:var(--amber);margin-top:2px">${S.streak} day streak · ${S.maxStreak} best</div>
         </div>
         ${myRank>0?`<div style="text-align:center"><div style="font-size:1.3rem">${medal(myRank-1)}</div><div style="font-size:.62rem;color:var(--text3)">rank</div></div>`:''}
         <button class="btn bsm" onclick="showUsernameModal()" style="color:var(--text2)">Change name</button>
@@ -1033,11 +1033,11 @@ function rLeaderboard(){
       </div>`}
   <div class="fbar" style="margin-bottom:10px">
     <button class="fbtn${S._lbTab==='mastered'?' active':''}" onclick="S._lbTab='mastered';render()">Quotes</button>
-    <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">⚡ XP</button>
+    <button class="fbtn${S._lbTab==='xp'?' active':''}" onclick="S._lbTab='xp';render()">XP</button>
     <button class="fbtn${S._lbTab==='streak'?' active':''}" onclick="S._lbTab='streak';render()">Streak</button>
   </div>
   ${_lbLoading&&!_lbCache
-    ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">⏳ Loading leaderboard…</div>`
+    ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem"> Loading leaderboard…</div>`
     :users.length===0
     ?`<div style="text-align:center;padding:30px;color:var(--text3);font-size:.8rem">No users yet — be the first!</div>`
     :S._lbTab==='mastered'
@@ -1049,7 +1049,7 @@ function rLeaderboard(){
         <div style="font-size:.85rem;min-width:26px;text-align:center">${medal(i)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:${isMe?600:400};color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.username}${isMe?' (you)':''}</div>
-          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">📚 ${u.qv_mastered||0} quotes mastered</div>
+          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">${u.qv_mastered||0} quotes mastered</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.88rem;color:var(--teal2);font-weight:600">${u.qv_mastered||0}</div>
@@ -1059,7 +1059,7 @@ function rLeaderboard(){
   </div>`
     :S._lbTab==='xp'
     ?`<div class="card">
-    <div class="sec" style="margin-top:0">⚡ Combined XP</div>
+    <div class="sec" style="margin-top:0">Combined XP</div>
     ${users.slice(0,20).map((u,i)=>{
       const isMe=myName&&u.username.toLowerCase()===myName.toLowerCase();
       const totalXP=(u.qv_xp||0)+(u.dv_xp||0);
@@ -1088,7 +1088,7 @@ function rLeaderboard(){
         <div style="font-size:.85rem;min-width:26px;text-align:center">${medal(i)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:${isMe?600:400};color:${isMe?'var(--gold)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.username}${isMe?' (you)':''}</div>
-          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">🔥 ${cs} current · 🏅 ${ms} best</div>
+          <div style="font-size:.63rem;color:var(--text3);margin-top:1px">${cs} current · ${ms} best</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.88rem;color:var(--amber);font-weight:600">${ms}</div>
@@ -1155,7 +1155,7 @@ function updateSB(){
   document.getElementById('sb-lv').textContent=Math.floor(S.xp/100)+1;
   document.getElementById('sb-str').textContent=S.streak;
   const dc=dueCount();
-  document.getElementById('sb-due').textContent=dc>0?`📅 ${dc} due for review`:'';
+  document.getElementById('sb-due').textContent=dc>0?`${dc} due for review`:'';
 }
 
 function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';}
@@ -1219,7 +1219,7 @@ function addMPts(id,delta){
   if(next>=100&&!wasMastered){
     S.mastered.add(id);S.learning.delete(id);
     onMastery();
-    toast('⭐ Mastered! +10 XP');addXP(10);
+    toast('Mastered. +10 XP');addXP(10);
   } else if(next>=30&&!wasLearning&&!wasMastered){
     S.learning.add(id);
   } else if(next<30&&wasLearning&&!wasMastered){
@@ -1227,7 +1227,7 @@ function addMPts(id,delta){
   } else if(next<50&&wasMastered){
     S.mastered.delete(id);S.mastered.delete(String(id));
     S.learning.add(id);
-    toast('📉 Mastery lost — keep practising');
+    toast('Mastery lost. Keep practising.');
   }
   save();
 }
@@ -1291,13 +1291,13 @@ function worksAndPoems(){
   // Insert poem names under "Power and Conflict"
   const poems=[...new Set(qs.filter(q=>q.work==='Power and Conflict').map(q=>q.loc))].sort();
   const idx=w.indexOf('Power and Conflict');
-  if(idx!==-1) w.splice(idx+1,0,...poems.map(p=>'📜 '+p));
+  if(idx!==-1) w.splice(idx+1,0,...poems.map(p=>'Poem: '+p));
   return w;
 }
 // Filter a pool by a worksAndPoems() selection value
 function filterPool(pool,sel){
   if(sel==='All')return pool;
-  if(sel.startsWith('📜 ')){const loc=sel.slice(2).trim();return pool.filter(q=>q.loc===loc);}
+  if(sel.startsWith('Poem: ')){const loc=sel.slice(6).trim();return pool.filter(q=>q.loc===loc);}
   return pool.filter(q=>q.work===sel);
 }
 
@@ -1310,7 +1310,7 @@ function applyFilters(pool){
   if(!ws.has('All')){
     out=out.filter(q=>{
       for(const w of ws){
-        if(w.startsWith('📜 ')){if(q.loc===w.slice(2).trim())return true;}
+        if(w.startsWith('Poem: ')){if(q.loc===w.slice(6).trim())return true;}
         else{if(q.work===w)return true;}
       }
       return false;
@@ -1354,7 +1354,7 @@ function renderFilters(opts={}){
   // Themes: only those present in currently-selected work pool
   const workPool=S.flt.works.has('All')?allQ():allQ().filter(q=>{
     for(const w of S.flt.works){
-      if(w.startsWith('📜 ')){if(q.loc===w.slice(2).trim())return true;}
+      if(w.startsWith('Poem: ')){if(q.loc===w.slice(6).trim())return true;}
       else{if(q.work===w)return true;}
     }
     return false;
@@ -1365,7 +1365,7 @@ function renderFilters(opts={}){
   const activeThemes=[...S.flt.themes].filter(t=>t!=='All');
   const activeCount=activeWorks.length+activeThemes.length+(S.flt.search?1:0);
 
-  const wLabel=activeWorks.length?truncateLabels(activeWorks.map(w=>w.startsWith('📜 ')?w.slice(2):w)):'All texts';
+  const wLabel=activeWorks.length?truncateLabels(activeWorks.map(w=>w.startsWith('Poem: ')?w.slice(6):w)):'All texts';
   const tLabel=activeThemes.length?truncateLabels(activeThemes):'All themes';
   const wActive=activeWorks.length>0;
   const tActive=activeThemes.length>0;
@@ -1584,12 +1584,12 @@ function rLib(){
       <select onchange="S.libSort=this.value;render()"
         style="font-size:.72rem;padding:4px 8px;border-radius:6px;width:auto;background:var(--bg3);border:1px solid var(--border2);color:var(--text)">
         <option value="importance" ${sort==='importance'?'selected':''}>⭐ Importance</option>
-        <option value="mastery" ${sort==='mastery'?'selected':''}>🏆 Mastery (high first)</option>
-        <option value="mastery-asc" ${sort==='mastery-asc'?'selected':''}>📈 Mastery (low first)</option>
-        <option value="due" ${sort==='due'?'selected':''}>⏰ Due for review</option>
-        <option value="work" ${sort==='work'?'selected':''}>📚 Text / Poem</option>
-        <option value="alpha" ${sort==='alpha'?'selected':''}>🔤 A–Z</option>   
-        <option value="none" ${sort==='none'?'selected':''}>📄 Default order</option>
+        <option value="mastery" ${sort==='mastery'?'selected':''}> Mastery (high first)</option>
+        <option value="mastery-asc" ${sort==='mastery-asc'?'selected':''}> Mastery (low first)</option>
+        <option value="due" ${sort==='due'?'selected':''}>Due for review</option>
+        <option value="work" ${sort==='work'?'selected':''}>Text / Poem</option>
+        <option value="alpha" ${sort==='alpha'?'selected':''}> A–Z</option>   
+        <option value="none" ${sort==='none'?'selected':''}> Default order</option>
       </select>
       ${S.hidden.size>0?`<button class="fbtn${S.libShowHidden?' active':''}" onclick="S.libShowHidden=!S.libShowHidden;render()" style="font-size:.65rem">${S.libShowHidden?'Hide':'Show'} hidden (${S.hidden.size})</button>`:''}
     </div>
@@ -1606,14 +1606,14 @@ function rLib(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
         <div style="font-size:.62rem;color:var(--text3);font-style:italic">${q.char} · ${q.work} · ${q.loc}</div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">⏳ Pending</span>`:''}
+          ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">Pending</span>`:''}
           ${isMastered?`<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="removeMastery('${q.id}')">−Mastery</button>`:''}
           ${q._submittedByMe&&q._status==='pending'?`<button class="btn bsm" style="color:var(--coral);border-color:var(--coral);font-size:.6rem" onclick="deletePendingQuote('${q.id}')" title="Withdraw submission">✕ Withdraw</button>`:`<button class="btn bsm" style="color:${isHidden?'var(--amber)':'var(--text3)'};border-color:${isHidden?'var(--amber)':'var(--border2)'};font-size:.6rem;padding:2px 6px" onclick="toggleHidden('${q.id}')" title="${isHidden?'Unhide':'Hide'}">${isHidden?'Unhide':'Hide'}</button>`}
         </div>
       </div>
       <div class="qc-t">"${q.text}"</div>
       <div class="qc-a">${q.analysis||''}</div>
-      ${q.essayUse?`<div style="font-size:.68rem;color:var(--purple3);margin-bottom:4px">📝 Essay use: ${q.essayUse}</div>`:''}
+      ${q.essayUse?`<div style="font-size:.68rem;color:var(--purple3);margin-bottom:4px">Essay use: ${q.essayUse}</div>`:''}
       <div style="margin:5px 0 4px;display:flex;align-items:center;gap:6px">
         <div style="flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${mp}%;background:${mc};border-radius:2px;transition:width .4s ease"></div>
@@ -1647,7 +1647,7 @@ function rSRS(){
     ${renderFilters({showThemes:true})}
     <div class="ps">All caught up! No quotes due for the current filter.</div>
     <div class="card" style="text-align:center;padding:24px">
-      <div style="font-size:2rem;margin-bottom:8px">🎉</div>
+      <div style="font-size:2rem;margin-bottom:8px"></div>
       <div style="color:var(--text2)">No quotes due for review right now.</div>
       <div style="font-size:.72rem;color:var(--text3);margin-top:6px">Check back later or study with Flashcards.</div>
     </div></div>`;
@@ -1737,7 +1737,7 @@ function rFC(){
   <div class="ps">Front = character/location/theme prompt · Back = full quote + analysis</div>
   ${renderFilters({showThemes:true})}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-    <div style="font-size:.7rem;color:var(--text3)">${histPos+1} / ${pool.length}${isRandom?' · 🔀 Random mode':''}</div>
+    <div style="font-size:.7rem;color:var(--text3)">${histPos+1} / ${pool.length}${isRandom?' · Random mode':''}</div>
     <div style="font-size:.65rem;color:var(--text3)">${fc.seen.size} seen</div>
   </div>
   <div class="pb"><div class="pbf pu" style="width:${pct(fc.seen.size,pool.length)}%"></div></div>
@@ -1788,7 +1788,7 @@ function rFC(){
   <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
     <button class="btn" onclick="fcPrev()" ${canPrev?'':'disabled style="opacity:.35;cursor:not-allowed"'}>← Prev</button>
     <button class="btn bp" onclick="fcNext()">Next →</button>
-    <button class="btn${isRandom?' bg':''}" onclick="fcToggleRandom()" style="${isRandom?'':''}">🔀${isRandom?' On':''}</button>
+    <button class="btn${isRandom?' bg':''}" onclick="fcToggleRandom()" style="${isRandom?'':''}">Random${isRandom?' On':''}</button>
     ${fc.seen.size===pool.length?`<button class="btn bsm" onclick="fcResetSeen()" style="color:var(--amber);border-color:var(--amber)">↺ Reset seen</button>`:''}
   </div>
   <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:9px">
@@ -1908,7 +1908,7 @@ function rFill(){
     <button class="btn" onclick="startFill()">New Quote</button>
   </div>`:`
   <div class="qfb ${allOk?'qok':'qwr'}" style="margin-bottom:9px">
-    ${allOk?'✅ Perfect!':'❌ Correction:'} <em>"${q.text}"</em>
+    ${allOk?'Correct: Perfect!':'Not quite: Correction:'} <em>"${q.text}"</em>
     <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${q.analysis||''}</div>
   </div>
   <button class="btn bp" onclick="startFill()">Next →</button>`}
@@ -2159,7 +2159,7 @@ function rQuizQ(){
 
     const fbStyle=close?'background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);':'';
     feedback=`<div class="qfb ${ok?'qok':close?'':' qwr'}" style="${fbStyle}">
-      ${ok?'✅ Correct! +15 XP':close?'🟡 Close — nearly right! +5 XP':'❌ Not quite — +2 XP for trying'}
+      ${ok?'Correct: Correct! +15 XP':close?'Close — nearly right! +5 XP':'Not quite: Not quite — +2 XP for trying'}
       <div style="margin-top:6px;font-size:.78rem"><strong style="color:var(--gold)">Model answer:</strong><br><em>"${correct}"</em></div>
       ${type!=='analysis'?`<div style="margin-top:5px;font-size:.73rem;color:var(--text2)">${q.analysis||''}</div>`:''}
       <div style="margin-top:4px;font-size:.7rem;color:var(--text3)">${q.char} · ${q.work} · ${q.loc}</div>
@@ -2199,7 +2199,7 @@ function rQuizEnd(){
   ${backBtn()}
   <div class="pt">Quiz Complete!</div>
   <div class="card" style="text-align:center;max-width:340px;margin:12px auto">
-    <div style="font-size:2rem;margin-bottom:6px">${p>=80?'🏆':p>=60?'⭐':'📚'}</div>
+    <div style="font-size:2rem;margin-bottom:6px">${p>=80?'Excellent':p>=60?'Good':'Keep going'}</div>
     <div style="font-size:1.8rem;font-family:'Playfair Display',serif;color:var(--gold)">${score} / ${qs.length}</div>
     <div style="color:var(--text2);margin-top:4px">${p>=80?'Excellent!':p>=60?'Good work!':p>=40?'Keep going!':'More revision needed'}</div>
     <div class="pb" style="margin:9px 0"><div class="pbf pg" style="width:${p}%"></div></div>
@@ -2228,7 +2228,7 @@ function rTimed(){
         <option value="first_word">First word → full quote</option>
         <option value="method">Name a literary method</option>
       </select></div>
-      <button class="btn bg bblk" onclick="startTC()">Start! ⏱</button>
+      <button class="btn bg bblk" onclick="startTC()">Start! </button>
     </div></div>`;
   }
   if(S.tc.tLeft<=0)return rTCEnd();
@@ -2257,7 +2257,7 @@ function rTimed(){
     <button class="btn" onclick="skipTC()">Skip →</button>
     <button class="btn bsm" style="margin-left:auto;color:var(--coral)" onclick="endTC()">End</button>
   </div>
-  ${S.tc.result?`<div class="qfb ${S.tc.result.ok?'qok':'qwr'}" style="margin-top:8px">${S.tc.result.ok?'✅ Correct!':'❌ Answer: '+S.tc.result.correct}</div>`:''}
+  ${S.tc.result?`<div class="qfb ${S.tc.result.ok?'qok':'qwr'}" style="margin-top:8px">${S.tc.result.ok?'Correct: Correct!':'Not quite: Answer: '+S.tc.result.correct}</div>`:''}
   </div>`;
 }
 function startTC(){
@@ -2310,7 +2310,7 @@ function checkTC(){
   if(el){el.value='';el.focus();}
   // Just update the result area without full re-render, keeping timer alive
   const res=document.querySelector('.qfb');
-  const msg=ok?'✅ Correct! +5 XP':close?'🟡 Close! +2 XP':'❌ Answer: '+correct;
+  const msg=ok?'Correct: Correct! +5 XP':close?'Close! +2 XP':'Not quite: Answer: '+correct;
   const cls=ok?'qok':close?'':'qwr';
   const style=close?'margin-top:8px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);':'margin-top:8px';
   if(res){res.className='qfb '+cls;res.style.cssText=style;res.innerHTML=msg;}
@@ -2350,7 +2350,7 @@ function rTCEnd(){
   ${backBtn()}
   <div class="pt">Time's Up!</div>
   <div class="card" style="text-align:center;max-width:320px;margin:12px auto">
-    <div style="font-size:2rem;margin-bottom:6px">${S.tc.score>=15?'🏆':S.tc.score>=8?'⭐':S.tc.score>=3?'👍':'📚'}</div>
+    <div style="font-size:2rem;margin-bottom:6px">${S.tc.score>=15?'':S.tc.score>=8?'⭐':S.tc.score>=3?'':''}</div>
     <div style="font-size:1.8rem;font-family:'Playfair Display',serif;color:var(--gold)">${S.tc.score} correct</div>
     <div style="color:var(--text2);margin-top:4px">in ${S.tc.total} seconds · +${S.tc.score*5} XP</div>
   </div>
@@ -2377,13 +2377,13 @@ function rDump(){
   </div>`:`
   <button class="bback" onclick="S.dump.done=false;render()">← Try again</button>
   <div class="g3" style="margin-bottom:10px">
-    <div class="scard"><div class="snum" style="color:var(--teal)">${S.dump.results.filter(r=>r.s==='ok').length}</div><div class="slbl">✅ Correct</div></div>
+    <div class="scard"><div class="snum" style="color:var(--teal)">${S.dump.results.filter(r=>r.s==='ok').length}</div><div class="slbl">Correct: Correct</div></div>
     <div class="scard"><div class="snum" style="color:var(--amber)">${S.dump.results.filter(r=>r.s==='near').length}</div><div class="slbl">⚠ Nearly</div></div>
-    <div class="scard"><div class="snum" style="color:var(--coral)">${S.dump.results.filter(r=>r.s==='miss').length}</div><div class="slbl">❌ Not found</div></div>
+    <div class="scard"><div class="snum" style="color:var(--coral)">${S.dump.results.filter(r=>r.s==='miss').length}</div><div class="slbl">Not quite: Not found</div></div>
   </div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">${pct(S.dump.results.filter(r=>r.s==='ok').length,S.dump.results.length)}% accuracy · ${S.dump.results.length} attempted</div>
   ${S.dump.results.map(r=>`<div class="dr ${r.s==='ok'?'dr-ok':r.s==='near'?'dr-near':'dr-miss'}">
-    <span>${r.s==='ok'?'✅':r.s==='near'?'⚠️':'❌'}</span> <em>"${r.input}"</em>
+    <span>${r.s==='ok'?'Correct':r.s==='near'?'⚠️':'Not quite'}</span> <em>"${r.input}"</em>
     ${r.s!=='ok'&&r.match?`<div class="dr-sub">Closest: <em>"${r.match.text}"</em> — ${r.match.char}, ${r.match.work}</div>`:''}
     ${r.s==='ok'&&r.match?`<div class="dr-sub">${r.match.char} · ${r.match.work} · ${r.match.loc}</div>`:''}
   </div>`).join('')}
@@ -2437,14 +2437,14 @@ function rAdd(){
     </div>
     <div class="fg"><label>Memory note (optional)</label><input type="text" id="a-no" placeholder="Common errors, hints, context…"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-      <button class="btn bg" onclick="saveQuote()">📬 Submit for Review</button>
+      <button class="btn bg" onclick="saveQuote()">Submit for Review</button>
       <button class="btn" onclick="checkDup()">Check duplicate</button>
     </div>
     <div id="add-fb" style="margin-top:10px"></div>
   </div>
   ${myPending.length>0?`
   <div class="div"></div>
-  <div class="sec">📬 My Pending Submissions</div>
+  <div class="sec">My Pending Submissions</div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">These quotes are visible to you while awaiting admin approval. You can withdraw any that are still pending.</div>
   ${myPending.map(q=>`
   <div class="qc" style="border-left:3px solid ${q._rejected?'var(--coral)':'var(--amber)'};max-width:540px;margin-bottom:7px">
@@ -2453,11 +2453,11 @@ function rAdd(){
         <div class="qc-t">"${q.text}"</div>
         <div class="qc-a"><strong style="color:var(--gold)">${q.char}</strong> · ${q.work} · ${q.loc}</div>
       </div>
-      <span style="font-size:.6rem;background:${q._rejected?'rgba(232,93,74,.2)':'rgba(245,166,35,.2)'};color:${q._rejected?'var(--coral)':'var(--amber)'};border:1px solid ${q._rejected?'var(--coral)':'var(--amber)'};border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">${q._rejected?'❌ Not approved':'⏳ Pending'}</span>
+      <span style="font-size:.6rem;background:${q._rejected?'rgba(232,93,74,.2)':'rgba(245,166,35,.2)'};color:${q._rejected?'var(--coral)':'var(--amber)'};border:1px solid ${q._rejected?'var(--coral)':'var(--amber)'};border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">${q._rejected?'Not quite: Not approved':'Pending'}</span>
     </div>
     ${q.submittedAt?`<div style="font-size:.62rem;color:var(--text3);margin-top:5px">Submitted: ${new Date(q.submittedAt).toLocaleString('en-GB')}</div>`:''}
     ${q._rejected?`<div style="font-size:.68rem;color:var(--coral);margin-top:4px">This quote was not approved. It remains in your personal library only.</div>`:''}
-    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingQuote('${q.id}')">${q._rejected?'🗑 Remove':'✕ Withdraw'}</button>
+    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingQuote('${q.id}')">${q._rejected?' Remove':'✕ Withdraw'}</button>
   </div>`).join('')}`:''}
   </div>`;
 }
@@ -2513,7 +2513,7 @@ async function saveQuote(){
     _status:'pending',
   };
   const fbEl=document.getElementById('add-fb');
-  fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)">⏳ Submitting…</div>`;
+  fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
     const resp=await fetch(WORKER_URL+'/submit',{
       method:'POST',
@@ -2530,7 +2530,7 @@ async function saveQuote(){
     save();
     // Push pending IDs to worker (so other devices can pick up this submission)
     lbUpdate();
-    toast('📬 Quote submitted! Showing in your library while awaiting review.');
+    toast('Quote submitted. It will appear in your library while awaiting review.');
     // Reset form fields BEFORE render() so the fresh form is blank
     ['a-t','a-c','a-act','a-sc','a-th','a-me','a-an','a-no'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     const liveDup=document.getElementById('live-dup');if(liveDup)liveDup.innerHTML='';
@@ -2540,9 +2540,9 @@ async function saveQuote(){
     render();
     // Now the page has been re-rendered — find the feedback div in the new DOM
     const newFb=document.getElementById('add-fb');
-    if(newFb)newFb.innerHTML=`<div class="qfb" style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);color:var(--purple3)">📬 Submitted for review!<br><em style="font-size:.72rem">"${t.slice(0,60)}"</em><br><span style="font-size:.65rem;color:var(--text3)">Visible in your library now — an admin must approve it to appear for everyone.</span></div>`;
+    if(newFb)newFb.innerHTML=`<div class="qfb" style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);color:var(--purple3)">Submitted for review!<br><em style="font-size:.72rem">"${t.slice(0,60)}"</em><br><span style="font-size:.65rem;color:var(--text3)">Visible in your library now — an admin must approve it to appear for everyone.</span></div>`;
   }catch(e){
-    fbEl.innerHTML=`<div class="qfb qwr">❌ Submission failed — check your internet connection.<br><span style="font-size:.68rem;color:var(--text3)">${e.message}</span></div>`;
+    fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — check your internet connection.<br><span style="font-size:.68rem;color:var(--text3)">${e.message}</span></div>`;
   }
 }
 
@@ -2555,7 +2555,7 @@ async function deletePendingQuote(id){
       body:JSON.stringify({userKey:k,id})});
   }catch(e){/* non-fatal — remove locally regardless */}
   S.pending=S.pending.filter(p=>String(p.id)!==String(id));
-  save();lbUpdate();buildNav();toast('🗑 Submission withdrawn');render();
+  save();lbUpdate();buildNav();toast('Submission withdrawn');render();
 }
 
 // ════════════════════════════════════════════════
@@ -2613,7 +2613,7 @@ function rStats(){
     <div class="scard"><div class="snum" style="color:var(--gold)">${qs.length}</div><div class="slbl">Total Quotes</div></div>
     <div class="scard"><div class="snum" style="color:var(--teal)">${S.mastered.size}</div><div class="slbl">Mastered</div></div>
     <div class="scard"><div class="snum" style="color:var(--purple3)">${S.xp}</div><div class="slbl">Total XP</div></div>
-    <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak 🔥</div></div>
+    <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak </div></div>
   </div>
 
   <div class="card" style="margin-bottom:10px">
@@ -2670,7 +2670,7 @@ function rStats(){
 
   <div class="g2" style="margin-bottom:10px">
     <div class="card">
-      <div class="sec" style="margin-top:0">🌟 Best Remembered</div>
+      <div class="sec" style="margin-top:0"> Best Remembered</div>
       ${bestRemembered.map(q=>`<div style="padding:5px 0;border-bottom:1px solid var(--border)">
         <div style="font-style:italic;font-size:.78rem">"${q.text.slice(0,55)}…"</div>
         <div style="font-size:.65rem;color:var(--text3);margin-top:2px">${q.char} · ${q.work} · ${q.srs.reps||0} reps</div>
@@ -2681,7 +2681,7 @@ function rStats(){
       ${mostForgotten.length?mostForgotten.map(q=>`<div style="padding:5px 0;border-bottom:1px solid var(--border)">
         <div style="font-style:italic;font-size:.78rem">"${q.text.slice(0,55)}…"</div>
         <div style="font-size:.65rem;color:var(--text3);margin-top:2px">${q.char} · ${q.work}</div>
-      </div>`).join(''):'<div style="font-size:.75rem;color:var(--teal2)">All 5-star quotes mastered! 🎉</div>'}
+      </div>`).join(''):'<div style="font-size:.75rem;color:var(--teal2)">All 5-star quotes mastered! </div>'}
     </div>
   </div>
 
@@ -2701,20 +2701,20 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'🎯',n:'First Blood',d:'Mastered your first quote',e:S.mastered.size>=1},
-    {i:'🃏',n:'Card Shark',d:'Mastered 5 quotes',e:S.mastered.size>=5},
-    {i:'📚',n:'Bibliophile',d:'Mastered 20 quotes',e:S.mastered.size>=20},
-    {i:'🌟',n:'Scholar',d:'Mastered 40 quotes',e:S.mastered.size>=40},
-    {i:'👑',n:'Grand Master',d:'Mastered 80 quotes',e:S.mastered.size>=80},
-    {i:'⭐',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
-    {i:'💫',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
-    {i:'💥',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
-    {i:'🔥',n:'On Fire',d:'3-day revision streak',e:S.streak>=3},
-    {i:'🏆',n:'Dedicated',d:'7-day revision streak',e:S.streak>=7},
-    {i:'💡',n:'Brainiac',d:'Completed a Brain Dump',e:S.dump.done},
-    {i:'📝',n:'Author',d:'Added 5 custom quotes',e:S.custom.length>=5},
-    {i:'🔁',n:'SRS Master',d:'Reviewed 10 SRS cards',e:Object.keys(S.srsData).length>=10},
-    {i:'⏱',n:'Speed Demon',d:'Scored 10+ in Timed Challenge',e:S.tc.score>=10},
+    {i:'01',n:'First Blood',d:'Mastered your first quote',e:S.mastered.size>=1},
+    {i:'02',n:'Card Shark',d:'Mastered 5 quotes',e:S.mastered.size>=5},
+    {i:'03',n:'Bibliophile',d:'Mastered 20 quotes',e:S.mastered.size>=20},
+    {i:'04',n:'Scholar',d:'Mastered 40 quotes',e:S.mastered.size>=40},
+    {i:'05',n:'Grand Master',d:'Mastered 80 quotes',e:S.mastered.size>=80},
+    {i:'06',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
+    {i:'07',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
+    {i:'08',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
+    {i:'09',n:'On Fire',d:'3-day revision streak',e:S.streak>=3},
+    {i:'10',n:'Dedicated',d:'7-day revision streak',e:S.streak>=7},
+    {i:'11',n:'Brainiac',d:'Completed a Brain Dump',e:S.dump.done},
+    {i:'12',n:'Author',d:'Added 5 custom quotes',e:S.custom.length>=5},
+    {i:'13',n:'SRS Master',d:'Reviewed 10 SRS cards',e:Object.keys(S.srsData).length>=10},
+    {i:'14',n:'Speed Demon',d:'Scored 10+ in Timed Challenge',e:S.tc.score>=10},
   ];
   // Persist newly unlocked achievements
   achs.forEach(a=>{if(a.e&&!S.achievements.has(a.n)){S.achievements.add(a.n);save();}});
@@ -2790,7 +2790,7 @@ function rSett(){
     </div>
     ${customCards?`<div style="font-size:.63rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Your themes</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px">${customCards}</div>`:''}
-    <button class="btn" style="color:var(--purple3);border-color:var(--purple)" onclick="openThemeBuilder('')">🎨 Create Custom Theme</button>
+    <button class="btn" style="color:var(--purple3);border-color:var(--purple)" onclick="openThemeBuilder('')">Create custom theme</button>
   </div>
 
   <div class="sec">Account</div>
@@ -2970,7 +2970,7 @@ async function loadCloudQuotes(){
         // Avoid double-adding to custom
         const customIds=new Set(S.custom.map(q=>String(q.id)));
         approvedFromPending.forEach(q=>{if(!customIds.has(String(q.id)))S.custom.push(q);});
-        toast(`✅ ${approvedFromPending.length} of your submitted quote${approvedFromPending.length===1?'':'s'} got approved!`,4000);
+        toast(`Correct: ${approvedFromPending.length} of your submitted quote${approvedFromPending.length===1?'':'s'} got approved!`,4000);
       }
       if(newQuotes.length>0){S.custom=[...S.custom,...newQuotes];}
       if(newQuotes.length>0||approvedFromPending.length>0){save();render();}
