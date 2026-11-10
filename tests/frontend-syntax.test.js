@@ -8,7 +8,8 @@ const files = [
   "quotes/index.html",
   "dates/index.html",
   "revision/index.html",
-  "revision/revision.js"
+  "revision/app.js",
+  "revision/practice.js"
 ];
 
 for (const file of files) {
@@ -231,7 +232,7 @@ test("Revision account dialog has working modal helpers", () => {
 
 
 test("course pack imports preserve existing cards and deduplicate cards, resources and formulas", () => {
-  const source = fs.readFileSync(new URL("../revision/revision.js", import.meta.url), "utf8");
+  const source = fs.readFileSync(new URL("../revision/practice.js", import.meta.url), "utf8");
   const start = source.indexOf("function practiceImport(input){");
   const end = source.indexOf("function practiceResourcesView()", start);
   assert.ok(start >= 0 && end > start);
