@@ -206,3 +206,5 @@ body{line-height:1.5}
 .library-results::-webkit-scrollbar{width:6px}
 .library-results::-webkit-scrollbar-thumb{background:var(--border2);border-radius:8px}
 @media(max-width:620px){#page{padding:16px 14px 90px}.library-results{max-height:58vh}}
+
+.ni{appearance:none;width:calc(100% - 10px);border:0;background:transparent;font-family:inherit;text-align:left}
