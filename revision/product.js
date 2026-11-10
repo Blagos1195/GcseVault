@@ -37,7 +37,8 @@ practiceRecommend=function(){
  if(!Object.keys(p.catalogues).length)return productOriginalRecommend();
  const topics=practiceTopics().map(topic=>({...topic,stats:practiceStats(topic)})).sort((a,b)=>b.stats.priority-a.stats.priority).slice(0,8);
  const original=productOriginalRecommend(),formStart=original.indexOf('<div class="sec">Log an exam attempt</div>');
- return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities use recorded marks, recall, recency and unresolved mistakes. Topics without enough evidence are labelled clearly.</div><div class="knowledge-list">'+topics.map(topic=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(topic.name)+' '+productHealthTag(topic.stats.health)+'</div><div class="knowledge-meta">'+practiceEsc(topic.subject)+' · '+practiceEsc(topic.stats.evidence)+' · '+(topic.stats.accuracy===null?'No exam marks yet':Math.round(topic.stats.accuracy*100)+'% exam accuracy')+'</div></div><div class="overview-selected-actions"><button class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Select</button><button class="btn bsm bp" onclick="practiceStartTopicReview(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Review cards</button></div></div>').join('')+'</div>'+(formStart>=0?original.slice(formStart):'')+'</div>';
+ const rows=topics.map(topic=>'<div class="knowledge-item"><div style="flex:1"><div class="knowledge-title">'+practiceEsc(topic.name)+' '+productHealthTag(topic.stats.health)+'</div><div class="knowledge-meta">'+practiceEsc(topic.subject)+' · '+practiceEsc(topic.stats.evidence)+' · '+(topic.stats.accuracy===null?'No exam marks yet':Math.round(topic.stats.accuracy*100)+'% exam accuracy')+'</div></div><div class="overview-selected-actions"><button class="btn bsm" onclick="practiceSelectTopic(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Select</button><button class="btn bsm bp" onclick="practiceStartTopicReview(\''+practiceEsc(topic.subjectId)+'\',\''+practiceEsc(topic.id)+'\')">Review cards</button></div></div>').join('');
+ return '<div class="card" style="margin-top:10px"><div class="sec">Recommended exam practice</div><div class="ps">Priorities use recorded marks, recall, recency and unresolved mistakes. Topics without enough evidence are labelled clearly.</div><div class="knowledge-list">'+rows+'</div>'+(formStart>=0?original.slice(formStart):'</div>');
 };
 function practiceStartTopicReview(subjectId,topicId){
  const topic=practiceTopics().find(item=>item.subjectId===subjectId&&item.id===topicId);if(!topic)return;
@@ -53,6 +54,12 @@ function practiceResourcesView(){
  const resources=practiceStore().resources||[],subjects=[...new Set(resources.map(item=>item.subject))],focus=state.resourceFocus,visible=focus?resources.filter(item=>item.id===focus):resources,unread=resources.filter(item=>!item.readAt).length;
  return '<div style="max-width:1000px;margin:0 auto"><div class="pt">Course materials</div><div class="ps">Notes, worked examples, practical guidance and other resources for this revision set. '+unread+' unread.</div>'+ (resources.length?subjects.map(subject=>{const items=visible.filter(item=>item.subject===subject);if(!items.length)return '';return '<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">'+practiceEsc(subject)+'</div><div class="knowledge-list">'+items.map(item=>'<details class="knowledge-item" '+(item.id===focus?'open':'')+'><summary class="knowledge-title">'+practiceEsc(item.title)+' <span class="tag tb">'+practiceEsc(item.kind)+'</span> '+(item.readAt?'<span class="tag tt">Reviewed</span>':'<span class="tag bd">Unread</span>')+'<div class="knowledge-meta">'+practiceEsc(item.topic)+'</div></summary><div class="resource-content">'+practiceEsc(item.content)+'</div>'+(item.url&&/^https?:\/\//i.test(item.url)?'<div style="margin-top:9px"><a href="'+practiceEsc(item.url)+'" target="_blank" rel="noopener noreferrer">Open source resource</a></div>':'')+'<div class="knowledge-meta" style="margin-top:8px">Source: '+practiceEsc(item.source)+'</div><button class="btn bsm" style="margin-top:9px" onclick="event.preventDefault();event.stopPropagation();practiceToggleResource(\''+practiceEsc(item.id)+'\')">'+(item.readAt?'Mark unread':'Mark as reviewed')+'</button></details>').join('')+'</div></div>';}).join(''):'<div class="card">No course materials imported yet. Import a course pack from Settings after its matching subject catalogue.</div>')+'</div>';
 }
+const productFormulaWorkspace=practiceFormulaWorkspace;
+practiceFormulaWorkspace=function(){
+ let html=productFormulaWorkspace();
+ practiceStore().formulas.forEach(item=>{const before='<div class="knowledge-title">'+practiceEsc(item.name)+' · '+practiceEsc(item.expression)+'</div>';const after='<div class="knowledge-title" id="formula-'+practiceEsc(item.id)+'">'+practiceEsc(item.name)+' · '+practiceEsc(item.expression)+'</div>';html=html.replace(before,after);});
+ return html;
+};
 const productOriginalAnalytics=practiceAnalytics;
 practiceAnalytics=function(){
  const p=practiceStore(),attempts=p.attempts.slice().sort((a,b)=>b.at-a.at).slice(0,8);
@@ -79,9 +86,11 @@ function openRevisionSearchResult(type,encodedId){
  const panel=document.getElementById('revision-search-results');if(panel){panel.hidden=true;panel.innerHTML='';}
  if(type==='card'){startStudy(id);return;}
  if(type==='resource'){state.resourceFocus=id;state.view='resources';renderRevision();return;}
- if(type==='formula'||type==='mistake'||type==='attempt'){state.view='analytics';renderRevision();return;}
+ if(type==='formula'){state.view='analytics';renderRevision();document.getElementById('formula-'+id)?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+ if(type==='mistake'||type==='attempt'){state.view='analytics';renderRevision();return;}
  if(type==='topic'){const [subjectId,topicId]=id.split('|');practiceSelectTopic(subjectId,topicId);return;}
 }
+document.getElementById('revision-search')?.addEventListener('keydown',event=>{if(event.key==='Escape'){event.target.value='';searchRevision('');}});
 document.addEventListener('click',event=>{if(!event.target.closest('.global-search')){const panel=document.getElementById('revision-search-results');if(panel)panel.hidden=true;}});
 function updateRevisionSyncStatus(){
  const target=document.getElementById('sync-status');if(!target)return;
