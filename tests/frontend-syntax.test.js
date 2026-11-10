@@ -7,7 +7,8 @@ const files = [
   "shared.js",
   "quotes/index.html",
   "dates/index.html",
-  "revision/index.html"
+  "revision/index.html",
+  "revision/revision.js"
 ];
 
 for (const file of files) {
