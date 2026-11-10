@@ -25,7 +25,7 @@ Revision course catalogues and importable course packs are kept in `revision/cat
 
 ## Local checks
 
-The project uses Node's built-in test runner. No package installation is needed for the current test suite.
+The project uses Node 22 or later and Node's built-in test runner. No package installation is needed for the current test suite.
 
 ```sh
 npm test
