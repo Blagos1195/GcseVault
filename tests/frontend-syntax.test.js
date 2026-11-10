@@ -317,3 +317,22 @@ test("course pack imports preserve existing cards and deduplicate cards, resourc
   assert.equal(practice.formulas.length, 1);
   assert.equal(practice.formulas[0].expression, "c = n ÷ V");
 });
+
+
+test("QuoteVault and DateVault use separate scripts, accessible navigation and contained libraries", () => {
+  for (const [page, script, stylesheet] of [
+    ["quotes/index.html", "quotes/quotes.js", "quotes/quotes.css"],
+    ["dates/index.html", "dates/dates.js", "dates/dates.css"]
+  ]) {
+    const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), "utf8");
+    const app = fs.readFileSync(new URL(`../${script}`, import.meta.url), "utf8");
+    const css = fs.readFileSync(new URL(`../${stylesheet}`, import.meta.url), "utf8");
+    assert.ok(html.includes(script));
+    assert.ok(html.includes(stylesheet));
+    assert.match(app, /<button type="button" class="ni/);
+    assert.match(app, /aria-current=/);
+    assert.match(app, /scrollTop=0/);
+    assert.match(app, /class="library-results"/);
+    assert.match(css, /library-results[\\s\\S]*?overflow-y:auto/);
+  }
+});
