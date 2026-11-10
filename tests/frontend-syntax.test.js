@@ -265,6 +265,8 @@ test("Revision product tools provide search, daily planning, resource tracking a
   assert.match(product,/function searchRevision\(/);
   assert.match(product,/function practiceDailyPlan\(/);
   assert.match(product,/function practiceToggleResource\(/);
+  assert.match(product,/Next action \(optional\)/);
+  assert.match(product,/relatedResourceIds/);
   assert.match(product,/Not enough data/);
 });
 
