@@ -613,7 +613,7 @@ function sm2(card, grade) {
   return{ef,interval,reps,due:d.toISOString().slice(0,10)};
 }
 function isDue(srs){if(!srs||!srs.due)return true;return srs.due<=new Date().toISOString().slice(0,10);}
-function dueCount(){return allQ().filter(q=>isDue(q.srs||{})).length;}
+function dueCount(){return allQ().filter(q=>isDue(qSRS(q.id))).length;}
 
 // ════════════════════════════════════════════════
 // STATE
@@ -2342,7 +2342,7 @@ function checkTC(){
     save();
   },800);
 }
-function skipTC(){S.tc.idx++;const el=document.getElementById('tc-ans');if(el){el.value='';el.focus();}}
+function skipTC(){S.tc.idx++;S.tc.result=null;render();const el=document.getElementById('tc-ans');if(el)el.focus();}
 function endTC(){if(S.tc.timer){clearInterval(S.tc.timer);S.tc.timer=null;}S.tc.tLeft=0;render();}
 function rTCEnd(){
   if(S.tc.timer){clearInterval(S.tc.timer);S.tc.timer=null;}
@@ -3081,4 +3081,3 @@ window.addEventListener('storage',e=>{
     if(S&&S.settings){S.settings.theme=e.newValue;save();}
   }
 });
-

@@ -72,7 +72,7 @@ test("storage migration summary aggregates all phases", async () => {
 test("revoked account sessions are cleared and cannot appear signed in", async () => {
   const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
   const start = source.indexOf("const VaultUser = {");
-  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const end = source.indexOf("if (!window.__vaultAccountFetchWrapped)", start);
   assert.ok(start >= 0 && end > start);
   const storage = new Map([["vault_account_session", "revoked-token"]]);
   const localStorage = {
@@ -97,7 +97,8 @@ test("revoked account sessions are cleared and cannot appear signed in", async (
 test("valid account sessions refresh the stored username", async () => {
   const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
   const start = source.indexOf("const VaultUser = {");
-  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const end = source.indexOf("if (!window.__vaultAccountFetchWrapped)", start);
+  assert.ok(start >= 0 && end > start);
   const storage = new Map([["vault_account_session", "valid-token"]]);
   const localStorage = {
     getItem(key) { return storage.get(key) ?? null; },
@@ -117,7 +118,8 @@ test("valid account sessions refresh the stored username", async () => {
 test("temporary account session verification failures preserve the stored token", async () => {
   const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
   const start = source.indexOf("const VaultUser = {");
-  const end = source.indexOf("\n\nif (!window.__vaultAccountFetchWrapped)", start);
+  const end = source.indexOf("if (!window.__vaultAccountFetchWrapped)", start);
+  assert.ok(start >= 0 && end > start);
   const storage = new Map([["vault_account_session", "temporary-failure-token"]]);
   const localStorage = {
     getItem(key) { return storage.get(key) ?? null; },
@@ -132,6 +134,120 @@ test("temporary account session verification failures preserve the stored token"
   vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__VaultUser = VaultUser;", context);
   await assert.rejects(context.__VaultUser.validateAccountSession(), /Temporarily unavailable/);
   assert.equal(context.__VaultUser.getAccountSession(), "temporary-failure-token");
+});
+
+test("DateVault timed challenge skip renders the next prompt", () => {
+  const source = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  const renderStart = source.indexOf("function rTimed(){");
+  const renderEnd = source.indexOf("\nfunction startTC()", renderStart);
+  const skipStart = source.indexOf("function skipTC(){");
+  const skipEnd = source.indexOf("\nfunction endTC()", skipStart);
+  assert.ok(renderStart >= 0 && renderEnd > renderStart);
+  assert.ok(skipStart >= 0 && skipEnd > skipStart);
+
+  let input = { value: "stale answer", focus() { this.focused = true; } };
+  let markup = "";
+  const context = {
+    S: {
+      tc: {
+        active: true,
+        tLeft: 60,
+        total: 60,
+        qs: [
+          { event: "First prompt", year: "2020", topic: "Audit" },
+          { event: "Second prompt", year: "2021", topic: "Audit" }
+        ],
+        idx: 0,
+        score: 0,
+        result: { ok: false }
+      }
+    },
+    document: { getElementById() { return input; } },
+    pct: () => 100,
+    render() {
+      markup = vm.runInContext("rTimed()", context);
+      input = { value: "", focus() { this.focused = true; } };
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(
+    `${source.slice(renderStart, renderEnd)}\n${source.slice(skipStart, skipEnd)}\nglobalThis.__skipTC = skipTC;`,
+    context
+  );
+  context.__skipTC();
+
+  assert.equal(context.S.tc.idx, 1);
+  assert.equal(context.S.tc.result, null);
+  assert.match(markup, /Second prompt/);
+  assert.match(markup, /Q2 · Audit/);
+  assert.equal(input.value, "");
+  assert.equal(input.focused, true);
+});
+
+test("QuoteVault due count respects scheduled review dates", () => {
+  const source = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const start = source.indexOf("function dueCount(){");
+  const end = source.indexOf("\n", start);
+  assert.ok(start >= 0 && end > start);
+  const context = {
+    allQ: () => [{ id: "reviewed" }, { id: "new" }],
+    qSRS: id => id === "reviewed" ? { due: "2026-11-11" } : {},
+    isDue: srs => !srs.due || srs.due <= "2026-11-10"
+  };
+  vm.runInNewContext(
+    `${source.slice(start, end)}\nglobalThis.__dueCount = dueCount;`,
+    context
+  );
+  assert.equal(context.__dueCount(), 1);
+});
+
+test("QuoteVault timed challenge skip renders the next prompt", () => {
+  const source = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const renderStart = source.indexOf("function rTimed(){");
+  const renderEnd = source.indexOf("\nfunction startTC()", renderStart);
+  const skipStart = source.indexOf("function skipTC(){");
+  const skipEnd = source.indexOf("\nfunction endTC()", skipStart);
+  assert.ok(renderStart >= 0 && renderEnd > renderStart);
+  assert.ok(skipStart >= 0 && skipEnd > skipStart);
+
+  let input = { value: "stale answer", focus() { this.focused = true; } };
+  let markup = "";
+  const context = {
+    S: {
+      tc: {
+        active: true,
+        tLeft: 60,
+        total: 60,
+        qs: [
+          { text: "First prompt", work: "Audit", loc: "One" },
+          { text: "Second prompt", work: "Audit", loc: "Two" }
+        ],
+        idx: 0,
+        score: 0,
+        result: { ok: false },
+        type: "who_said"
+      }
+    },
+    document: { getElementById() { return input; } },
+    pct: () => 100,
+    render() {
+      markup = vm.runInContext("rTimed()", context);
+      input = { value: "", focus() { this.focused = true; } };
+    }
+  };
+  vm.createContext(context);
+  vm.runInContext(
+    `${source.slice(renderStart, renderEnd)}\n${source.slice(skipStart, skipEnd)}\nglobalThis.__skipTC = skipTC;`,
+    context
+  );
+  context.__skipTC();
+
+  assert.equal(context.S.tc.idx, 1);
+  assert.equal(context.S.tc.result, null);
+  assert.match(markup, /Second prompt/);
+  assert.match(markup, /Q2 · Audit/);
+  assert.equal(input.value, "");
+  assert.equal(input.focused, true);
 });
 
 
