@@ -481,7 +481,7 @@ function rateCard(id,rating){
   if(grade===3&&grade>0)interval=Math.round(interval*1.4);
   state.progress[id]={score:grade,due:Date.now()+interval,ease:nextEase,repetitions,intervalDays:interval/86400000,reviews,correct:(Number(previous.correct)||0)+(grade>=2?1:0),lastReviewed:Date.now()};
   const set=getActiveRevisionSet();set.reviewLog=Array.isArray(set.reviewLog)?set.reviewLog:[];set.reviewLog.push({cardId:id,rating:grade,at:Date.now(),topic:cardById(id)?.topic||''});set.reviewLog=set.reviewLog.slice(-5000);
-  awardRevisionXP(grade>=2);
+  awardRevisionXP();
   if(state.studySessionActive){state.sessionReviewed++;state.studyQueue=state.studyQueue.filter(cardId=>cardId!==id);if(state.studyQueue.length)state.studyIndex=Math.min(state.studyIndex,state.studyQueue.length-1);else{state.studySessionActive=false;state.view='overview';state.setMessage=`Session complete: ${state.sessionReviewed} card${state.sessionReviewed===1?'':'s'} reviewed.`;}}
   else state.studyIndex=(state.studyIndex+1)%Math.max(state.cards.length,1);
   state.revealed=false;saveRevision();renderRevision();
@@ -542,6 +542,7 @@ let revisionRemoteUpdatedAt=null;
 let revisionConflictData=null;
 let revisionSyncConflict=false;
 function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);}
+window.addEventListener('pagehide',()=>{clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)syncRevision(true);});
 function applyRevisionRemoteData(data){
   const remoteSets = Array.isArray(data.accountSets) && data.accountSets.length
     ? data.accountSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID))
@@ -565,7 +566,7 @@ function applyRevisionRemoteData(data){
   if(data.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),data.updatedAt);
   saveRevision(true);
 }
-async function syncRevision(){
+async function syncRevision(keepalive=false){
   if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()||state.syncing||revisionSyncConflict){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
   state.syncing=true;
   const syncUserKey=revisionUserKey();
@@ -586,7 +587,7 @@ async function syncRevision(){
       streak: state.streak,
       lastReview: state.lastReview
     };
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify(payload),keepalive});
     if(response.status===409){
       const conflict=await response.json();
       revisionConflictData=conflict.data;
@@ -634,7 +635,7 @@ async function loadRevision(){
   if(!revisionUserKey()||!VaultUser.getAccountSession())return;
   if(!localStorage.getItem(revisionSnapshotKey(revisionUserKey())))captureRevisionSnapshot(revisionUserKey());
   try{
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`);
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`,{headers:{'X-Account-Session':VaultUser.getAccountSession()}});
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const payload=await response.json();
     if(payload.found&&payload.data){
@@ -662,9 +663,10 @@ async function loadRevision(){
   }
 }
 async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
-function awardRevisionXP(score){
+function awardRevisionXP(){
   const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
-  if(score){state.xp+=10;if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}}
+  state.xp+=10;
+  if(previous!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);state.streak=previous===yesterday?state.streak+1:1;state.lastReview=today;}
 }
 async function syncRevisionTheme(){
   if(!revisionUserKey())return;
