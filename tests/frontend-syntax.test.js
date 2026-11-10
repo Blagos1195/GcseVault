@@ -217,3 +217,13 @@ test("Revision themes sync across devices without discarding local themes", () =
   assert.match(revision, /Your current theme has been kept/);
   assert.match(shared, /await window\.syncRevisionTheme\(\)/);
 });
+
+
+test("Revision account dialog has working modal helpers", () => {
+  const revision = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  assert.match(revision, /function openModal\(html\)[\s\S]*?modal\.innerHTML=html[\s\S]*?backdrop\.classList\.add\('open'\)/);
+  assert.match(revision, /function closeModal\(\)[\s\S]*?classList\.remove\('open'\)/);
+  assert.match(revision, /window\.openModal=openModal/);
+  assert.match(revision, /window\.closeModal=closeModal/);
+  assert.match(revision, /VaultUser\.showAccountDialog\(\)/);
+});
