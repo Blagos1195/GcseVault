@@ -16,6 +16,7 @@ const files = [
   "revision/practice.js",
   "admin/index.html",
   "admin/admin.js",
+  "admin/push-sw.js",
   "admin/editor.html",
   "admin/editor.js"
 ];
@@ -673,16 +674,20 @@ test("Revision leaderboard excludes accounts hidden by owner controls", () => {
   assert.match(route, /COALESCE\(u\.leaderboard_hidden, 0\) = 0/);
 });
 
-test("admin submission inbox and browser alerts are available", () => {
+test("admin submissions use Web Push when the admin site is closed", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_notifications/);
-  assert.match(worker, /createAdminNotification\("QuoteVault"/);
-  assert.match(worker, /createAdminNotification\("DateVault"/);
-  assert.match(worker, /createAdminNotification\("Feedback"/);
-  assert.match(worker, /createAdminNotification\("Revision"/);
-  assert.match(worker, /url\.pathname === "\/admin\/notifications"/);
+  const serviceWorker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
+  assert.match(worker, /url\.pathname === "\/admin\/push\/subscribe"/);
+  assert.match(worker, /Content-Encoding": "aes128gcm"/);
+  assert.match(worker, /createVapidToken/);
+  assert.match(worker, /encryptPushPayload/);
+  assert.match(admin, /enableAdminPushNotifications/);
+  assert.match(admin, /PushManager/);
   assert.match(admin, /Notification\.requestPermission/);
-  assert.match(admin, /setInterval\(\(\)=>loadAdminNotifications\(true\),30000\)/);
-  assert.match(admin, /renderAdminNotifications/);
+  assert.match(admin, /pushManager\.subscribe/);
+  assert.match(serviceWorker, /addEventListener\("push"/);
+  assert.match(serviceWorker, /showNotification/);
+  assert.match(serviceWorker, /notificationclick/);
 });
