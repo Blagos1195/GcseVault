@@ -343,6 +343,8 @@ const VaultUser = {
   },
 
   async login(username, password) {
+    if (typeof window.prepareRevisionAccountSwitch === 'function') window.prepareRevisionAccountSwitch();
+    if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     const challengeResponse = await fetch(`${this.WORKER_URL}/account/challenge?username=${encodeURIComponent(username)}`);
     const challenge = await this.readResponse(challengeResponse);
     if (!challengeResponse.ok) throw new Error('Invalid username or password.');
@@ -357,6 +359,8 @@ const VaultUser = {
     this.setAccountSession(data.token);
     this.setKey(data.userKey);
     this.setUsername(data.username);
+    if (typeof window.activateRevisionAccount === 'function') window.activateRevisionAccount(data.userKey);
+    if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     return data;
   },
 
@@ -378,6 +382,8 @@ const VaultUser = {
 
   async logoutAccount() {
     const token = this.getAccountSession();
+    if (token && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
+    if (token && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     if (token) {
       const response = await fetch(`${this.WORKER_URL}/account/logout`, {
         method: 'POST',
@@ -389,6 +395,8 @@ const VaultUser = {
       }
     }
     if (!token || this.getAccountSession() === token) localStorage.removeItem('vault_account_session');
+    if (token && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
+    if (token && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
   },
 
   showAccountDialog() {
@@ -460,6 +468,8 @@ const VaultUser = {
       const error = document.getElementById('vault-account-error');
       const finish = async () => {
         window.closeModal();
+        if (typeof window.activateRevisionAccount === 'function' && this.getAccountSession()) window.activateRevisionAccount(this.getKey());
+        if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
         if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
         if (typeof window.loadRevision === 'function') await window.loadRevision();
         if (typeof window.syncRevisionTheme === 'function') await window.syncRevisionTheme();
@@ -1368,24 +1378,8 @@ const AdminManager = {
         delete editable._source;
         delete editable._kind;
         delete editable._pending;
-        const raw = window.prompt('Edit the complete submission as JSON:', JSON.stringify(editable, null, 2));
-        if (raw === null) return;
-        let data;
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          throw new Error('Invalid JSON. No changes were saved.');
-        }
-        if (!data || typeof data !== 'object' || Array.isArray(data)) {
-          throw new Error('The submission must be a JSON object.');
-        }
-        data.id = item.id;
-        if (item.submittedAt) data.submittedAt = item.submittedAt;
-        if (item._kind === 'revision-note') {
-          body.note = data;
-        } else {
-          body.data = data;
-        }
+        window.location.href = `/GcseVault/admin/editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}`;
+        return;
       }
       const response = await fetch(`${WORKER_API}${path}`, {
         method: 'POST',
@@ -1464,7 +1458,7 @@ const AdminManager = {
     </div>` : '';
     return `<div>${typeof backBtn === 'function' ? backBtn() : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div><div class="pt">Admin Panel</div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
+        <div><div class="pt">Admin Panel</div><div class="knowledge-meta"><a href="/GcseVault/admin/" style="color:var(--gold)">Open full moderation workspace</a></div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
         <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
       </div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
