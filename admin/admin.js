@@ -29,34 +29,34 @@ function renderOwnerAccounts(){
     <h2>Owner controls</h2>
     <p class="sub">Manage account permissions, AI access, leaderboard visibility and legacy storage.</p>
     <div class="actions" style="margin-bottom:14px">
-      <button onclick="AdminManager.migrateStorage()" \${AdminManager.migrating?'disabled':''}>\${AdminManager.migrating?'Migrating storage…':'Migrate legacy storage to D1'}</button>
+      <button onclick="AdminManager.migrateStorage()" ${AdminManager.migrating?'disabled':''}>${AdminManager.migrating?'Migrating storage…':'Migrate legacy storage to D1'}</button>
       <button onclick="AdminManager.refresh()">Refresh accounts</button>
     </div>
-    \${AdminManager.migrationStatus?`<div class="notice">\${esc(AdminManager.migrationStatus)}</div>`:''}
+    ${AdminManager.migrationStatus?`<div class="notice">${esc(AdminManager.migrationStatus)}</div>`:''}
     <div class="filters">
-      <input aria-label="Search accounts" placeholder="Search usernames…" value="\${esc(query)}" oninput="window.adminAccountQuery=this.value"><button onclick="renderAdmin()">Search</button>>
+      <input aria-label="Search accounts" placeholder="Search usernames…" value="${esc(query)}" oninput="window.adminAccountQuery=this.value"><button onclick="renderAdmin()">Search</button>
       <select aria-label="Filter accounts by role" onchange="window.adminAccountRole=this.value;renderAdmin()">
-        <option value="all" \${role==='all'?'selected':''}>All roles</option>
-        <option value="user" \${role==='user'?'selected':''}>Users</option>
-        <option value="admin" \${role==='admin'?'selected':''}>Admins</option>
-        <option value="owner" \${role==='owner'?'selected':''}>Owners</option>
+        <option value="all" ${role==='all'?'selected':''}>All roles</option>
+        <option value="user" ${role==='user'?'selected':''}>Users</option>
+        <option value="admin" ${role==='admin'?'selected':''}>Admins</option>
+        <option value="owner" ${role==='owner'?'selected':''}>Owners</option>
       </select>
-      <span class="sub">\${users.length} of \${(AdminManager.users||[]).length} accounts</span>
+      <span class="sub">${users.length} of ${(AdminManager.users||[]).length} accounts</span>
     </div>
-    <div class="queue">\${users.map(user=>`<article class="item">
-      <div><strong>\${esc(user.username)}</strong><p>Current role: \${esc(user.role)} · AI access: \${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: \${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
+    <div class="queue">${users.map(user=>`<article class="item">
+      <div><strong>${esc(user.username)}</strong><p>Current role: ${esc(user.role)} · AI access: ${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: ${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
       <div class="item-actions">
-        <select aria-label="Role for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="changeAccountRole(this)" \${user.role==='owner'?'disabled':''}>
-          <option value="user" \${user.role==='user'?'selected':''}>User</option>
-          <option value="admin" \${user.role==='admin'?'selected':''}>Admin</option>
+        <select aria-label="Role for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="changeAccountRole(this)" ${user.role==='owner'?'disabled':''}>
+          <option value="user" ${user.role==='user'?'selected':''}>User</option>
+          <option value="admin" ${user.role==='admin'?'selected':''}>Admin</option>
         </select>
-        <select aria-label="AI access for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='1')" \${user.role!=='user'?'disabled':''}>
-          <option value="0" \${!user.ai_access?'selected':''}>AI off</option>
-          <option value="1" \${user.ai_access?'selected':''}>AI on</option>
+        <select aria-label="AI access for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='1')" ${user.role!=='user'?'disabled':''}>
+          <option value="0" ${!user.ai_access?'selected':''}>AI off</option>
+          <option value="1" ${user.ai_access?'selected':''}>AI on</option>
         </select>
-        <select aria-label="Leaderboard visibility for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')">
-          <option value="0" \${user.leaderboard_hidden?'':'selected'}>Leaderboard visible</option>
-          <option value="1" \${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
+        <select aria-label="Leaderboard visibility for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')">
+          <option value="0" ${user.leaderboard_hidden?'':'selected'}>Leaderboard visible</option>
+          <option value="1" ${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
         </select>
       </div>
     </article>`).join('')||'<div class="empty">No accounts match this filter.</div>'}</div>
@@ -154,8 +154,8 @@ async function removePublished(kind,id){
   if(!confirm("Remove this approved item from the public site? It will no longer be visible to everyone."))return;
   const path=kind==="quote"?"/delete":"/dv/delete";
   try{
-    const response=await fetch(`\${VaultUser.WORKER_URL}\${path}`,{method:"POST",headers:{"Content-Type":"application/json","X-Session-Token":AdminManager.getToken()},body:JSON.stringify({id})});
-    if(!response.ok)throw new Error(await response.text()||`HTTP \${response.status}`);
+    const response=await fetch(`${VaultUser.WORKER_URL}${path}`,{method:"POST",headers:{"Content-Type":"application/json","X-Session-Token":AdminManager.getToken()},body:JSON.stringify({id})});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
     await AdminManager.refresh();
     await loadModerationLog();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
