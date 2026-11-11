@@ -126,7 +126,7 @@ const productOriginalSave=saveRevision;
 saveRevision=function(remote=false){
  productOriginalSave(remote);
  if(!remote){state.syncStatus=VaultUser.getAccountSession()?'pending':'local';updateRevisionSyncStatus();}
- if(typeof captureRevisionSnapshot==='function')captureRevisionSnapshot();
+ if(typeof captureRevisionSnapshot==='function')captureRevisionSnapshot(revisionActiveScope);
 };
 const productOriginalSyncSoon=syncRevisionSoon;
 syncRevisionSoon=function(){

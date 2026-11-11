@@ -34,29 +34,35 @@ function normalizeRevisionSet(set, fallbackId){
     } : {catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]}
   };
 }
-const existingRevisionSets = JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null');
-const activeSetId = localStorage.getItem(revisionActiveSetKey) || DEFAULT_REVISION_SET_ID;
+const revisionStartupUserKey = VaultUser.getAccountSession() ? VaultUser.getKey() : null;
+let revisionStartupSnapshot = null;
+try {
+  revisionStartupSnapshot = JSON.parse(localStorage.getItem(`revision_local_snapshot:${revisionStartupUserKey || 'anonymous'}`) || 'null');
+} catch {}
+const revisionUseLegacyLocal = !VaultUser.getKey();
+const existingRevisionSets = revisionStartupSnapshot?.accountSets || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null') : null);
+const activeSetId = revisionStartupSnapshot?.activeSetId || (revisionUseLegacyLocal ? localStorage.getItem(revisionActiveSetKey) : null) || DEFAULT_REVISION_SET_ID;
 const existingSetList = Array.isArray(existingRevisionSets) && existingRevisionSets.length ? existingRevisionSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID)) : [];
 const fallbackSet = normalizeRevisionSet({
   id: activeSetId,
   name: 'My main set',
-  cards: onlyDemoCards ? [] : (storedCards || []),
-  progress: JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}'),
-  xp: Number(localStorage.getItem('revision_xp') || 0),
-  streak: Number(localStorage.getItem('revision_streak') || 0),
-  lastReview: localStorage.getItem('revision_last_review') || ''
+  cards: revisionStartupSnapshot?.cards || (revisionUseLegacyLocal && !onlyDemoCards ? (storedCards || []) : []),
+  progress: revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {}),
+  xp: Number(revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)) || 0,
+  streak: Number(revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)) || 0,
+  lastReview: revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || ''
 }, activeSetId);
 const initialRevisionSets = existingSetList.length ? existingSetList : [fallbackSet];
 const selectedRevisionSet = initialRevisionSets.find(set => set.id === activeSetId) || initialRevisionSets[0];
 const state = {
-  cards: Array.isArray(selectedRevisionSet?.cards) ? selectedRevisionSet.cards : (onlyDemoCards ? [] : (storedCards || [])),
-  progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}')),
+  cards: Array.isArray(selectedRevisionSet?.cards) ? selectedRevisionSet.cards : (revisionStartupSnapshot?.cards || (revisionUseLegacyLocal && !onlyDemoCards ? (storedCards || []) : [])),
+  progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {})),
   accountSets: initialRevisionSets,
   activeSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
   view: 'overview', selected: null, studyIndex: 0, revealed: false,
-  xp: Number(selectedRevisionSet?.xp ?? Number(localStorage.getItem('revision_xp') || 0)),
-  streak: Number(selectedRevisionSet?.streak ?? Number(localStorage.getItem('revision_streak') || 0)),
-  lastReview: selectedRevisionSet?.lastReview || localStorage.getItem('revision_last_review') || '',
+  xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
+  streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
+  lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
   publicNotes: [], aiResult: null, aiNotice:'', syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
@@ -78,8 +84,8 @@ function syncActiveRevisionSet(){
   localStorage.setItem(revisionAccountSetsKey, JSON.stringify(state.accountSets));
   localStorage.setItem(revisionActiveSetKey, state.activeSetId);
 }
-function revisionLocalUpdatedAtKey(){
-  const userKey=revisionUserKey();
+let revisionActiveScope=revisionStartupUserKey;
+function revisionLocalUpdatedAtKey(userKey=revisionUserKey()){
   if(!userKey)return 'revision_local_updated_at';
   const key=`revision_local_updated_at:${userKey}`;
   const legacy=localStorage.getItem('revision_local_updated_at');
@@ -90,7 +96,7 @@ function revisionLocalUpdatedAtKey(){
   return key;
 }
 function saveRevision(remote=false){
-  if(!remote)localStorage.setItem(revisionLocalUpdatedAtKey(),new Date().toISOString());
+  if(!remote)localStorage.setItem(revisionLocalUpdatedAtKey(revisionActiveScope),new Date().toISOString());
   localStorage.setItem(REVISION_KEY,JSON.stringify(state.cards));
   localStorage.setItem(REVISION_PROGRESS_KEY,JSON.stringify(state.progress));
   localStorage.setItem('revision_xp',String(state.xp));
@@ -102,11 +108,9 @@ function saveRevision(remote=false){
 function revisionSnapshotKey(userKey){
   return `revision_local_snapshot:${userKey||'anonymous'}`;
 }
-function captureRevisionSnapshot(userKey=revisionUserKey()){
-  const updatedAt=userKey
-    ? localStorage.getItem(revisionLocalUpdatedAtKey())||''
-    : localStorage.getItem('revision_local_updated_at')||'';
-  if(userKey&&updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),updatedAt);
+function captureRevisionSnapshot(userKey=revisionActiveScope){
+  const updatedAt=localStorage.getItem(revisionLocalUpdatedAtKey(userKey))||'';
+  if(userKey&&updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(userKey),updatedAt);
   localStorage.setItem('revision_local_updated_at_migrated','1');
   const snapshot={
     accountSets:state.accountSets,
@@ -131,8 +135,8 @@ function restoreRevisionSnapshot(userKey){
     state.xp=Number(snapshot.xp)||0;
     state.streak=Number(snapshot.streak)||0;
     state.lastReview=snapshot.lastReview||'';
-    if(snapshot.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(),snapshot.updatedAt);
-    else localStorage.removeItem(revisionLocalUpdatedAtKey());
+    if(snapshot.updatedAt)localStorage.setItem(revisionLocalUpdatedAtKey(userKey),snapshot.updatedAt);
+    else localStorage.removeItem(revisionLocalUpdatedAtKey(userKey));
   }else{
     state.accountSets=[normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''},DEFAULT_REVISION_SET_ID)];
     state.activeSetId=DEFAULT_REVISION_SET_ID;
@@ -141,10 +145,50 @@ function restoreRevisionSnapshot(userKey){
     state.xp=0;
     state.streak=0;
     state.lastReview='';
-    localStorage.removeItem(revisionLocalUpdatedAtKey());
+    localStorage.removeItem(revisionLocalUpdatedAtKey(userKey));
   }
+  revisionActiveScope=userKey||null;
   saveRevision(true);
 }
+window.prepareRevisionAccountLogout=function(){
+  captureRevisionSnapshot(revisionActiveScope);
+};
+window.finishRevisionAccountLogout=function(){
+  restoreRevisionSnapshot(null);
+  state.syncStatus='local';
+  state.accountMessage='';
+  renderRevision();
+};
+window.prepareRevisionAccountSwitch=function(){
+  captureRevisionSnapshot(revisionActiveScope);
+};
+window.activateRevisionAccount=function(userKey){
+  const key=VaultUser.getAccountSession()?userKey:null;
+  if(key&&!localStorage.getItem(revisionSnapshotKey(key))){
+    let anonymous=null;
+    try{anonymous=JSON.parse(localStorage.getItem(revisionSnapshotKey('anonymous'))||'null');}catch{}
+    if(anonymous&&(anonymous.cards?.length||anonymous.accountSets?.some(set=>set.cards?.length))&&window.confirm("This device has revision data that is not linked to an account. Import it into "+VaultUser.getUsername()+"? Choose Cancel to keep it separate.")){
+      localStorage.setItem(revisionSnapshotKey(key),JSON.stringify(anonymous));
+    }
+  }
+  restoreRevisionSnapshot(key);
+  state.accountMessage='';
+  state.accountMessageType='success';
+  renderRevision();
+};
+
+window.addEventListener('storage',event=>{
+  if(event.key!=='vault_account_session'&&event.key!=='vault_userKey')return;
+  const next=VaultUser.getAccountSession()?VaultUser.getKey():null;
+  if(next===revisionActiveScope)return;
+  captureRevisionSnapshot(revisionActiveScope);
+  restoreRevisionSnapshot(next);
+  state.accountMessage=next?'Another tab changed accounts. This account’s Revision data is loading.':'Another tab signed out. Anonymous Revision data is now active.';
+  state.accountMessageType='success';
+  renderRevision();
+  if(next)loadRevision();
+});
+
 function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
@@ -335,14 +379,14 @@ function importRevisionFile(input){
   reader.readAsText(file);
 }
 function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topic=card.topic||'Untopiced';const stats=cardReviewStats(card);grouped[topic]??={total:0,reviewed:0,due:0,correct:0,reviews:0,links:0};grouped[topic].total++;grouped[topic].reviewed+=stats.reviews>0?1:0;grouped[topic].due+=stats.due?1:0;grouped[topic].correct+=Number(state.progress[card.id]?.correct)||0;grouped[topic].reviews+=stats.reviews;grouped[topic].links+=(card.links||[]).length;});return grouped;}
-function revisionUserKey(){return VaultUser.getKey();}
+function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
 let revisionRemoteUpdatedAt=null;
 let revisionConflictData=null;
 let revisionSyncConflict=false;
-function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);}
-window.addEventListener('pagehide',()=>{clearTimeout(revisionSyncTimer);if(revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)syncRevision(true);});
+function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionActiveScope===revisionUserKey()&&revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);}
+window.addEventListener('pagehide',()=>{clearTimeout(revisionSyncTimer);if(revisionActiveScope===revisionUserKey()&&revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)syncRevision(true);});
 function applyRevisionRemoteData(data){
   const remoteSets = Array.isArray(data.accountSets) && data.accountSets.length
     ? data.accountSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID))
@@ -367,6 +411,7 @@ function applyRevisionRemoteData(data){
   saveRevision(true);
 }
 async function syncRevision(keepalive=false){
+  if(revisionActiveScope!==revisionUserKey())return;
   if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()||state.syncing||revisionSyncConflict){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
   state.syncing=true;
   const syncUserKey=revisionUserKey();
@@ -432,7 +477,7 @@ async function resolveRevisionSyncConflict(choice){
   renderRevision();
 }
 async function loadRevision(){
-  if(!revisionUserKey()||!VaultUser.getAccountSession())return;
+  if(revisionActiveScope!==revisionUserKey()||!revisionUserKey()||!VaultUser.getAccountSession())return;
   if(!localStorage.getItem(revisionSnapshotKey(revisionUserKey())))captureRevisionSnapshot(revisionUserKey());
   try{
     const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`,{headers:{'X-Account-Session':VaultUser.getAccountSession()}});

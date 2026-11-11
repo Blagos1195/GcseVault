@@ -13,7 +13,11 @@ const files = [
   "revision/index.html",
   "revision/app.js",
   "revision/product.js",
-  "revision/practice.js"
+  "revision/practice.js",
+  "admin/index.html",
+  "admin/admin.js",
+  "admin/editor.html",
+  "admin/editor.js"
 ];
 
 for (const file of files) {
@@ -502,4 +506,81 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.match(app, /class="library-results"/);
     assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
   }
+});
+
+
+test("review schedules are stored per account and synchronised through authenticated routes", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  for (const path of ["../quotes/quotes.js", "../dates/dates.js"]) {
+    const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.ok(source.includes("function loadReviewScheduleData(site)"));
+    assert.ok(source.includes("reviewScheduleKey(scope=reviewScheduleScope)"));
+    assert.ok(source.includes("async function syncReviewSchedules()"));
+    assert.ok(source.includes("function scheduleReviewSync()"));
+    assert.ok(source.includes("updatedAt:new Date().toISOString()"));
+    assert.ok(source.includes("/review-schedules?site="));
+  }
+  assert.ok(worker.includes('url.pathname === "/review-schedules"'));
+  assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
+  const routeStart = worker.indexOf("/review-schedules");
+  const routeEnd = worker.indexOf("/revision/sync", routeStart);
+  const scheduleRoute = worker.slice(routeStart, routeEnd);
+  assert.ok(scheduleRoute.includes("verifyPasswordAccountAccess(session.user_key, request)"));
+});
+
+test("Revision local snapshots are isolated between anonymous use and signed-in accounts", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.ok(app.includes("function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}"));
+  assert.ok(app.includes("window.prepareRevisionAccountLogout"));
+  assert.ok(app.includes("window.finishRevisionAccountLogout"));
+  assert.ok(app.includes("window.activateRevisionAccount"));
+  assert.ok(app.includes("Import it into "));
+  assert.ok(app.includes("revisionStartupUserKey"));
+  assert.ok(app.includes("revisionUseLegacyLocal"));
+  assert.ok(app.includes("revisionActiveScope!==revisionUserKey()"));
+  assert.ok(app.includes("Another tab changed accounts"));
+  assert.ok(shared.includes("prepareRevisionAccountLogout"));
+  assert.ok(shared.includes("finishRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !=="));
+});
+
+test("admin moderation has a separate full-content editor and safe submitter metadata", () => {
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const queue = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("../admin/editor.js", import.meta.url), "utf8");
+  assert.ok(queue.includes("Open editor"));
+  assert.ok(editor.includes("submission-json"));
+  assert.ok(editor.includes("Save changes"));
+  assert.ok(shared.includes("admin/editor.html"));
+  assert.ok(!shared.includes("Edit the complete submission as JSON"));
+  assert.ok(worker.includes("function sanitizeSubmission"));
+  assert.ok(worker.includes("data.submittedBy = submitter"));
+  assert.ok(worker.includes("getSubmissionOwners"));
+});
+
+test("expired account sessions preserve Revision and review schedule caches before logout", () => {
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.syncReviewSchedules"));
+});
+
+test("review schedule account switching never offers one signed-in account's data to another", () => {
+  for (const path of ["../quotes/quotes.js", "../dates/dates.js"]) {
+    const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.ok(source.includes('reviewScheduleScope==="anonymous"&&next!=="anonymous"'));
+    assert.ok(source.includes('event.key==="vault_userKey"'));
+  }
+});
+
+test("moderation editors can update feedback and published content excludes submitter metadata", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("../admin/editor.js", import.meta.url), "utf8");
+  assert.ok(worker.includes('url.pathname === "/feedback/update"'));
+  assert.ok(editor.includes('feedback:"/feedback/update"'));
+  assert.ok(worker.includes("delete publishedQuote.submittedBy"));
+  assert.ok(worker.includes("delete publishedFact.submittedBy"));
+  assert.ok(worker.includes("function sanitizeSubmission"));
 });

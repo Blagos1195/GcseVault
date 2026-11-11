@@ -613,6 +613,21 @@ function sm2(card, grade) {
   return{ef,interval,reps,due:d.toISOString().slice(0,10)};
 }
 function isDue(srs){if(!srs||!srs.due)return true;return srs.due<=new Date().toISOString().slice(0,10);}
+function loadReviewScheduleData(site){
+  const scope=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+  const key=`${site}_srs:${scope||"anonymous"}`;
+  const stored=localStorage.getItem(key);
+  if(stored){try{return JSON.parse(stored);}catch{return {};}}
+  if(scope==="anonymous"){
+    const legacy=localStorage.getItem(site+"_srs");
+    if(legacy&&!localStorage.getItem(site+"_srs_legacy_migrated")){
+      localStorage.setItem(key,legacy);
+      localStorage.setItem(site+"_srs_legacy_migrated","1");
+      try{return JSON.parse(legacy);}catch{}
+    }
+  }
+  return {};
+}
 function dueCount(){return allQ().filter(q=>isDue(qSRS(q.id))).length;}
 
 // ════════════════════════════════════════════════
@@ -631,7 +646,7 @@ const S = {
   lastXpDate:localStorage.getItem('qv_lastxpdate')||'',
   custom:JSON.parse(localStorage.getItem('qv_c')||'[]'),
   pending:JSON.parse(localStorage.getItem('qv_p')||'[]'),
-  srsData:JSON.parse(localStorage.getItem('qv_srs')||'{}'),
+  srsData:loadReviewScheduleData('qv'),
   quizHistory:JSON.parse(localStorage.getItem('qv_qh')||'[]'),
   settings:JSON.parse(localStorage.getItem('qv_set')||'{"board":"AQA","daily":50,"verifySources":["https://www.bbc.co.uk/bitesize","https://www.sparknotes.com","https://www.gradesaver.com"]}'),
   achievements:new Set(JSON.parse(localStorage.getItem('qv_ach')||'[]')),
@@ -665,7 +680,7 @@ function allQincHidden(){
 function allQ(){return allQincHidden().filter(q=>!S.hidden.has(q.id));}
 function getQ(id){return allQincHidden().find(q=>q.id===id);}
 function qSRS(id){return S.srsData[id]||{};}
-function setQSRS(id,srs){S.srsData[id]=srs;save();}
+function setQSRS(id,srs){S.srsData[id]={...srs,updatedAt:new Date().toISOString()};save();}
 function toggleHidden(id){
   if(S.hidden.has(id)){S.hidden.delete(id);}
   else{S.hidden.add(id);S.mastered.delete(id);S.learning.delete(id);}
@@ -680,6 +695,62 @@ function removeMastery(id){
   save();render();toast('Mastery reset for this quote');
 }
 
+let reviewScheduleScope=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+let reviewScheduleTimer=null;
+function reviewScheduleKey(scope=reviewScheduleScope){return `qv_srs:${scope||"anonymous"}`;}
+function activateReviewScheduleScope(){
+  const next=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+  if(next===reviewScheduleScope)return;
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  const saved=localStorage.getItem(reviewScheduleKey(next));
+  let schedules={};
+  try{schedules=saved?JSON.parse(saved):{};}catch{}
+  if(next==="anonymous"&&!saved){
+    const legacy=localStorage.getItem("qv_srs");
+    if(legacy){try{schedules=JSON.parse(legacy)||{};}catch{}}
+  }
+  if(reviewScheduleScope==="anonymous"&&next!=="anonymous"&&!saved&&Object.keys(S.srsData||{}).length&&window.confirm("This device has a review schedule that is not linked to an account. Import it into the account you just signed into?")){
+    schedules={...S.srsData};
+    Object.values(schedules).forEach(item=>{if(item&&!item.updatedAt)item.updatedAt=new Date().toISOString();});
+  }
+  S.srsData=schedules;
+  reviewScheduleScope=next;
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+}
+async function syncReviewSchedules(){
+  activateReviewScheduleScope();
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  if(!VaultUser.getAccountSession()||!VaultUser.getKey()||!navigator.onLine)return;
+  try{
+    const response=await fetch(`${WORKER_URL}/review-schedules?site=qv`);
+    if(!response.ok)throw new Error("Could not load review schedules");
+    const remote=await response.json();
+    const merged={...(remote.schedules||{})};
+    for(const [id,local] of Object.entries(S.srsData||{})){
+      const cloud=merged[id];
+      if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
+      const localAt=String(local?.updatedAt||"");
+      const cloudAt=String(cloud?.updatedAt||"");
+      if(localAt&&localAt>cloudAt)merged[id]=local;
+    }
+    S.srsData=merged;
+    localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+    const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:"qv",schedules:S.srsData})});
+    if(!saved.ok)throw new Error("Could not save review schedules");
+  }catch(error){console.warn("Review schedule sync failed:",error);}
+}
+function scheduleReviewSync(){
+  activateReviewScheduleScope();
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  clearTimeout(reviewScheduleTimer);
+  if(VaultUser.getAccountSession())reviewScheduleTimer=setTimeout(syncReviewSchedules,900);
+}
+window.syncReviewSchedules=syncReviewSchedules;
+window.addEventListener("storage",event=>{
+  if(event.key==="vault_userKey"||(event.key==="vault_account_session"&&!VaultUser.getAccountSession()))syncReviewSchedules();
+});
+
+
 function save(){
   localStorage.setItem('qv_m',JSON.stringify([...S.mastered]));
   localStorage.setItem('qv_l',JSON.stringify([...S.learning]));
@@ -690,7 +761,8 @@ function save(){
   localStorage.setItem('qv_lastxpdate',S.lastXpDate);
   localStorage.setItem('qv_c',JSON.stringify(S.custom));
   localStorage.setItem('qv_p',JSON.stringify(S.pending));
-  localStorage.setItem('qv_srs',JSON.stringify(S.srsData));
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  scheduleReviewSync();
   localStorage.setItem('qv_qh',JSON.stringify(S.quizHistory));
   localStorage.setItem('qv_set',JSON.stringify(S.settings));
   localStorage.setItem('qv_ach',JSON.stringify([...S.achievements]));
@@ -3002,7 +3074,8 @@ async function startup(){
     await loadServerCustomThemes();
   }
   initTheme();buildNav();updateSB();validateStreak();render();
-  if(getUserKey())syncFromWorker();
+  if(getUserKey())await syncFromWorker();
+  await syncReviewSchedules();
 }
 startup();
 // ── Global keyboard shortcuts ─────────────────────────────────────────────
