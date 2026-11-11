@@ -92,6 +92,21 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("submission notifications require the account session", async () => {
+  const env = makeEnv();
+  const response = await call("/submissions/notifications", env);
+  assert.equal(response.status, 401);
+});
+
+test("approved content is exposed to admins for later removal", async () => {
+  const env = makeEnv();
+  env.PUBLIC_QUOTES = { list: async () => ({ keys: [], list_complete: true }), get: async () => null };
+  env.DV_PUBLIC = { list: async () => ({ keys: [], list_complete: true }), get: async () => null };
+  const response = await call("/admin/published", env, null, { "X-Session-Token": "test-session" });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { quotes: [], dates: [] });
+});
+
 test("public leaderboard never exposes account keys", async () => {
   const env = makeEnv([{
     user_key: "private-account-key",
@@ -187,6 +202,7 @@ test("DateVault rejection keeps the pending submission when D1 cleanup fails", a
   env.QUOTEVAULT.get = async key => key === "session:test-session"
     ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : null;
+  env.DV_PENDING.get = async key => key === "fact-1" ? { id: "fact-1", event: "A date" } : null;
   env.DV_PENDING.delete = async () => { pendingDeleted = true; };
   env.DB.prepare = sql => ({
     bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
@@ -211,14 +227,16 @@ test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrel
     qv_rejected_ids: "[]"
   }]);
 
+  env.QUOTEVAULT.get = async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : key === "quote-1" ? { id: "quote-1", text: "A quote" } : null;
   const response = await call("/reject", env, {
     id: "quote-1"
   }, { "X-Session-Token": "test-session" });
 
   assert.equal(response.status, 200);
-  assert.equal(env.updates.length, 1);
-  assert.deepEqual(JSON.parse(env.updates[0].values[0]), ["quote-2"]);
-  assert.deepEqual(JSON.parse(env.updates[0].values[1]), ["quote-1"]);
+  const userUpdate = env.updates.find(update => update.sql.includes("UPDATE users SET qv_pending_ids"));
+  assert.ok(userUpdate);
+  assert.deepEqual(JSON.parse(userUpdate.values[0]), ["quote-2"]);
+  assert.deepEqual(JSON.parse(userUpdate.values[1]), ["quote-1"]);
 });
 
 test("DateVault withdrawal cannot delete another user's pending submission", async () => {
