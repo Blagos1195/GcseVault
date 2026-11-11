@@ -10,7 +10,7 @@ window.closeModal=()=>document.getElementById("modal-bg").classList.remove("open
 window.render=renderEditor;
 function renderEditor(){
   if(!AdminManager.getToken()){
-    app.innerHTML='<h1>Submission editor</h1><p class="sub">Admin sign-in is required.</p><button onclick="VaultUser.showAccountDialog()">Account settings</button><a class="button" href="./">Return to queue</a>';
+    app.innerHTML='<h1>Submission editor</h1><p class="sub">Admin sign-in is required.</p><button onclick="VaultUser.showAccountDialog()">Account settings</button><button class="primary" onclick="AdminManager.login()">Sign in to admin</button><a class="button" href="./">Return to queue</a>';
     return;
   }
   if(!loaded){
