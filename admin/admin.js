@@ -22,7 +22,42 @@ async function setLeaderboardHidden(username,hidden){
 }
 function renderOwnerAccounts(){
   if(AdminManager.role!=='owner')return '';
-  return `<section class="panel" style="margin-top:18px"><h2>Leaderboard visibility</h2><p class="sub">Hide test accounts without deleting them or affecting their saved progress.</p>${(AdminManager.users||[]).map(user=>`<div class="item"><strong>${esc(user.username)}</strong><select aria-label="Leaderboard visibility for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')"><option value="0" ${user.leaderboard_hidden?'':'selected'}>Visible</option><option value="1" ${user.leaderboard_hidden?'selected':''}>Hidden</option></select></div>`).join('')}</section>`;
+  return `<section class="panel" style="margin-top:18px">
+    <h2>Owner controls</h2>
+    <p class="sub">Manage account permissions, AI access, leaderboard visibility and legacy storage.</p>
+    <div class="actions" style="margin-bottom:14px">
+      <button onclick="AdminManager.migrateStorage()" ${AdminManager.migrating?'disabled':''}>${AdminManager.migrating?'Migrating storage…':'Migrate legacy storage to D1'}</button>
+      <button onclick="AdminManager.refresh()">Refresh accounts</button>
+    </div>
+    ${AdminManager.migrationStatus?`<div class="notice">${esc(AdminManager.migrationStatus)}</div>`:''}
+    <div class="queue">${(AdminManager.users||[]).map(user=>`<article class="item">
+      <div><strong>${esc(user.username)}</strong><p>Current role: ${esc(user.role)} · AI access: ${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: ${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
+      <div class="item-actions">
+        <select aria-label="Role for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="changeAccountRole(this)" ${user.role==='owner'?'disabled':''}>
+          <option value="user" ${user.role==='user'?'selected':''}>User</option>
+          <option value="admin" ${user.role==='admin'?'selected':''}>Admin</option>
+        </select>
+        <select aria-label="AI access for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='1')" ${user.role!=='user'?'disabled':''}>
+          <option value="0" ${!user.ai_access?'selected':''}>AI off</option>
+          <option value="1" ${user.ai_access?'selected':''}>AI on</option>
+        </select>
+        <select aria-label="Leaderboard visibility for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')">
+          <option value="0" ${user.leaderboard_hidden?'':'selected'}>Leaderboard visible</option>
+          <option value="1" ${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
+        </select>
+      </div>
+    </article>`).join('')||'<div class="empty">No accounts found.</div>'}</div>
+  </section>`;
+}
+async function changeAccountRole(select){
+  const username=select.dataset.username;
+  const role=select.value;
+  if(!confirm(`Change ${username}'s role to ${role}?`)){
+    await AdminManager.refresh();
+    return;
+  }
+  select.disabled=true;
+  await AdminManager.setRole(username,role);
 }
 function renderApprovalHistory(){
   return `<section class="panel" style="margin-top:18px"><h2>Approval history</h2><p class="sub">Who approved each published submission and when.</p><div class="queue">${moderationLog.map(entry=>`<article class="item"><div class="meta"><span class="tag">${esc(entry.site)}</span><span>Approved by ${esc(entry.moderator)}</span><span>${esc(entry.acted_at)}</span></div><h2>${esc(entry.item_title)}</h2><p>Submitted by ${esc(entry.submitted_by)} · Record ${esc(entry.item_id)}</p></article>`).join('')||'<div class="empty">No approvals recorded yet.</div>'}</div></section>`;
