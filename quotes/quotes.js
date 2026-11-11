@@ -964,7 +964,10 @@ async function syncFromWorker(){
       let syncedPending=0;
       remotePending.forEach(item=>{
         if(!localPendingIds.has(String(item.id))){
-          S.pending.push({...item,_submittedByMe:true,_status:'pending'});
+          const restored={...item,_submittedByMe:true,_status:item._status||'pending'};
+          if(restored._status==='approved-private'){
+            if(!S.custom.some(saved=>String(saved.id)===String(restored.id)))S.custom.push(restored);
+          }else S.pending.push(restored);
           syncedPending++;
         }
       });
