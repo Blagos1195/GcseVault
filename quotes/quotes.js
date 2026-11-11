@@ -735,7 +735,6 @@ async function syncReviewSchedules(){
     }
     S.srsData=merged;
     localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
-    localStorage.setItem("qv_srs",JSON.stringify(S.srsData));
     const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:"qv",schedules:S.srsData})});
     if(!saved.ok)throw new Error("Could not save review schedules");
   }catch(error){console.warn("Review schedule sync failed:",error);}
