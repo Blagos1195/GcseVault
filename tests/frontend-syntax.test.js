@@ -619,6 +619,38 @@ test("all site admin navigation points to the shared workspace", () => {
   }
 });
 
+test("central admin can search accounts and moderate already-published content", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(admin, /Search accounts/);
+  assert.match(admin, /Filter accounts by role/);
+  assert.match(admin, /pageSize=50/);
+  assert.match(admin, /removePublished/);
+  assert.match(shared, /this\.request\('\/admin\/published'\)/);
+  assert.match(worker, /url\.pathname === "\/admin\/published"/);
+  assert.match(worker, /recordModerationAction\("quote", body\.id/);
+  assert.match(worker, /recordModerationAction\("date", body\.id/);
+});
+
+test("submission ownership and one-time notifications cover all three sites", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const quote = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const date = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(worker, /data\._submittedByUserKey = userKey/);
+  assert.match(worker, /async function createSubmissionNotification/);
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS submission_notifications/);
+  assert.match(worker, /url\.pathname === "\/submissions\/notifications"/);
+  assert.match(worker, /url\.pathname === "\/submissions\/notifications\/resolve"/);
+  assert.match(worker, /originalSubmission/);
+  assert.match(quote, /checkSubmissionNotifications/);
+  assert.match(date, /checkSubmissionNotifications/);
+  assert.match(revision, /checkRevisionSubmissionNotifications/);
+  assert.match(quote, /Keep my original/);
+  assert.match(date, /Use approved version/);
+});
+
 test("central admin workspace includes owner account management controls", () => {
   const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
