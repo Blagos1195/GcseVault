@@ -102,6 +102,16 @@ export default {
     async function ensureModerationTables() {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
+    }
+    async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
+      await ensureModerationTables();
+      const title = String(item.text || item.event || item.title || item.description || "New submission").slice(0, 300);
+      const { results } = await env.DB.prepare("SELECT user_key FROM users WHERE role IN ('owner', 'admin')").all();
+      const createdAt = new Date().toISOString();
+      for (const admin of results || []) {
+        await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+      }
     }
     async function attachSubmissionOwner(site, id, item) {
       const pendingColumn = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
@@ -471,6 +481,24 @@ export default {
       return new Response(JSON.stringify({ success: true, username, hidden: body.hidden }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/admin/notifications" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      await ensureModerationTables();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean).slice(0, 100) : [];
+      if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
+      await ensureModerationTables();
+      const now = new Date().toISOString();
+      for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -745,6 +773,7 @@ export default {
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.QUOTEVAULT.put(id, JSON.stringify(data));
+      await createAdminNotification("QuoteVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -868,6 +897,7 @@ export default {
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.DV_PENDING.put(id, JSON.stringify(data));
+      await createAdminNotification("DateVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1516,6 +1546,7 @@ export default {
         timestamp: new Date().toISOString()
       };
       await env.FEEDBACK.put(id, JSON.stringify(record));
+      await createAdminNotification("Feedback", id, record, "Visitor feedback");
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1776,8 +1807,9 @@ export default {
     }
 
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
+      await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT username, xp, streak, updated_at AS updatedAt FROM revision_leaderboard ORDER BY xp DESC, updated_at DESC LIMIT 100"
+        "SELECT r.username, r.xp, r.streak, r.updated_at AS updatedAt FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key WHERE COALESCE(u.leaderboard_hidden, 0) = 0 ORDER BY r.xp DESC, r.updated_at DESC LIMIT 100"
       ).all();
       return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1812,6 +1844,7 @@ export default {
       const id = `rn-${crypto.randomUUID()}`;
       const publicNote = { id, ownerKey: userKey, submittedBy: account.username, submittedAt: new Date().toISOString(), title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
       await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
+      await createAdminNotification("Revision", id, publicNote, account.username);
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
