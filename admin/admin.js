@@ -151,10 +151,10 @@ async function deleteFeedback(id){
 if(AdminManager.getToken())AdminManager.refresh().then(loadModerationLog);else AdminManager.checkStatus();
 
 function renderQueueActions(item){
-  if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\\''+esc(item.id)+'\\')">Delete</button>';
-  if(item._pending===false&&item._kind==="revision-note")return '<button class="danger" onclick="deleteRevisionNote(\\''+esc(item.id)+'\\')">Remove from public site</button>';
-  if(item._pending===false)return '<button class="danger" onclick="removePublished(\\''+esc(item._kind)+'\\',\\''+esc(item.id)+'\\')">Remove from public site</button>';
-  return '<button class="success" onclick="moderate(\\''+esc(item._kind)+'\\',\\'approve\\',\\''+esc(item.id)+'\\')">Approve</button><button class="danger" onclick="moderate(\\''+esc(item._kind)+'\\',\\'reject\\',\\''+esc(item.id)+'\\')">Reject</button>';
+  if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\''+esc(item.id)+'\')">Delete</button>';
+  if(item._pending===false&&item._kind==="revision-note")return '<button class="danger" onclick="deleteRevisionNote(\''+esc(item.id)+'\')">Remove from public site</button>';
+  if(item._pending===false)return '<button class="danger" onclick="removePublished(\''+esc(item._kind)+'\',\''+esc(item.id)+'\')">Remove from public site</button>';
+  return '<button class="success" onclick="moderate(\''+esc(item._kind)+'\',\'approve\',\''+esc(item.id)+'\')">Approve</button><button class="danger" onclick="moderate(\''+esc(item._kind)+'\',\'reject\',\''+esc(item.id)+'\')">Reject</button>';
 }
 async function removePublished(kind,id){
   if(!confirm("Remove this approved item from the public site? It will no longer be visible to everyone."))return;
