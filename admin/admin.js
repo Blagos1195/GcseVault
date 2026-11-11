@@ -160,8 +160,12 @@ function itemSummary(item){
   if(item._kind==="quote")return [item.char,item.work,item.loc].filter(Boolean).join(" · ");
   if(item._kind==="date")return [item.year,item.topic].filter(Boolean).join(" · ");
   if(item._kind==="revision-note")return [item.subject,item.level,`${item.cards?.length||0} linked cards`].filter(Boolean).join(" · ");
-  if(item._kind==="feedback")return [item.sourceApplication,item.errorName,item.browser,item.device,item.page].filter(Boolean).join(" · ") + (item.description ? " · " + item.description : "");
+  if(item._kind==="feedback")return [item.sourceApplication,item.errorName,item.browser,item.device,item.page].filter(Boolean).join(" · ") + (item.description ? " · " + item.description.slice(0,500) : "");
   return item.description||item.message||"";
+}
+function feedbackDetails(item){
+  if(item._kind!=="feedback"||!item.errorStack)return "";
+  return `<details><summary>Technical details</summary><pre>${esc(item.errorStack)}</pre></details>`;
 }
 function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
@@ -193,7 +197,7 @@ function renderAdmin(){
   <div class="filters"><input aria-label="Search submissions" placeholder="Search submitted content, source, or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?"selected":""}>All types</option><option value="quote" ${kind==="quote"?"selected":""}>QuoteVault</option><option value="date" ${kind==="date"?"selected":""}>DateVault</option><option value="revision-note" ${kind==="revision-note"?"selected":""}>Revision notes</option><option value="feedback" ${kind==="feedback"?"selected":""}>Feedback</option></select></div>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
   ${AdminManager.loading?'<div class="notice">Refreshing submissions…</div>':""}
-  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p></div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>${renderOwnerAccounts()}${renderApprovalHistory()}`;
+  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>${renderOwnerAccounts()}${renderApprovalHistory()}`;
 }
 async function bootstrapAdmin(){
   const input=document.getElementById("admin-bootstrap-key");
