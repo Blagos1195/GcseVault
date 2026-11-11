@@ -1338,15 +1338,18 @@ const AdminManager = {
       const session = await this.request('/auth/session');
       this.role = session.role;
       this.username = session.username;
-      const [quotes, dates, feedback, publicRevision] = await Promise.all([
+      const [quotes, dates, feedback, publicRevision, published] = await Promise.all([
         this.request('/pending'),
         this.request('/dv/pending'),
         this.request('/feedback/list'),
-        this.request('/revision/public/admin-list')
+        this.request('/revision/public/admin-list'),
+        this.request('/admin/published')
       ]);
       this.items = [
-        ...(quotes.items || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote' })),
-        ...(dates.items || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date' })),
+        ...(quotes.items || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote', _pending: true })),
+        ...(dates.items || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date', _pending: true })),
+        ...(published.quotes || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote', _pending: false })),
+        ...(published.dates || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date', _pending: false })),
         ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' })),
         ...(publicRevision.notes || []).map((item) => ({ ...item, _source: 'Public Revision note', _kind: 'revision-note', _pending: Boolean(item.pending) }))
       ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
