@@ -1,4 +1,6 @@
 const app=document.getElementById("app");
+const ADMIN_PUSH_PUBLIC_KEY="BJlem6cB64EvW2K7_sPZCZe6c-PJzKpTwn_14FiyYjk9Bs6kH7Vj517ndIAD9IiK9lMNIp3hDT8KY-GU-ONLIcWDg";
+let adminPushEnabled=false;
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 window.openModal=html=>{document.getElementById("modal").innerHTML=html;document.getElementById("modal-bg").classList.add("open");};
 window.closeModal=()=>document.getElementById("modal-bg").classList.remove("open");
@@ -16,7 +18,7 @@ async function loadAdminNotifications(notify = false){
     const data=await response.json();
     adminNotifications=data.notifications||[];
     const unread=adminNotifications.filter(item=>!item.read_at);
-    if(notify&&knownAdminNotificationIds&&'Notification' in window&&Notification.permission==='granted'){
+    if(false&&notify&&knownAdminNotificationIds&&'Notification' in window&&Notification.permission==='granted'){
       unread.filter(item=>!knownAdminNotificationIds.has(item.id)).forEach(item=>{
         const notification=new Notification('New GCSE Vault submission',{body:`${item.site}: ${item.title} · ${item.submitter}`,icon:'../favicon.ico',tag:item.id});
         notification.onclick=()=>{window.focus();notification.close();};
@@ -26,13 +28,45 @@ async function loadAdminNotifications(notify = false){
     renderAdmin();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
-async function enableAdminBrowserAlerts(){
-  if(!('Notification' in window)){AdminManager.error='This browser does not support notifications.';renderAdmin();return;}
-  const permission=await Notification.requestPermission();
-  if(permission!=='granted'){AdminManager.error='Browser notifications were not enabled.';renderAdmin();return;}
-  await loadAdminNotifications(false);
-  AdminManager.error='';
-  renderAdmin();
+function adminPushKeyBytes(value){
+  const normalized=value.replace(/-/g,'+').replace(/_/g,'/');
+  const binary=atob(normalized+'='.repeat((4-normalized.length%4)%4));
+  return Uint8Array.from(binary,char=>char.charCodeAt(0));
+}
+async function checkAdminPushSubscription(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+  try{
+    const registration=await navigator.serviceWorker.getRegistration('./');
+    adminPushEnabled=Boolean(registration&&await registration.pushManager.getSubscription());
+    renderAdmin();
+  }catch{}
+}
+async function enableAdminPushNotifications(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+    AdminManager.error='This browser does not support Web Push notifications.';
+    renderAdmin();
+    return;
+  }
+  try{
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted')throw new Error('Allow notifications in your browser settings to enable push alerts.');
+    const registration=await navigator.serviceWorker.register('./push-sw.js',{scope:'./'});
+    await navigator.serviceWorker.ready;
+    let subscription=await registration.pushManager.getSubscription();
+    if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:adminPushKeyBytes(ADMIN_PUSH_PUBLIC_KEY)});
+    const response=await fetch(VaultUser.WORKER_URL+'/admin/push/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},
+      body:JSON.stringify(subscription.toJSON())
+    });
+    if(!response.ok)throw new Error(await response.text()||'HTTP '+response.status);
+    adminPushEnabled=true;
+    AdminManager.error='';
+    renderAdmin();
+  }catch(error){
+    AdminManager.error=error.message||'Could not enable push notifications.';
+    renderAdmin();
+  }
 }
 async function markAdminNotificationsRead(){
   const ids=adminNotifications.filter(item=>!item.read_at).map(item=>item.id);
@@ -46,7 +80,7 @@ async function markAdminNotificationsRead(){
 function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
   const permission=('Notification' in window)?Notification.permission:'unsupported';
-  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminBrowserAlerts()">${permission==='granted'?'Browser alerts enabled':'Enable browser alerts'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
+  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${permission==='granted'?'Browser alerts enabled':'Enable browser alerts'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
 }
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
@@ -138,7 +172,7 @@ function itemSummary(item){
 }
 function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
-  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);});
+  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
 }
 function renderAdmin(){
   const token=AdminManager.getToken();
@@ -195,7 +229,7 @@ async function deleteFeedback(id){
 }
 if(AdminManager.getToken()){
   AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);});
-  if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(true),30000);
+  if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(false),30000);
 }else AdminManager.checkStatus();
 
 function renderQueueActions(item){
