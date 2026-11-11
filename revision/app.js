@@ -145,6 +145,27 @@ function restoreRevisionSnapshot(userKey){
   }
   saveRevision(true);
 }
+window.prepareRevisionAccountLogout=function(){
+  const key=VaultUser.getKey();
+  if(key)captureRevisionSnapshot(key);
+};
+window.finishRevisionAccountLogout=function(){
+  restoreRevisionSnapshot(null);
+  state.syncStatus='local';
+  state.accountMessage='';
+  renderRevision();
+};
+window.prepareRevisionAccountSwitch=function(){
+  captureRevisionSnapshot(revisionUserKey());
+};
+window.activateRevisionAccount=function(userKey){
+  const key=VaultUser.getAccountSession()?userKey:null;
+  restoreRevisionSnapshot(key);
+  state.accountMessage='';
+  state.accountMessageType='success';
+  renderRevision();
+};
+
 function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
@@ -335,7 +356,7 @@ function importRevisionFile(input){
   reader.readAsText(file);
 }
 function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topic=card.topic||'Untopiced';const stats=cardReviewStats(card);grouped[topic]??={total:0,reviewed:0,due:0,correct:0,reviews:0,links:0};grouped[topic].total++;grouped[topic].reviewed+=stats.reviews>0?1:0;grouped[topic].due+=stats.due?1:0;grouped[topic].correct+=Number(state.progress[card.id]?.correct)||0;grouped[topic].reviews+=stats.reviews;grouped[topic].links+=(card.links||[]).length;});return grouped;}
-function revisionUserKey(){return VaultUser.getKey();}
+function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
 let revisionRemoteUpdatedAt=null;
