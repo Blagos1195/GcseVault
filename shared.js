@@ -296,10 +296,10 @@ const VaultUser = {
     });
     if (response.status === 401) {
       if (this.getAccountSession() === token) {
-        if (typeof window !== 'undefined' && typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
+        if (typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
         localStorage.removeItem('vault_account_session');
-        if (typeof window !== 'undefined' && typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
-        if (typeof window !== 'undefined' && typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+        if (typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
+        if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
       }
       return false;
     }
@@ -349,7 +349,7 @@ const VaultUser = {
 
   async login(username, password) {
     if (typeof window !== 'undefined' && typeof window.prepareRevisionAccountSwitch === 'function') window.prepareRevisionAccountSwitch();
-    if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+    if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     const challengeResponse = await fetch(`${this.WORKER_URL}/account/challenge?username=${encodeURIComponent(username)}`);
     const challenge = await this.readResponse(challengeResponse);
     if (!challengeResponse.ok) throw new Error('Invalid username or password.');
@@ -365,7 +365,7 @@ const VaultUser = {
     this.setKey(data.userKey);
     this.setUsername(data.username);
     if (typeof window !== 'undefined' && typeof window.activateRevisionAccount === 'function') window.activateRevisionAccount(data.userKey);
-    if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+    if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     return data;
   },
 
@@ -474,7 +474,7 @@ const VaultUser = {
       const finish = async () => {
         window.closeModal();
         if (typeof window.activateRevisionAccount === 'function' && this.getAccountSession()) window.activateRevisionAccount(this.getKey());
-        if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+        if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
         if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
         if (typeof window.loadRevision === 'function') await window.loadRevision();
         if (typeof window.syncRevisionTheme === 'function') await window.syncRevisionTheme();
