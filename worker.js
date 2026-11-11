@@ -466,8 +466,28 @@ export default {
       const id = String(body.id || "");
       const choice = String(body.choice || "");
       if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
-      const result = await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
-      if (!result.meta?.changes) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
+      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM submission_notifications WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
+      if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
+      if (["qv", "dv"].includes(notification.site)) {
+        const pendingDataColumn = notification.site + "_pending_data";
+        const row = await env.DB.prepare("SELECT " + pendingDataColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
+        let pendingData = [];
+        try { pendingData = JSON.parse(row?.[pendingDataColumn] || "[]"); } catch {}
+        if (notification.status === "denied" && choice === "remove") {
+          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
+        } else if (notification.status === "approved") {
+          const payload = JSON.parse(notification.payload || "{}");
+          const chosen = choice === "replace" && payload.approved ? payload.approved : payload.original;
+          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
+          if (chosen) pendingData.push({ ...chosen, id: notification.item_id, _status: "approved-private" });
+        } else if (notification.status === "denied") {
+          const payload = JSON.parse(notification.payload || "{}");
+          pendingData = pendingData.map(item => String(item.id) === notification.item_id ? { ...item, _status: "denied" } : item);
+          if (!pendingData.some(item => String(item.id) === notification.item_id) && payload.original) pendingData.push({ ...payload.original, id: notification.item_id, _status: "denied" });
+        }
+        await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), new Date().toISOString(), account.user_key).run();
+      }
+      await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
