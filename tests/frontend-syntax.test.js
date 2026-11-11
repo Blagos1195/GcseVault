@@ -551,3 +551,10 @@ test("admin moderation has a separate full-content editor and safe submitter met
   assert.ok(worker.includes("data.submittedBy = submitter"));
   assert.ok(worker.includes("getSubmissionOwners"));
 });
+
+test("expired account sessions preserve Revision and review schedule caches before logout", () => {
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.syncReviewSchedules"));
+});
