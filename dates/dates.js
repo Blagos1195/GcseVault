@@ -789,6 +789,7 @@ async function resolveSubmissionNotification(choice){
     }
     window._activeSubmissionNotification=null;
     closeModal();save();buildNav();render();
+    await checkSubmissionNotifications();
   }catch(error){toast(error.message,4000);}
 }
 
