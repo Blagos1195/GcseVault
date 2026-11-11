@@ -591,7 +591,56 @@ function allQincHidden(){
 }
 function getQ(id){return allQ().find(q=>q.id===id);}
 function qSRS(id){return S.srsData[id]||{};}
-function setQSRS(id,srs){S.srsData[id]=srs;save();}
+function setQSRS(id,srs){S.srsData[id]={...srs,updatedAt:new Date().toISOString()};save();}
+
+let reviewScheduleScope=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+let reviewScheduleTimer=null;
+function reviewScheduleKey(scope=reviewScheduleScope){return `dv_srs:${scope||"anonymous"}`;}
+function activateReviewScheduleScope(){
+  const next=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+  if(next===reviewScheduleScope)return;
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  const saved=localStorage.getItem(reviewScheduleKey(next));
+  let schedules={};
+  try{schedules=saved?JSON.parse(saved):{};}catch{}
+  if(next!=="anonymous"&&!saved&&Object.keys(S.srsData||{}).length&&window.confirm("This device has a review schedule that is not linked to an account. Import it into the account you just signed into?")){
+    schedules={...S.srsData};
+    Object.values(schedules).forEach(item=>{if(item&&!item.updatedAt)item.updatedAt=new Date().toISOString();});
+  }
+  S.srsData=schedules;
+  reviewScheduleScope=next;
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+}
+async function syncReviewSchedules(){
+  activateReviewScheduleScope();
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  if(!VaultUser.getAccountSession()||!VaultUser.getKey()||!navigator.onLine)return;
+  try{
+    const response=await fetch(`${WORKER_URL}/review-schedules?site=dv`);
+    if(!response.ok)throw new Error("Could not load review schedules");
+    const remote=await response.json();
+    const merged={...(remote.schedules||{})};
+    for(const [id,local] of Object.entries(S.srsData||{})){
+      const cloud=merged[id];
+      if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
+      const localAt=String(local?.updatedAt||"");
+      const cloudAt=String(cloud?.updatedAt||"");
+      if(localAt&&localAt>cloudAt)merged[id]=local;
+    }
+    S.srsData=merged;
+    localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+    localStorage.setItem("dv_srs",JSON.stringify(S.srsData));
+    const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:"dv",schedules:S.srsData})});
+    if(!saved.ok)throw new Error("Could not save review schedules");
+  }catch(error){console.warn("Review schedule sync failed:",error);}
+}
+function scheduleReviewSync(){
+  activateReviewScheduleScope();
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+  clearTimeout(reviewScheduleTimer);
+  if(VaultUser.getAccountSession())reviewScheduleTimer=setTimeout(syncReviewSchedules,900);
+}
+window.syncReviewSchedules=syncReviewSchedules;
 
 function save(){
   localStorage.setItem('dv_m',JSON.stringify([...S.mastered]));
@@ -604,6 +653,7 @@ function save(){
   localStorage.setItem('dv_h',JSON.stringify([...S.hidden]));
   localStorage.setItem('dv_p',JSON.stringify(S.pending));
   localStorage.setItem('dv_srs',JSON.stringify(S.srsData));
+  scheduleReviewSync();
   localStorage.setItem('dv_qh',JSON.stringify(S.quizHistory));
   localStorage.setItem('dv_set',JSON.stringify(S.settings));
   localStorage.setItem('dv_ach',JSON.stringify([...S.achievements]));
@@ -3082,7 +3132,8 @@ async function startup(){
     await loadServerCustomThemes();
   }
   initTheme();buildNav();updateSB();validateStreak();render();
-  if(getUserKey())syncFromWorker();
+  if(getUserKey())await syncFromWorker();
+  await syncReviewSchedules();
 }
 startup();
 // ── Global keyboard shortcuts ─────────────────────────────────────────────
