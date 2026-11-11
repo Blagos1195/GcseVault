@@ -50,7 +50,7 @@ test("storage migration summary aggregates all phases", async () => {
   };
   const context = {
     document: { addEventListener() {} },
-    window: { render() {}, __vaultAccountFetchWrapped: true },
+    window: { render() {}, addEventListener() {}, __vaultAccountFetchWrapped: true },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     sessionStorage: { getItem() { return "test-session"; }, setItem() {}, removeItem() {} },
     fetch: async (_url, options) => {
@@ -520,6 +520,9 @@ test("review schedules are stored per account and synchronised through authentic
     assert.ok(source.includes("function scheduleReviewSync()"));
     assert.ok(source.includes("updatedAt:new Date().toISOString()"));
     assert.ok(source.includes("/review-schedules?site="));
+    assert.ok(source.includes("X-Account-Session"));
+    assert.ok(source.includes("token!==VaultUser.getAccountSession()||userKey!==VaultUser.getKey()"));
+    assert.ok(source.includes("reviewScheduleSyncPromise"));
   }
   assert.ok(worker.includes('url.pathname === "/review-schedules"'));
   assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
@@ -690,4 +693,37 @@ test("admin submissions use Web Push when the admin site is closed", () => {
   assert.match(serviceWorker, /addEventListener\("push"/);
   assert.match(serviceWorker, /showNotification/);
   assert.match(serviceWorker, /notificationclick/);
+});
+
+
+test("automatic bug reports redact secrets and identify the failing site", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultBugReporter = (() => {");
+  const end = source.indexOf("window.VaultBugReporter = VaultBugReporter;", start) + "window.VaultBugReporter = VaultBugReporter;".length;
+  assert.ok(start >= 0 && end > start);
+  const listeners = {};
+  const requests = [];
+  const context = {
+    window: { addEventListener(name, callback) { listeners[name] = callback; } },
+    VaultUser: { WORKER_URL: "https://worker.example" },
+    location: { pathname: "/GcseVault/revision/" },
+    navigator: { platform: "Android", userAgent: "Test Browser" },
+    document: { documentElement: { dataset: {} } },
+    URL,
+    fetch: async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true }; },
+    Date,
+    Map,
+    Error,
+    String,
+    Math,
+    JSON
+  };
+  vm.runInNewContext(source.slice(start, end), context);
+  listeners.error({ error: new Error("Token=secret-value failed for student@example.com"), filename: "https://site.example/app.js?session=private", lineno: 4, colno: 2 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].body.type, "Automatic bug report");
+  assert.equal(requests[0].body.sourceApplication, "Revision");
+  assert.equal(requests[0].body.page, "/GcseVault/revision/");
+  assert.doesNotMatch(JSON.stringify(requests[0].body), /secret-value|student@example.com|session=private/);
 });
