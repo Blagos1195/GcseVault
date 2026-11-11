@@ -94,6 +94,17 @@ export default {
       return owners;
     }
 
+    function sanitizeSubmission(value) {
+      if (Array.isArray(value)) return value.map(sanitizeSubmission);
+      if (!value || typeof value !== "object") return value;
+      const clean = {};
+      for (const [key, item] of Object.entries(value)) {
+        if (/^(userKey|session|sessionToken|accountToken|token|passwordHash|passwordSalt)$/i.test(key)) continue;
+        clean[key] = sanitizeSubmission(item);
+      }
+      return clean;
+    }
+
     async function listPendingItems(binding) {
       const items = [];
       let cursor;
@@ -102,7 +113,7 @@ export default {
         for (const key of page.keys) {
           if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:")) continue;
           const value = await binding.get(key.name, "json");
-          if (value) items.push(value);
+          if (value) items.push(sanitizeSubmission(value));
         }
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
