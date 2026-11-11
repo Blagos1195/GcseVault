@@ -1,11 +1,11 @@
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
 
     const url = new URL(request.url);
 
     const cors = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session, X-AI-Session"
     };
 
@@ -103,15 +103,103 @@ export default {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_push_subscriptions (user_key TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, endpoint))").bind().run();
+    }
+    const pushEncoder = new TextEncoder();
+    function pushBase64UrlBytes(value) {
+      const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+      const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+      return Uint8Array.from(binary, char => char.charCodeAt(0));
+    }
+    function pushBase64Url(value) {
+      let binary = "";
+      for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
+      return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    }
+    function pushConcat(...parts) {
+      const output = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+      let offset = 0;
+      for (const part of parts) { output.set(part, offset); offset += part.length; }
+      return output;
+    }
+    async function pushHKDF(ikm, salt, info, length) {
+      const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+      return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, key, length * 8));
+    }
+    async function createVapidToken(endpoint) {
+      const publicKey = pushBase64UrlBytes(env.VAPID_PUBLIC_KEY);
+      const privateKey = pushBase64UrlBytes(env.VAPID_PRIVATE_KEY);
+      if (publicKey.length !== 65 || privateKey.length !== 32) throw new Error("Invalid VAPID key configuration");
+      const x = pushBase64Url(publicKey.slice(1, 33));
+      const y = pushBase64Url(publicKey.slice(33, 65));
+      const d = pushBase64Url(privateKey);
+      const key = await crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x, y, d, ext: true, key_ops: ["sign"] }, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+      const audience = new URL(endpoint).origin;
+      const header = pushBase64Url(pushEncoder.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+      const payload = pushBase64Url(pushEncoder.encode(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 43200, sub: env.VAPID_SUBJECT || "mailto:admin@gcsevault.example" })));
+      const unsigned = header + "." + payload;
+      const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, pushEncoder.encode(unsigned));
+      return unsigned + "." + pushBase64Url(signature);
+    }
+    async function encryptPushPayload(subscription, payload) {
+      const receiverPublic = pushBase64UrlBytes(subscription.p256dh);
+      const authSecret = pushBase64UrlBytes(subscription.auth);
+      if (receiverPublic.length !== 65 || authSecret.length !== 16) throw new Error("Invalid push subscription keys");
+      const receiverKey = await crypto.subtle.importKey("raw", receiverPublic, { name: "ECDH", namedCurve: "P-256" }, false, []);
+      const ephemeral = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+      const senderPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ephemeral.publicKey));
+      const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: receiverKey }, ephemeral.privateKey, 256));
+      const keyInfo = pushConcat(pushEncoder.encode("WebPush: info" + String.fromCharCode(0)), receiverPublic, senderPublic);
+      const ikm = await pushHKDF(sharedSecret, authSecret, keyInfo, 32);
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const cek = await pushHKDF(ikm, salt, pushEncoder.encode("Content-Encoding: aes128gcm" + String.fromCharCode(0)), 16);
+      const nonce = await pushHKDF(ikm, salt, pushEncoder.encode("Content-Encoding: nonce" + String.fromCharCode(0)), 12);
+      const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+      const plaintext = pushConcat(pushEncoder.encode(JSON.stringify(payload)), new Uint8Array([2]));
+      const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, tagLength: 128 }, aesKey, plaintext));
+      const header = new Uint8Array(16 + 4 + 1 + senderPublic.length);
+      header.set(salt, 0);
+      new DataView(header.buffer).setUint32(16, 4096);
+      header[20] = senderPublic.length;
+      header.set(senderPublic, 21);
+      return pushConcat(header, ciphertext);
+    }
+    async function sendAdminPush(userKey, notification) {
+      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
+      const { results } = await env.DB.prepare("SELECT endpoint, p256dh, auth FROM admin_push_subscriptions WHERE user_key = ?").bind(userKey).all();
+      await Promise.all((results || []).map(async subscription => {
+        try {
+          const token = await createVapidToken(subscription.endpoint);
+          const body = await encryptPushPayload(subscription, notification);
+          const response = await fetch(subscription.endpoint, {
+            method: "POST",
+            headers: {
+              "Authorization": "vapid t=" + token + ", k=" + env.VAPID_PUBLIC_KEY,
+              "Content-Type": "application/octet-stream",
+              "Content-Encoding": "aes128gcm",
+              "TTL": "86400",
+              "Urgency": "high"
+            },
+            body
+          });
+          if (response.status === 404 || response.status === 410) {
+            await env.DB.prepare("DELETE FROM admin_push_subscriptions WHERE user_key = ? AND endpoint = ?").bind(userKey, subscription.endpoint).run();
+          }
+        } catch {}
+      }));
     }
     async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
       await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "New submission").slice(0, 300);
       const { results } = await env.DB.prepare("SELECT user_key FROM users WHERE role IN ('owner', 'admin')").all();
       const createdAt = new Date().toISOString();
+      const pushJobs = [];
       for (const admin of results || []) {
-        await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        if (inserted.meta?.changes) pushJobs.push(sendAdminPush(admin.user_key, { title: "New GCSE Vault submission", body: site + ": " + title + " · " + String(submitter || "Unknown submitter"), tag: site + ":" + id, url: "/GcseVault/admin/" }));
       }
+      if (ctx?.waitUntil) ctx.waitUntil(Promise.allSettled(pushJobs));
+      else await Promise.allSettled(pushJobs);
     }
     async function attachSubmissionOwner(site, id, item) {
       const pendingColumn = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
@@ -481,6 +569,29 @@ export default {
       return new Response(JSON.stringify({ success: true, username, hidden: body.hidden }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/admin/push/subscribe" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const endpoint = String(body.endpoint || "");
+      const p256dh = String(body.keys?.p256dh || "");
+      const auth = String(body.keys?.auth || "");
+      if (!endpoint.startsWith("https://") || endpoint.length > 2048 || !p256dh || !auth || p256dh.length > 200 || auth.length > 100) return new Response("Invalid push subscription", { status: 400, headers: cors });
+      await ensureModerationTables();
+      const now = new Date().toISOString();
+      await env.DB.prepare("INSERT INTO admin_push_subscriptions (user_key, endpoint, p256dh, auth, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_key, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth, updated_at=excluded.updated_at").bind(actor.user_key, endpoint, p256dh, auth, now, now).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/push/subscribe" && request.method === "DELETE") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const endpoint = String(body.endpoint || "");
+      if (!endpoint.startsWith("https://") || endpoint.length > 2048) return new Response("Invalid push endpoint", { status: 400, headers: cors });
+      await ensureModerationTables();
+      await env.DB.prepare("DELETE FROM admin_push_subscriptions WHERE user_key = ? AND endpoint = ?").bind(actor.user_key, endpoint).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/notifications" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
