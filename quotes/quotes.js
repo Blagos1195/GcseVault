@@ -1188,16 +1188,13 @@ const PAGES=[
   {id:'leaderboard',label:'Leaderboard',sec:null},
   {id:'achievements',label:'Achievements',sec:null},
   {id:'settings',label:'Settings',sec:null},
-  {id:'admin',label:'Admin',sec:'Admin'},
 ];
 
 function buildNav(){
   let h='',ls='';
-  const _pCount=S.pending.filter(p=>p._submittedByMe&&p._status==='pending').length;
   PAGES.forEach(p=>{
     if(p.sec&&p.sec!==ls){h+=`<div class="sb-sec">${p.sec}</div>`;ls=p.sec;}
-    const _badge=(p.id==='admin'&&_pCount>0)?` <span style="background:var(--amber);color:#0b0a14;border-radius:10px;font-size:.58rem;padding:1px 6px;font-weight:700;margin-left:auto;flex-shrink:0">${_pCount}</span>`:'';
-    h+=`<button type="button" class="ni${S.page===p.id?' active':''}" aria-current="${S.page===p.id?'page':'false'}" onclick="go('${p.id}')">${p.label}${_badge}</button>`;
+    h+=`<button type="button" class="ni${S.page===p.id?' active':''}" aria-current="${S.page===p.id?'page':'false'}" onclick="go('${p.id}')">${p.label}</button>`;
   });
   document.getElementById('nav').innerHTML=h;
 }
@@ -1535,7 +1532,7 @@ function backBtn(){return S.hist.length?`<button class="bback" onclick="goBack()
 // ════════════════════════════════════════════════
 function render(){
   const el=document.getElementById('page');
-  const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,fill:rFill,quiz:rQuiz,timed:rTimed,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,admin:rAdmin,leaderboard:rLeaderboard};
+  const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,fill:rFill,quiz:rQuiz,timed:rTimed,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,leaderboard:rLeaderboard};
   el.innerHTML=(map[S.page]||rDash)();
   // auto-focus text input if present
   const inp=el.querySelector('input[type=text],textarea');
@@ -3049,20 +3046,6 @@ async function loadCloudQuotes(){
     }
   }catch(e){console.log(e);}
 }
-// ════════════════════════════════════════════════
-// ADMIN PANEL — password protected, Cloudflare Worker backed
-// Submissions from ANY device go to the Worker's KV store.
-// Admin fetches them here, then approves/rejects/edits.
-// ════════════════════════════════════════════════
-
-function rAdmin(){
-  return AdminManager.render();
-}
-
-async function adminLogin(){await AdminManager.login();}
-function adminLogout(){AdminManager.logout();}
-async function adminLoadPending(){await AdminManager.refresh();}
-
 async function startup(){
   try {
     await loadCloudQuotes();

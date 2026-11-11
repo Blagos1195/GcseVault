@@ -602,3 +602,33 @@ test("content submissions authenticate their account and admin moderation is aud
   assert.ok(admin.includes("Approval history"));
   assert.ok(admin.includes("Leaderboard visibility"));
 });
+
+
+test("all site admin navigation points to the shared workspace", () => {
+  const quoteIndex = fs.readFileSync(new URL("../quotes/index.html", import.meta.url), "utf8");
+  const dateIndex = fs.readFileSync(new URL("../dates/index.html", import.meta.url), "utf8");
+  const revisionIndex = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  const quoteApp = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const dateApp = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+
+  for (const html of [quoteIndex, dateIndex, revisionIndex]) {
+    assert.match(html, /href="\/GcseVault\/admin\/">Admin workspace/);
+  }
+  for (const app of [quoteApp, dateApp]) {
+    assert.doesNotMatch(app, /label:'Admin'|admin:rAdmin/);
+  }
+});
+
+test("central admin workspace includes owner account management controls", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(admin, /function renderOwnerAccounts\([\s\S]*?if\(AdminManager\.role!=='owner'\)return ''/);
+  assert.match(admin, /AdminManager\.setRole\(username,role\)/);
+  assert.match(admin, /AdminManager\.setAIAccess/);
+  assert.match(admin, /setLeaderboardHidden/);
+  assert.match(admin, /AdminManager\.migrateStorage\(\)/);
+  assert.match(shared, /this\.users = this\.role === 'owner' \? \(await this\.request\('\/admin\/users'\)\)/);
+  assert.match(worker, /if \(actor\.role !== "owner"\) return new Response\("Owner access required"/);
+  assert.match(worker, /if \(!user \|\| !\["owner", "admin"\]\.includes\(user\.role\)\) return null/);
+});

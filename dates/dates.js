@@ -1024,7 +1024,6 @@ const PAGES=[
   {id:'leaderboard',label:'Leaderboard',sec:null},
   {id:'achievements',label:'Achievements',sec:null},
   {id:'settings',label:'Settings',sec:null},
-  {id:'admin',label:'Admin',sec:'Admin'},
 ];
 
 function buildNav(){
@@ -1227,7 +1226,7 @@ function bestMatch(inp,pool){
 // ════════════════════════════════════════════════
 function render(){
   const el=document.getElementById('page');
-  const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,quiz:rQuiz,timed:rTimed,timeline:rTimeline,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,admin:rAdmin,leaderboard:rLeaderboard};
+  const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,quiz:rQuiz,timed:rTimed,timeline:rTimeline,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,leaderboard:rLeaderboard};
   el.innerHTML=(map[S.page]||rDash)();
   if(S.page==='timeline'){
     requestAnimationFrame(()=>{
@@ -3104,17 +3103,6 @@ function exportCSV(){
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='DateVault-dates.csv';a.click();
 }
 
-// ════════════════════════════════════════════════
-// ADMIN PANEL
-// ════════════════════════════════════════════════
-
-function rAdmin(){
-  return AdminManager.render();
-}
-
-async function adminLogin(){await AdminManager.login();}
-function adminLogout(){AdminManager.logout();}
-async function adminLoadPending(){await AdminManager.refresh();}
 async function loadCloudDates(){
   try{
     const resp=await fetch(WORKER_URL+'/dv/quotes');if(!resp.ok)return;
