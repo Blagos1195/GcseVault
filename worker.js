@@ -94,6 +94,16 @@ export default {
       return owners;
     }
 
+    async function ensureLeaderboardVisibilityColumn() {
+      const columns = await env.DB.prepare("PRAGMA table_info(users)").all();
+      if (!columns.results.some(column => column.name === "leaderboard_hidden")) await env.DB.prepare("ALTER TABLE users ADD COLUMN leaderboard_hidden INTEGER NOT NULL DEFAULT 0").run();
+    }
+
+    async function recordApproval(site, id, item, actor) {
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").run();
+      const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
+      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), "approved", new Date().toISOString()).run();
+    }
     function sanitizeSubmission(value) {
       if (Array.isArray(value)) return value.map(sanitizeSubmission);
       if (!value || typeof value !== "object") return value;
