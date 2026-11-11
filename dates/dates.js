@@ -1397,7 +1397,7 @@ function rLib(){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div class="dc-date">${q.year}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">Pending</span>`:''}
+        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">${q._rejected?'Not approved':'Pending'}</span>`:''}
         ${S.hidden.has(q.id)
           ? `<button class="btn bsm" style="color:var(--amber);border-color:var(--amber);opacity:.7" onclick="toggleHidden('${q.id}')" title="Unhide">Hidden</button>`
           : S.mastered.has(q.id)
@@ -2678,7 +2678,7 @@ function runDump(){
 // ════════════════════════════════════════════════
 function rAdd(){
   const topicOpts=["Crime & Punishment","Weimar & Nazi Germany","Henry VIII","American West","Early Elizabethan England", "Superpower Relations and the Cold War", "Other"];
-  const myPending=S.pending.filter(p=>p._submittedByMe&&p._status==='pending');
+  const myPending=S.pending.filter(p=>p._submittedByMe&&(p._status==='pending'||p._status==='denied'));
   return`<div>
   ${backBtn()}
   <div class="pt">Add a Date/Fact</div>
