@@ -659,6 +659,10 @@ function scheduleReviewSync(){
   if(VaultUser.getAccountSession())reviewScheduleTimer=setTimeout(syncReviewSchedules,900);
 }
 window.syncReviewSchedules=syncReviewSchedules;
+window.addEventListener("storage",event=>{
+  if(event.key==="vault_userKey"||(event.key==="vault_account_session"&&!VaultUser.getAccountSession()))syncReviewSchedules();
+});
+
 
 function save(){
   localStorage.setItem('dv_m',JSON.stringify([...S.mastered]));
