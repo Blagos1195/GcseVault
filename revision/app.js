@@ -63,7 +63,7 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
-  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
+  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
@@ -414,6 +414,7 @@ async function syncRevision(keepalive=false){
   if(revisionActiveScope!==revisionUserKey())return;
   if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()||state.syncing||revisionSyncConflict){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
   state.syncing=true;
+  state.syncStatus='syncing';
   const syncUserKey=revisionUserKey();
   const syncLocalKey=revisionLocalUpdatedAtKey();
   let syncAgain=false;
@@ -437,6 +438,7 @@ async function syncRevision(keepalive=false){
       const conflict=await response.json();
       revisionConflictData=conflict.data;
       revisionSyncConflict=true;
+      state.syncStatus='conflict';
       state.accountMessage='Revision data changed on another device. Your local copy has been preserved.';
       state.accountMessageType='error';
       renderRevision();
@@ -444,10 +446,13 @@ async function syncRevision(keepalive=false){
     }
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const result=await response.json();
+    state.syncStatus='synced';
+    state.accountMessage='';
     revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
     if(localStorage.getItem(syncLocalKey)===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(syncLocalKey,revisionRemoteUpdatedAt);
     else syncAgain=true;
   }catch(error){
+    state.syncStatus='error';
     state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
     state.accountMessageType='error';
   }finally{
@@ -496,6 +501,8 @@ async function loadRevision(){
         return;
       }
       revisionRemoteUpdatedAt=payload.data.updatedAt||null;
+      state.syncStatus='synced';
+      state.accountMessage='';
       applyRevisionRemoteData(payload.data);
       renderRevision();
     }else{
@@ -503,6 +510,7 @@ async function loadRevision(){
       await syncRevision();
     }
   }catch(error){
+    state.syncStatus='error';
     state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
     state.accountMessageType='error';
   }
@@ -679,7 +687,9 @@ function renderSettings(){
   const activeSet = getActiveRevisionSet();
   const themes = ThemeManager.getAllThemes('global');
   const selectedTheme = localStorage.getItem('vt_theme') || 'default';
-  const accountStatus = state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '';
+  const syncLabel = state.syncStatus==='syncing' ? 'Syncing changes…' : state.syncStatus==='synced' ? 'All changes synced' : state.syncStatus==='error' ? 'Sync needs attention' : state.syncStatus==='conflict' ? 'Sync conflict needs a decision' : 'Saved on this device';
+  const syncStatus = `<div class="knowledge-meta" role="status">${syncLabel}</div>`;
+  const accountStatus = (state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '') + syncStatus;
   const themeStatus = state.themeMessage ? `<div class="knowledge-meta" role="status" style="margin-top:8px">${escapeRevision(state.themeMessage)}</div>` : '';
   return `<div style="max-width:820px;margin:0 auto">
     <div class="pt">Settings & account</div>
