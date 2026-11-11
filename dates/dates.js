@@ -727,11 +727,11 @@ const setUserKey = (k) => VaultUser.setKey(k);
 async function lbUpdate(){
   const u=getUsername();
   if(!u)return;
-  const myPending=S.pending.filter(p=>p._submittedByMe);
+  const myPending=[...S.pending.filter(p=>p._submittedByMe),...S.custom.filter(p=>p._submittedByMe&&p._status==='approved-private')];
  const payload={
  username:u,site:'dv',mastered:S.mastered.size,xp:S.xp,
  mastered_ids:[...S.mastered].map(String),
- pending_ids:myPending.map(p=>String(p.id)),
+ pending_ids:myPending.filter(p=>p._status!=='denied'&&p._status!=='approved-private').map(p=>String(p.id)),
  pending_data:myPending,
  theme: localStorage.getItem('vt_theme') || 'default',
  streak:S.streak,max_streak:S.maxStreak
@@ -782,8 +782,10 @@ async function resolveSubmissionNotification(choice){
       if(chosen&&!S.custom.some(item=>String(item.id)===String(notice.item_id)))S.custom.push({...chosen,_submittedByMe:true,_status:'approved-private'});
     }else if(choice==='remove'){
       S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
-    }else{
-      S.pending=S.pending.map(item=>String(item.id)===String(notice.item_id)?{...item,_rejected:true,_status:'denied'}:item);
+    }else if(choice==='keep'){
+      const existing=S.pending.find(item=>String(item.id)===String(notice.item_id));
+      if(existing){existing._rejected=true;existing._status='denied';}
+      else if(notice.payload?.original)S.pending.push({...notice.payload.original,id:notice.item_id,_submittedByMe:true,_rejected:true,_status:'denied'});
     }
     window._activeSubmissionNotification=null;
     closeModal();save();buildNav();render();
