@@ -41,10 +41,10 @@ function renderAdmin(){
   <div class="filters"><input aria-label="Search submissions" placeholder="Search submitted content, source, or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?"selected":""}>All types</option><option value="quote" ${kind==="quote"?"selected":""}>QuoteVault</option><option value="date" ${kind==="date"?"selected":""}>DateVault</option><option value="revision-note" ${kind==="revision-note"?"selected":""}>Revision notes</option><option value="feedback" ${kind==="feedback"?"selected":""}>Feedback</option></select></div>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
   ${AdminManager.loading?'<div class="notice">Refreshing submissions…</div>':""}
-  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p></div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${item._kind==="feedback"?`<button class="danger" onclick="deleteFeedback('${esc(item.id)}')">Delete</button>`:`<button class="success" onclick="moderate('${esc(item._kind)}','approve','${esc(item.id)}')">Approve</button><button class="danger" onclick="moderate('${esc(item._kind)}','reject','${esc(item.id)}')">Reject</button>`}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>`;
+  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p></div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>`;
 }
 async function bootstrapAdmin(){
-  const input=document.getElementById("admin-key");
+  const input=document.getElementById("admin-bootstrap-key");
   AdminManager.bootstrap();
   if(input)input.value="";
 }
@@ -68,3 +68,17 @@ async function deleteFeedback(id){
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
 if(AdminManager.getToken())AdminManager.refresh();else AdminManager.checkStatus();
+
+function renderQueueActions(item){
+  if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\''+esc(item.id)+'\')">Delete</button>';
+  if(item._kind==="revision-note"&&!item._pending)return '<button class="danger" onclick="deleteRevisionNote(\''+esc(item.id)+'\')">Delete</button>';
+  return '<button class="success" onclick="moderate(\''+esc(item._kind)+'\',\'approve\',\''+esc(item.id)+'\')">Approve</button><button class="danger" onclick="moderate(\''+esc(item._kind)+'\',\'reject\',\''+esc(item.id)+'\')">Reject</button>';
+}
+async function deleteRevisionNote(id){
+  if(!confirm("Delete this public revision note?"))return;
+  try{
+    const response=await fetch(`${VaultUser.WORKER_URL}/revision/public/admin-delete`,{method:"POST",headers:{"Content-Type":"application/json","X-Session-Token":AdminManager.getToken()},body:JSON.stringify({id})});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    await AdminManager.refresh();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
