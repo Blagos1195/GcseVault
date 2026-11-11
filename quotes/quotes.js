@@ -867,9 +867,48 @@ async function lbUpdate(){
 }
 
 // ── Sync FROM worker on load (multi-device support) ──
+async function checkSubmissionNotifications(){
+  const token=VaultUser.getAccountSession();
+  if(!token)return false;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/notifications',{headers:{'X-Account-Session':token}});
+    if(!response.ok)return false;
+    const payload=await response.json();
+    const notice=(payload.notifications||[]).find(item=>item.site==='qv');
+    if(!notice)return false;
+    const approved=notice.status==='approved';
+    const message=approved
+      ?'Your quote was approved. If an admin edited it, choose which version you want to keep in your own library.'
+      :'Your quote was not approved. You can keep your original privately in your account or remove it.';
+    openModal(\`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">\${message}<br><strong>\${String(notice.title||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong></div><div style="display:flex;gap:8px;flex-wrap:wrap">\${approved?'<button class="btn" onclick="resolveSubmissionNotification(\\'keep\\')">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(\\'replace\\')">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(\\'keep\\')">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(\\'remove\\')">Remove it</button>'}</div></div>\`);
+    window._activeSubmissionNotification=notice;
+    return true;
+  }catch(error){return false;}
+}
+async function resolveSubmissionNotification(choice){
+  const notice=window._activeSubmissionNotification;
+  if(!notice)return;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/notifications/resolve',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({id:notice.id,choice})});
+    if(!response.ok)throw new Error(await response.text()||'Could not save your choice.');
+    if(notice.status==='approved'){
+      const chosen=choice==='replace'&&notice.payload?.approved?notice.payload.approved:notice.payload?.original;
+      S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
+      if(chosen&&!S.custom.some(item=>String(item.id)===String(notice.item_id)))S.custom.push({...chosen,_submittedByMe:true,_status:'approved-private'});
+    }else if(choice==='remove'){
+      S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
+    }else{
+      S.pending=S.pending.map(item=>String(item.id)===String(notice.item_id)?{...item,_rejected:true,_status:'denied'}:item);
+    }
+    window._activeSubmissionNotification=null;
+    closeModal();save();buildNav();render();
+  }catch(error){toast(error.message,4000);}
+}
+
 async function syncFromWorker(){
   const k=getUserKey();
   if(!k)return;
+  if(await checkSubmissionNotifications())return;
   try{
     const r=await fetch(WORKER_URL+'/lb/get?userKey='+encodeURIComponent(k));
     if(!r.ok)return;
