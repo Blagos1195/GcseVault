@@ -103,6 +103,19 @@ export default {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
     }
+    async function attachSubmissionOwner(site, id, item) {
+      const pendingColumn = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
+      const { results } = await env.DB.prepare("SELECT user_key, username, " + pendingColumn + " AS pending_ids FROM users WHERE " + pendingColumn + " LIKE ?").bind("%" + id + "%").all();
+      for (const row of results || []) {
+        let ids = [];
+        try { ids = JSON.parse(row.pending_ids || "[]").map(String); } catch {}
+        if (!ids.includes(String(id))) continue;
+        item._submittedByUserKey = item._submittedByUserKey || row.user_key;
+        item.submittedBy = item.submittedBy || row.username;
+        return row;
+      }
+      return null;
+    }
     async function createSubmissionNotification(site, id, item, status, approvedItem = null) {
       const userKey = String(item._submittedByUserKey || item.ownerKey || "");
       if (!userKey) return;
@@ -717,6 +730,7 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("qv", id, quote);
       const publishedQuote = { ...quote };
       delete publishedQuote.submittedBy;
       delete publishedQuote._submittedByUserKey;
@@ -748,6 +762,7 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("qv", id, quote);
       try {
         await createSubmissionNotification("qv", id, quote, "denied");
         await recordModerationAction("quote", id, quote, actor, "denied");
@@ -909,6 +924,7 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const fact = await env.DV_PENDING.get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("dv", id, fact);
       const publishedFact = { ...fact };
       delete publishedFact.submittedBy;
       delete publishedFact._submittedByUserKey;
@@ -939,6 +955,7 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const fact = await env.DV_PENDING.get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("dv", id, fact);
       try {
         await createSubmissionNotification("dv", id, fact, "denied");
         await recordModerationAction("date", id, fact, actor, "denied");
