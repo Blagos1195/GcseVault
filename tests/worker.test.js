@@ -92,6 +92,22 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("admin push subscriptions require an admin session and are stored per account", async () => {
+  const env = makeEnv();
+  const denied = await call("/admin/push/subscribe", env, {
+    endpoint: "https://push.example/subscription",
+    keys: { p256dh: "public-key", auth: "auth-key" }
+  });
+  assert.equal(denied.status, 401);
+
+  const allowed = await call("/admin/push/subscribe", env, {
+    endpoint: "https://push.example/subscription",
+    keys: { p256dh: "public-key", auth: "auth-key" }
+  }, { "X-Session-Token": "test-session" });
+  assert.equal(allowed.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO admin_push_subscriptions") && update.values[0] === "admin-key"));
+});
+
 test("submission notifications require the account session", async () => {
   const env = makeEnv();
   const response = await call("/submissions/notifications", env);
