@@ -100,8 +100,8 @@ export default {
     }
 
     async function ensureModerationTables() {
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").run();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
     }
     async function createSubmissionNotification(site, id, item, status, approvedItem = null) {
       const userKey = String(item._submittedByUserKey || item.ownerKey || "");
@@ -417,6 +417,15 @@ export default {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       const quotes = await listPendingItems(env.PUBLIC_QUOTES);
       const dates = await listPendingItems(env.DV_PUBLIC);
+      await ensureModerationTables();
+      const [quoteAudit, dateAudit] = await Promise.all([
+        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'quote' AND action = 'approved'").all(),
+        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'date' AND action = 'approved'").all()
+      ]);
+      const quoteOwners = new Map((quoteAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
+      const dateOwners = new Map((dateAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
+      for (const item of quotes) item.submittedBy = quoteOwners.get(String(item.id)) || "Legacy submission";
+      for (const item of dates) item.submittedBy = dateOwners.get(String(item.id)) || "Legacy submission";
       return new Response(JSON.stringify({ quotes, dates }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/users" && request.method === "GET") {
@@ -1539,7 +1548,7 @@ export default {
       if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
       if (request.method === "GET") {
         const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
         let schedules = {};
