@@ -383,6 +383,7 @@ function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topi
 function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
+let revisionSyncQueued=false;
 let revisionRemoteUpdatedAt=null;
 let revisionConflictData=null;
 let revisionSyncConflict=false;
@@ -413,10 +414,13 @@ function applyRevisionRemoteData(data){
 }
 async function syncRevision(keepalive=false){
   if(revisionActiveScope!==revisionUserKey())return;
-  if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()||state.syncing||revisionSyncConflict){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
+  if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
+  if(revisionSyncConflict)return;
+  if(state.syncing){revisionSyncQueued=true;return;}
   state.syncing=true;
   state.syncStatus='syncing';
   const syncUserKey=revisionUserKey();
+  const syncToken=VaultUser.getAccountSession();
   const syncLocalKey=revisionLocalUpdatedAtKey();
   let syncAgain=false;
   try{
@@ -434,7 +438,8 @@ async function syncRevision(keepalive=false){
       streak: state.streak,
       lastReview: state.lastReview
     };
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify(payload),keepalive});
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':syncToken},body:JSON.stringify(payload),keepalive});
+    if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     if(response.status===409){
       const conflict=await response.json();
       revisionConflictData=conflict.data;
@@ -459,7 +464,7 @@ async function syncRevision(keepalive=false){
     state.accountMessageType='error';
   }finally{
     state.syncing=false;
-    if(syncAgain)syncRevisionSoon();
+    if(syncAgain||revisionSyncQueued){revisionSyncQueued=false;if(!revisionSyncConflict)syncRevisionSoon();}
   }
 }
 async function resolveRevisionSyncConflict(choice){
