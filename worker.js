@@ -1416,7 +1416,7 @@ export default {
     // ── REVISION DATA ────────────────────────────────────────────────────────
     if (url.pathname === "/review-schedules" && (request.method === "GET" || request.method === "POST")) {
       const session = await getAccountSession(request);
-      if (!session) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
+      if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").run();
