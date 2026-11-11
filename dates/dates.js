@@ -2716,10 +2716,10 @@ function rAdd(){
         <div class="dc-event">${q.event}</div>
         <div style="font-size:.7rem;color:var(--text2);margin-top:3px">${(q.significance||'').slice(0,100)}${(q.significance||'').length>100?'…':''}</div>
       </div>
-      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">Pending</span>
+      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">${q._rejected?'Not approved':'Pending'}</span>
     </div>
     ${q.submittedAt?`<div style="font-size:.62rem;color:var(--text3);margin-top:5px">Submitted: ${new Date(q.submittedAt).toLocaleString('en-GB')}</div>`:''}
-    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingFact('${q.id}')">✕ Withdraw</button>
+    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingFact('${q.id}')">${q._rejected?'Remove':'✕ Withdraw'}</button>
   </div>`).join('')}`:''}
   </div>`;
 }
