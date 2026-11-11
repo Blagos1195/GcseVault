@@ -121,7 +121,11 @@ export default {
       if (!userKey) return;
       await ensureModerationTables();
       const title = String(item.text || item.event || item.title || "Untitled submission").slice(0, 300);
-      const original = item.originalSubmission && typeof item.originalSubmission === "object" ? item.originalSubmission : item;
+      const original = { ...(item.originalSubmission && typeof item.originalSubmission === "object" ? item.originalSubmission : item) };
+      delete original._submittedByUserKey;
+      delete original.ownerKey;
+      delete original.userKey;
+      delete original.originalSubmission;
       const payload = JSON.stringify({ original, approved: approvedItem || null });
       await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
     }
