@@ -507,7 +507,35 @@ async function loadRevision(){
     state.accountMessageType='error';
   }
 }
-async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
+async function loadPublicNotes(){try{const response=await fetch(\`\${ThemeManager.WORKER_URL}/revision/public\${revisionUserKey()?\`?userKey=\${encodeURIComponent(revisionUserKey())}\`:''}\`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();await checkRevisionSubmissionNotifications();}catch(error){state.publicNotes=[];}}
+async function checkRevisionSubmissionNotifications(){
+  if(!VaultUser.getAccountSession()||window._activeRevisionNotice)return;
+  try{
+    const response=await fetch(\`\${ThemeManager.WORKER_URL}/submissions/notifications\`,{headers:{'X-Account-Session':VaultUser.getAccountSession()}});
+    if(!response.ok)return;
+    const data=await response.json();
+    const notice=(data.notifications||[]).find(item=>item.site==='revision');
+    if(!notice)return;
+    window._activeRevisionNotice=notice;
+    const approved=notice.status==='approved';
+    openModal(\`<div><h2>Submission update</h2><p>\${approved?'Your public revision notes were approved. Choose whether to keep your original cards or replace them with the edited version.':'Your public revision notes were not approved. Your private revision cards can remain in your account.'}</p><div class="actions">\${approved?'<button class="btn" onclick="resolveRevisionSubmissionNotification(\\'keep\\')">Keep my original</button><button class="btn bg" onclick="resolveRevisionSubmissionNotification(\\'replace\\')">Use edited version</button>':'<button class="btn bg" onclick="resolveRevisionSubmissionNotification(\\'keep\\')">Keep my notes in my account</button>'}</div></div>\`);
+  }catch(error){}
+}
+async function resolveRevisionSubmissionNotification(choice){
+  const notice=window._activeRevisionNotice;
+  if(!notice)return;
+  try{
+    const response=await fetch(\`\${ThemeManager.WORKER_URL}/submissions/notifications/resolve\`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({id:notice.id,choice})});
+    if(!response.ok)throw new Error('Could not save your choice.');
+    if(notice.status==='approved'&&choice==='replace'&&Array.isArray(notice.payload?.approved?.cards)){
+      state.cards=notice.payload.approved.cards;
+      saveRevision();
+      renderRevision();
+    }
+    window._activeRevisionNotice=null;
+    closeModal();
+  }catch(error){alert(error.message);}
+}
 function awardRevisionXP(){
   const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
   state.xp+=10;
