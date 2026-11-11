@@ -99,7 +99,7 @@ export default {
       if (!value || typeof value !== "object") return value;
       const clean = {};
       for (const [key, item] of Object.entries(value)) {
-        if (/^(userKey|session|sessionToken|accountToken|token|passwordHash|passwordSalt)$/i.test(key)) continue;
+        if (/(user.?key|session|token|password|credential)/i.test(key)) continue;
         clean[key] = sanitizeSubmission(item);
       }
       return clean;
@@ -614,7 +614,10 @@ export default {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
-      await env.PUBLIC_QUOTES.put(id, JSON.stringify(quote));
+      const publishedQuote = { ...quote };
+      delete publishedQuote.submittedBy;
+      delete publishedQuote.userKey;
+      await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
       try {
         await updateModerationRecords("qv", id, false);
       } catch {
@@ -658,7 +661,7 @@ export default {
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
       const existing = await env.QUOTEVAULT.get(id, "json");
       if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt };
+      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
       delete updated.userKey;
       await env.QUOTEVAULT.put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
@@ -673,7 +676,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
       await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -790,7 +793,10 @@ export default {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       const fact = await env.DV_PENDING.get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
-      await env.DV_PUBLIC.put(id, JSON.stringify(fact));
+      const publishedFact = { ...fact };
+      delete publishedFact.submittedBy;
+      delete publishedFact.userKey;
+      await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
       try {
         await updateModerationRecords("dv", id, false);
       } catch {
