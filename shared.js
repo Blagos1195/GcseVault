@@ -1356,6 +1356,7 @@ const AdminManager = {
       this.users = this.role === 'owner' ? (await this.request('/admin/users')).users || [] : [];
     } catch (error) {
       this.error = error.message;
+      window.VaultBugReporter?.capture(error, { detail: 'Admin queue refresh' });
       if (error.message === 'HTTP 401') {
         this.token = null;
         this.role = null;
