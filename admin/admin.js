@@ -1,5 +1,5 @@
 const app=document.getElementById("app");
-const ADMIN_PUSH_PUBLIC_KEY="BJlem6cB64EvW2K7_sPZCZe6c-PJzKpTwn_14FiyYjk9Bs6kH7Vj517ndIAD9IiK9lMNIp3hDT8KY-GU-ONLIcWDg";
+const ADMIN_PUSH_PUBLIC_KEY="BJlem6cB64EvW2K7_sCZe6c-PJzKpTwn_14FiyYjk9Bs6kH7Vj517ndIAD9IiK9lMNIp3hDT8KY-GU-ONLIcWDg";
 let adminPushEnabled=false;
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 window.openModal=html=>{document.getElementById("modal").innerHTML=html;document.getElementById("modal-bg").classList.add("open");};
@@ -80,7 +80,7 @@ async function markAdminNotificationsRead(){
 function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
   const permission=('Notification' in window)?Notification.permission:'unsupported';
-  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${permission==='granted'?'Browser alerts enabled':'Enable browser alerts'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
+  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${permission==='granted'?'Push notifications enabled':'Enable push notifications'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
 }
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
