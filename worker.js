@@ -195,7 +195,7 @@ export default {
       const createdAt = new Date().toISOString();
       const pushJobs = [];
       for (const admin of results || []) {
-        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
         if (inserted.meta?.changes) pushJobs.push(sendAdminPush(admin.user_key, { title: "New GCSE Vault submission", body: site + ": " + title + " · " + String(submitter || "Unknown submitter"), tag: site + ":" + id, url: "/GcseVault/admin/" }));
       }
       if (ctx?.waitUntil) ctx.waitUntil(Promise.allSettled(pushJobs));
