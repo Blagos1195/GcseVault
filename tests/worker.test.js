@@ -826,3 +826,34 @@ test("automatic bug feedback is stored with bounded diagnostic metadata", async 
   assert.equal(record.fingerprint, "abc123");
   assert.equal(record.page, "/GcseVault/revision/");
 });
+
+test("review schedule routes authenticate and always scope writes to the signed-in account", async () => {
+  const env = makeEnv([{ user_key: "account-key", username: "student" }]);
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    const bind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = bind(...values);
+      if (sql.includes("SELECT s.user_key, u.username, u.role FROM account_sessions")) {
+        bound.first = async () => ({ user_key: "account-key", username: "student", role: "user" });
+      } else if (sql.includes("FROM account_credentials")) {
+        bound.first = async () => ({ user_key: "account-key" });
+      } else if (sql.includes("SELECT schedules_json FROM review_schedules")) {
+        bound.first = async () => null;
+      }
+      return bound;
+    };
+    return statement;
+  };
+  const denied = await call("/review-schedules?site=qv", env);
+  assert.equal(denied.status, 401);
+  const token = "a".repeat(64);
+  const saved = await call("/review-schedules", env, {
+    site: "qv",
+    userKey: "different-account",
+    schedules: { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } }
+  }, { "X-Account-Session": token });
+  assert.equal(saved.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
+});
