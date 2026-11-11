@@ -969,8 +969,10 @@ async function syncFromWorker(){
         const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
         if(restored._status==='approved-private'){
           S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
-          if(!S.custom.some(saved=>String(saved.id)===String(restored.id)))S.custom.push(restored);
-          syncedPending++;
+          if(!S.custom.some(saved=>String(saved.id)===String(restored.id))){
+            S.custom.push(restored);
+            syncedPending++;
+          }
         }else if(!existing){
           S.pending.push(restored);
           syncedPending++;
@@ -978,7 +980,7 @@ async function syncFromWorker(){
           Object.assign(existing,restored);
         }
       });
-      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} pending submission${syncedPending===1?'':'s'}`,3000);}
+      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
     }
     // Check for rejections
     const rejectedIds=Array.isArray(u.qv_rejected_ids)?u.qv_rejected_ids:[];
