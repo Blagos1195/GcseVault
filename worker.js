@@ -401,8 +401,9 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT username, role, ai_access FROM users ORDER BY username COLLATE NOCASE"
+        "SELECT username, role, ai_access, leaderboard_hidden FROM users ORDER BY username COLLATE NOCASE"
       ).all();
       return new Response(JSON.stringify({ users: results }), {
         headers: { ...cors, "Content-Type": "application/json" }
