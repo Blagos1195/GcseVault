@@ -846,12 +846,17 @@ async function syncFromWorker(){
       const localPendingIds=new Set(S.pending.map(p=>String(p.id)));
       let syncedPending=0;
       remotePending.forEach(item=>{
-        if(!localPendingIds.has(String(item.id))){
-          const restored={...item,_submittedByMe:true,_status:item._status||'pending'};
-          if(restored._status==='approved-private'){
-            if(!S.custom.some(saved=>String(saved.id)===String(restored.id)))S.custom.push(restored);
-          }else S.pending.push(restored);
+        const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
+        const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
+        if(restored._status==='approved-private'){
+          S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
+          if(!S.custom.some(saved=>String(saved.id)===String(restored.id)))S.custom.push(restored);
           syncedPending++;
+        }else if(!existing){
+          S.pending.push(restored);
+          syncedPending++;
+        }else if(restored._status==='denied'){
+          Object.assign(existing,restored);
         }
       });
       if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} pending submission${syncedPending===1?'':'s'}`,3000);}
