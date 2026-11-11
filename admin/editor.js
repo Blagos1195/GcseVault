@@ -36,7 +36,7 @@ async function saveSubmission(){
   data.id=selected.id;
   if(selected.submittedAt)data.submittedAt=selected.submittedAt;
   if(selected.submittedBy)data.submittedBy=selected.submittedBy;
-  const routes={quote:"/update-pending",date:"/dv/update-pending","revision-note":"/revision/public/update"};
+  const routes={quote:"/update-pending",date:"/dv/update-pending",feedback:"/feedback/update","revision-note":"/revision/public/update"};
   const path=routes[kind];
   if(!path){output.className="error";output.textContent="This submission type cannot be edited.";return;}
   const body={id};
