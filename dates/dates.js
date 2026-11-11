@@ -2775,15 +2775,18 @@ async function saveFact(){
 
 async function deletePendingFact(id){
   if(!confirm('Remove this pending fact from your library?\nIf it hasn\'t been reviewed yet, the submission will also be withdrawn.'))return;
-  const k = getUserKey();
-  if(k){
+  const item=S.pending.find(p=>String(p.id)===String(id));
+  const k=getUserKey();
+  if(item?._rejected||item?._status==='denied'){
     try{
-      await fetch(WORKER_URL+'/dv/withdraw',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userKey:k,id})
-      });
-    }catch(e){/* non-fatal */}
+      const response=await fetch(WORKER_URL+'/submissions/private/remove',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({site:'dv',id})});
+      if(!response.ok)throw new Error(await response.text());
+    }catch(e){toast('Could not remove this submission.');return;}
+  }else if(k){
+    try{
+      const response=await fetch(WORKER_URL+'/dv/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:k,id})});
+      if(!response.ok)throw new Error(await response.text());
+    }catch(e){toast('Could not withdraw this submission.');return;}
   }
   S.pending = S.pending.filter(p=>String(p.id)!==String(id));
   save(); lbUpdate(); buildNav(); toast('Submission removed'); render();
