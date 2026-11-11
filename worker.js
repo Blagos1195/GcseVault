@@ -1788,7 +1788,7 @@ export default {
         for (const key of page.keys) {
           const value = await env.REVISION.get(key.name, "json");
           if (value) {
-            const { ownerKey, ...publicValue } = value;
+            const { ownerKey, submittedBy, submittedAt, originalSubmission, ...publicValue } = value;
             notes.push({ ...publicValue, owned: Boolean(requesterKey && ownerKey === requesterKey) });
           }
         }
