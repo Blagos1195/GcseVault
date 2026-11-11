@@ -1369,6 +1369,32 @@ export default {
       });
     }
 
+    if (url.pathname === "/feedback/update" && request.method === "POST") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "").trim();
+      const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
+      if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
+      const existing = await env.FEEDBACK.get(id, "json");
+      if (!existing) return new Response("Feedback not found", { status: 404, headers: cors });
+      const clean = value => String(value ?? "").replace(/[<>]/g, "").trim().slice(0, 10000);
+      const updated = {
+        ...existing,
+        type: clean(data.type ?? existing.type).slice(0, 80),
+        title: clean(data.title ?? existing.title).slice(0, 200),
+        description: clean(data.description ?? existing.description),
+        device: clean(data.device ?? existing.device).slice(0, 200),
+        browser: clean(data.browser ?? existing.browser).slice(0, 200),
+        appVersion: clean(data.appVersion ?? existing.appVersion).slice(0, 100),
+        sourceApplication: clean(data.sourceApplication ?? existing.sourceApplication).slice(0, 100),
+        id,
+        timestamp: existing.timestamp
+      };
+      if (!updated.type || !updated.title || !updated.description) return new Response("Type, title and description are required.", { status: 400, headers: cors });
+      await env.FEEDBACK.put(id, JSON.stringify(updated));
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     // ── FEEDBACK DELETE (admin only) ──────────────────────────────────────────
     if (url.pathname === "/feedback/delete" && request.method === "POST") {
       if (!await isAuthorized(url, request)) {
