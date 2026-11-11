@@ -160,6 +160,13 @@ window.prepareRevisionAccountSwitch=function(){
 };
 window.activateRevisionAccount=function(userKey){
   const key=VaultUser.getAccountSession()?userKey:null;
+  if(key&&!localStorage.getItem(revisionSnapshotKey(key))){
+    let anonymous=null;
+    try{anonymous=JSON.parse(localStorage.getItem(revisionSnapshotKey('anonymous'))||'null');}catch{}
+    if(anonymous&&(anonymous.cards?.length||anonymous.accountSets?.some(set=>set.cards?.length))&&window.confirm("This device has revision data that is not linked to an account. Import it into "+VaultUser.getUsername()+"? Choose Cancel to keep it separate.")){
+      localStorage.setItem(revisionSnapshotKey(key),JSON.stringify(anonymous));
+    }
+  }
   restoreRevisionSnapshot(key);
   state.accountMessage='';
   state.accountMessageType='success';
