@@ -732,3 +732,55 @@ test("automatic bug reports redact secrets and identify the failing site", async
   assert.equal(requests[0].body.page, "/GcseVault/revision/");
   assert.doesNotMatch(JSON.stringify(requests[0].body), /secret-value|student@example.com|session=private/);
 });
+
+
+test("review schedule responses cannot cross accounts during an account switch", async () => {
+  const source = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const start = source.indexOf("let reviewScheduleScope=");
+  const end = source.indexOf("\n\nfunction save(){", start);
+  assert.ok(start >= 0 && end > start);
+  let account = { token: "token-A", key: "account-A" };
+  let resolveA;
+  const requests = [];
+  const storage = new Map([["qv_srs:account-A", JSON.stringify({ a: { updatedAt: "2026-11-10T10:00:00.000Z" } })]]);
+  const context = {
+    S: { srsData: { a: { updatedAt: "2026-11-10T10:00:00.000Z" } } },
+    VaultUser: { getAccountSession: () => account.token, getKey: () => account.key },
+    WORKER_URL: "https://worker.example",
+    navigator: { onLine: true },
+    localStorage: {
+      getItem(key) { return storage.get(key) ?? null; },
+      setItem(key, value) { storage.set(key, value); }
+    },
+    window: { addEventListener() {}, confirm() { return false; } },
+    fetch: (url, options) => {
+      const token = options.headers["X-Account-Session"];
+      if (options.method === "POST") {
+        requests.push({ method: "POST", token, schedules: JSON.parse(options.body).schedules });
+        return Promise.resolve({ ok: true });
+      }
+      requests.push({ method: "GET", token });
+      if (token === "token-A") return new Promise(resolve => { resolveA = resolve; });
+      return Promise.resolve({ ok: true, json: async () => ({ schedules: { b: { updatedAt: "2026-11-11T10:00:00.000Z" } } }) });
+    },
+    Date,
+    Promise,
+    Object,
+    JSON,
+    console,
+    setTimeout,
+    clearTimeout
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__sync = syncReviewSchedules;", context);
+  const first = context.__sync();
+  await Promise.resolve();
+  account = { token: "token-B", key: "account-B" };
+  const second = context.__sync();
+  resolveA({ ok: true, json: async () => ({ schedules: { a: { updatedAt: "2026-11-10T10:00:00.000Z" } } }) });
+  await Promise.all([first, second]);
+  await new Promise(resolve => setImmediate(resolve));
+  const posts = requests.filter(request => request.method === "POST");
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].token, "token-B");
+  assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
+});
