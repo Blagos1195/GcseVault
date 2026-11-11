@@ -658,7 +658,7 @@ async function syncReviewSchedules(){
       localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
       const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify({site:"dv",schedules:S.srsData})});
       if(!saved.ok)throw new Error("Could not save review schedules");
-    }catch(error){console.warn("Review schedule sync failed:",error);}
+    }catch(error){console.warn("Review schedule sync failed:",error);window.VaultBugReporter?.capture(error,{detail:"DateVault review schedule sync"});}
   })();
   reviewScheduleSyncPromise=run;
   try{await run;}finally{
