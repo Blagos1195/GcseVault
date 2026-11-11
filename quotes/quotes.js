@@ -2562,7 +2562,7 @@ function rAdd(){
   </div>
   ${myPending.length>0?`
   <div class="div"></div>
-  <div class="sec">My Pending Submissions</div>
+  <div class="sec">My Submissions</div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">These quotes are visible to you while awaiting admin approval. You can withdraw any that are still pending.</div>
   ${myPending.map(q=>`
   <div class="qc" style="border-left:3px solid ${q._rejected?'var(--coral)':'var(--amber)'};max-width:540px;margin-bottom:7px">
