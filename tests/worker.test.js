@@ -689,7 +689,8 @@ test("Revision leaderboard reads from D1", async () => {
   const env = makeEnv();
   let query = "";
   env.DB.prepare = sql => {
-    query = sql;
+    if (sql.includes("PRAGMA table_info(users)")) return { all: async () => ({ results: [{ name: "leaderboard_hidden" }] }) };
+    if (sql.includes("FROM revision_leaderboard")) query = sql;
     return { all: async () => ({ results: [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }] }) };
   };
   env.REVISION.list = async () => {
