@@ -618,3 +618,17 @@ test("all site admin navigation points to the shared workspace", () => {
     assert.doesNotMatch(app, /label:'Admin'|admin:rAdmin/);
   }
 });
+
+test("central admin workspace includes owner account management controls", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(admin, /function renderOwnerAccounts\([\s\S]*?if\(AdminManager\.role!=='owner'\)return ''/);
+  assert.match(admin, /AdminManager\.setRole\(username,role\)/);
+  assert.match(admin, /AdminManager\.setAIAccess/);
+  assert.match(admin, /setLeaderboardHidden/);
+  assert.match(admin, /AdminManager\.migrateStorage\(\)/);
+  assert.match(shared, /this\.users = this\.role === 'owner' \? \(await this\.request\('\/admin\/users'\)\)/);
+  assert.match(worker, /if \(actor\.role !== "owner"\) return new Response\("Owner access required"/);
+  assert.match(worker, /if \(!user \|\| !\["owner", "admin"\]\.includes\(user\.role\)\) return null/);
+});
