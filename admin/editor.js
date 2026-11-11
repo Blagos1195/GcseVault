@@ -3,6 +3,7 @@ const params=new URLSearchParams(location.search);
 const kind=params.get("kind")||"";
 const id=params.get("id")||"";
 let selected=null;
+let loaded=false;
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 window.openModal=html=>{document.getElementById("modal").innerHTML=html;document.getElementById("modal-bg").classList.add("open");};
 window.closeModal=()=>document.getElementById("modal-bg").classList.remove("open");
@@ -12,9 +13,9 @@ function renderEditor(){
     app.innerHTML='<h1>Submission editor</h1><p class="sub">Admin sign-in is required.</p><button onclick="VaultUser.showAccountDialog()">Account settings</button><a class="button" href="./">Return to queue</a>';
     return;
   }
-  if(!selected){
+  if(!loaded){
     app.innerHTML='<div class="loading">Loading submission…</div>';
-    if(!AdminManager.loading)AdminManager.refresh().then(()=>{selected=AdminManager.items.find(item=>item._kind===kind&&String(item.id)===id)||null;renderEditor();});
+    if(!AdminManager.loading)AdminManager.refresh().then(()=>{selected=AdminManager.items.find(item=>item._kind===kind&&String(item.id)===id)||null;loaded=true;renderEditor();});
     return;
   }
   if(!selected){
