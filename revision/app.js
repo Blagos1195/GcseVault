@@ -172,6 +172,7 @@ window.activateRevisionAccount=function(userKey){
     }
   }
   restoreRevisionSnapshot(key);
+  state.syncStatus=key?'syncing':'local';
   state.accountMessage='';
   state.accountMessageType='success';
   renderRevision();
