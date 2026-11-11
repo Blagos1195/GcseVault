@@ -1379,7 +1379,6 @@ const AdminManager = {
     try {
       const body = { id: item.id };
       if (action === 'edit') {
-        const editable = { ...item };
         window.location.href = `/GcseVault/admin/editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}`;
         return;
       }
