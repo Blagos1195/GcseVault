@@ -518,9 +518,12 @@ export default {
       if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
       if (["qv", "dv"].includes(notification.site)) {
         const pendingDataColumn = notification.site + "_pending_data";
-        const row = await env.DB.prepare("SELECT " + pendingDataColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
-        let pendingData = [];
+        const rejectedColumn = notification.site + "_rejected_ids";
+        const row = await env.DB.prepare("SELECT " + pendingDataColumn + ", " + rejectedColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
+        let pendingData = [], rejectedIds = [];
         try { pendingData = JSON.parse(row?.[pendingDataColumn] || "[]"); } catch {}
+        try { rejectedIds = JSON.parse(row?.[rejectedColumn] || "[]"); } catch {}
+        if (notification.status === "denied") rejectedIds = rejectedIds.filter(value => String(value) !== notification.item_id);
         if (notification.status === "denied" && choice === "remove") {
           pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
         } else if (notification.status === "approved") {
@@ -533,7 +536,7 @@ export default {
           pendingData = pendingData.map(item => String(item.id) === notification.item_id ? { ...item, _status: "denied" } : item);
           if (!pendingData.some(item => String(item.id) === notification.item_id) && payload.original) pendingData.push({ ...payload.original, id: notification.item_id, _status: "denied" });
         }
-        await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), new Date().toISOString(), account.user_key).run();
+        await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
       }
       await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
