@@ -387,8 +387,8 @@ const VaultUser = {
 
   async logoutAccount() {
     const token = this.getAccountSession();
-    if (token && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
-    if (token && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+    if (token && typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
+    if (token && typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
     if (token) {
       const response = await fetch(`${this.WORKER_URL}/account/logout`, {
         method: 'POST',
@@ -400,8 +400,8 @@ const VaultUser = {
       }
     }
     if (!token || this.getAccountSession() === token) localStorage.removeItem('vault_account_session');
-    if (token && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
-    if (token && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+    if (token && typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
+    if (token && typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
   },
 
   showAccountDialog() {
