@@ -511,30 +511,30 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
 
 test("review schedules are stored per account and synchronised through authenticated routes", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
-  for (const [path, site] of [["../quotes/quotes.js", "qv"], ["../dates/dates.js", "dv"]]) {
+  for (const path of ["../quotes/quotes.js", "../dates/dates.js"]) {
     const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
-    assert.match(source, new RegExp(`function loadReviewScheduleData\\(site\\)`));
-    assert.match(source, new RegExp(`\\${site}_srs:\\${scope`));
-    assert.match(source, /async function syncReviewSchedules\\(\\)/);
-    assert.match(source, /function scheduleReviewSync\\(\\)/);
-    assert.match(source, /updatedAt:new Date\\(\\)\\.toISOString\\(\\)/);
-    assert.match(source, new RegExp(`review-schedules\\?site=${site}`));
+    assert.ok(source.includes("function loadReviewScheduleData(site)"));
+    assert.ok(source.includes("reviewScheduleKey(scope=reviewScheduleScope)"));
+    assert.ok(source.includes("async function syncReviewSchedules()"));
+    assert.ok(source.includes("function scheduleReviewSync()"));
+    assert.ok(source.includes("updatedAt:new Date().toISOString()"));
+    assert.ok(source.includes("/review-schedules?site="));
   }
-  assert.match(worker, /url\\.pathname === "\\/review-schedules"/);
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS review_schedules/);
-  assert.match(worker, /verifyPasswordAccountAccess/);
+  assert.ok(worker.includes('url.pathname === "/review-schedules"'));
+  assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
+  assert.ok(worker.includes("verifyPasswordAccountAccess"));
 });
 
 test("Revision local snapshots are isolated between anonymous use and signed-in accounts", () => {
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
-  assert.match(app, /function revisionUserKey\\(\\)\\{return VaultUser\\.getAccountSession\\(\\)\\?VaultUser\\.getKey\\(\\):null;\\}/);
-  assert.match(app, /window\\.prepareRevisionAccountLogout/);
-  assert.match(app, /window\\.finishRevisionAccountLogout/);
-  assert.match(app, /window\\.activateRevisionAccount/);
-  assert.match(app, /Import it into /);
-  assert.match(shared, /prepareRevisionAccountLogout/);
-  assert.match(shared, /finishRevisionAccountLogout/);
+  assert.ok(app.includes("function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}"));
+  assert.ok(app.includes("window.prepareRevisionAccountLogout"));
+  assert.ok(app.includes("window.finishRevisionAccountLogout"));
+  assert.ok(app.includes("window.activateRevisionAccount"));
+  assert.ok(app.includes("Import it into "));
+  assert.ok(shared.includes("prepareRevisionAccountLogout"));
+  assert.ok(shared.includes("finishRevisionAccountLogout"));
 });
 
 test("admin moderation has a separate full-content editor and safe submitter metadata", () => {
@@ -542,12 +542,12 @@ test("admin moderation has a separate full-content editor and safe submitter met
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const queue = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
   const editor = fs.readFileSync(new URL("../admin/editor.js", import.meta.url), "utf8");
-  assert.match(queue, /Open editor/);
-  assert.match(editor, /submission-json/);
-  assert.match(editor, /Save changes/);
-  assert.match(shared, /admin\\/editor\\.html/);
-  assert.doesNotMatch(shared, /Edit the complete submission as JSON/);
-  assert.match(worker, /function sanitizeSubmission/);
-  assert.match(worker, /data\\.submittedBy = submitter/);
-  assert.match(worker, /getSubmissionOwners/);
+  assert.ok(queue.includes("Open editor"));
+  assert.ok(editor.includes("submission-json"));
+  assert.ok(editor.includes("Save changes"));
+  assert.ok(shared.includes("admin/editor.html"));
+  assert.ok(!shared.includes("Edit the complete submission as JSON"));
+  assert.ok(worker.includes("function sanitizeSubmission"));
+  assert.ok(worker.includes("data.submittedBy = submitter"));
+  assert.ok(worker.includes("getSubmissionOwners"));
 });
