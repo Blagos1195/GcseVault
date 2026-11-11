@@ -599,7 +599,7 @@ test("content submissions authenticate their account and admin moderation is aud
   assert.ok(worker.includes("recordApproval(\"revision-note\""));
   assert.ok(worker.includes("leaderboard_hidden"));
   assert.ok(worker.includes("/admin/leaderboard-visibility"));
-  assert.ok(admin.includes("Approval history"));
+  assert.ok(admin.includes("Moderation history"));
   assert.ok(admin.includes("Leaderboard visibility"));
 });
 
