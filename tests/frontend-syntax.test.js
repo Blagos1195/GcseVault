@@ -533,8 +533,11 @@ test("Revision local snapshots are isolated between anonymous use and signed-in 
   assert.ok(app.includes("window.finishRevisionAccountLogout"));
   assert.ok(app.includes("window.activateRevisionAccount"));
   assert.ok(app.includes("Import it into "));
+  assert.ok(app.includes("revisionStartupUserKey"));
+  assert.ok(app.includes("revisionUseLegacyLocal"));
   assert.ok(shared.includes("prepareRevisionAccountLogout"));
   assert.ok(shared.includes("finishRevisionAccountLogout"));
+  assert.ok(shared.includes("typeof window !=="));
 });
 
 test("admin moderation has a separate full-content editor and safe submitter metadata", () => {
