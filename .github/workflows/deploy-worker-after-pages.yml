@@ -5,7 +5,7 @@ on:
 
 jobs:
   deploy:
-    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'github-pages' && github.event.deployment.ref == 'main'
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'github-pages'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
