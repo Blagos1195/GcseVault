@@ -99,10 +99,26 @@ export default {
       if (!columns.results.some(column => column.name === "leaderboard_hidden")) await env.DB.prepare("ALTER TABLE users ADD COLUMN leaderboard_hidden INTEGER NOT NULL DEFAULT 0").bind().run();
     }
 
-    async function recordApproval(site, id, item, actor) {
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
+    async function ensureModerationTables() {
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").run();
+    }
+    async function createSubmissionNotification(site, id, item, status, approvedItem = null) {
+      const userKey = String(item._submittedByUserKey || item.ownerKey || "");
+      if (!userKey) return;
+      await ensureModerationTables();
+      const title = String(item.text || item.event || item.title || "Untitled submission").slice(0, 300);
+      const original = item.originalSubmission && typeof item.originalSubmission === "object" ? item.originalSubmission : item;
+      const payload = JSON.stringify({ original, approved: approvedItem || null });
+      await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
+    }
+    async function recordModerationAction(site, id, item, actor, action) {
+      await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
-      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), "approved", new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
+    }
+    async function recordApproval(site, id, item, actor) {
+      return recordModerationAction(site, id, item, actor, "approved");
     }
     function sanitizeSubmission(value) {
       if (Array.isArray(value)) return value.map(sanitizeSubmission);
@@ -430,6 +446,24 @@ export default {
       const { results } = await env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all();
       return new Response(JSON.stringify({ entries: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
+    if (url.pathname === "/submissions/notifications" && request.method === "GET") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to view submission updates.", { status: 401, headers: cors });
+      await ensureModerationTables();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
+      return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/submissions/notifications/resolve" && request.method === "POST") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to update submission notifications.", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "");
+      const choice = String(body.choice || "");
+      if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
+      const result = await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
+      if (!result.meta?.changes) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
 
     if (url.pathname === "/admin/ai-access" && request.method === "POST") {
       const actor = await getSessionUser(url, request);
@@ -629,6 +663,7 @@ export default {
       const submitter = await getAccountSession(request);
       delete data.userKey;
       data.submittedBy = submitter?.username || "Account holder";
+      data._submittedByUserKey = userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -649,9 +684,12 @@ export default {
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       const publishedQuote = { ...quote };
       delete publishedQuote.submittedBy;
+      delete publishedQuote._submittedByUserKey;
+      delete publishedQuote.originalSubmission;
       delete publishedQuote.userKey;
       await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
       try {
+        await createSubmissionNotification("qv", id, quote, "approved", publishedQuote);
         await recordApproval("quote", id, quote, actor);
         await updateModerationRecords("qv", id, false);
       } catch {
@@ -671,8 +709,13 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quote = await env.QUOTEVAULT.get(id, "json");
+      if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       try {
+        await createSubmissionNotification("qv", id, quote, "denied");
+        await recordModerationAction("quote", id, quote, actor, "denied");
         await updateModerationRecords("qv", id, true);
       } catch {
         return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
@@ -695,7 +738,7 @@ export default {
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
       const existing = await env.QUOTEVAULT.get(id, "json");
       if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
+      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       delete updated.userKey;
       await env.QUOTEVAULT.put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
@@ -710,7 +753,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -739,6 +782,7 @@ export default {
       const submitter = await getAccountSession(request);
       delete data.userKey;
       data.submittedBy = submitter?.username || "Account holder";
+      data._submittedByUserKey = userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -830,9 +874,12 @@ export default {
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       const publishedFact = { ...fact };
       delete publishedFact.submittedBy;
+      delete publishedFact._submittedByUserKey;
+      delete publishedFact.originalSubmission;
       delete publishedFact.userKey;
       await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
       try {
+        await createSubmissionNotification("dv", id, fact, "approved", publishedFact);
         await recordApproval("date", id, fact, actor);
         await updateModerationRecords("dv", id, false);
       } catch {
@@ -851,8 +898,13 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const fact = await env.DV_PENDING.get(id, "json");
+      if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       try {
+        await createSubmissionNotification("dv", id, fact, "denied");
+        await recordModerationAction("date", id, fact, actor, "denied");
         await updateModerationRecords("dv", id, true);
       } catch {
         return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
@@ -1670,10 +1722,10 @@ export default {
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
-      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      const account = await env.DB.prepare("SELECT username FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
-      const publicNote = { id, ownerKey: userKey, title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
+      const publicNote = { id, ownerKey: userKey, submittedBy: account.username, submittedAt: new Date().toISOString(), title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
       await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1702,7 +1754,7 @@ export default {
           const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
           for (const key of page.keys) {
             const value = await env.REVISION.get(key.name, "json");
-            if (value) notes.push({ ...value, pending: prefix === "public-pending:" });
+            if (value) notes.push({ ...value, submittedBy: value.submittedBy || "Legacy submission", submittedAt: value.submittedAt || value.updatedAt, pending: prefix === "public-pending:" });
           }
           cursor = page.list_complete ? null : page.cursor;
         } while (cursor);
@@ -1718,6 +1770,7 @@ export default {
       const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await createSubmissionNotification("revision", id, note, "approved", note);
       await recordApproval("revision-note", id, note, actor);
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -1728,6 +1781,11 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      const note = await env.REVISION.get(`public-pending:${id}`, "json");
+      if (!note) return new Response("Note not found", { status: 404, headers: cors });
+      const actor = await getSessionUser(url, request);
+      await createSubmissionNotification("revision", id, note, "denied");
+      await recordModerationAction("revision-note", id, note, actor, "denied");
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1744,7 +1802,7 @@ export default {
       const existingPending = existing ? null : await env.REVISION.get(pendingKey, "json");
       const current = existing || existingPending;
       if (!current) return new Response("Note not found", { status: 404, headers: cors });
-      const updated = { ...current, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
+      const updated = { ...current, originalSubmission: current.originalSubmission || { title: current.title, subject: current.subject, level: current.level, cards: current.cards }, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
       await env.REVISION.put(existing ? publicKey : pendingKey, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true, note: updated }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1754,6 +1812,8 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      const note = await env.REVISION.get(`public:${id}`, "json") || await env.REVISION.get(`public-pending:${id}`, "json");
+      if (note) await recordModerationAction("revision-note", id, note, await getSessionUser(url, request), "removed");
       await env.REVISION.delete(`public:${id}`);
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
