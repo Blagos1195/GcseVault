@@ -4,6 +4,50 @@ window.openModal=html=>{document.getElementById("modal").innerHTML=html;document
 window.closeModal=()=>document.getElementById("modal-bg").classList.remove("open");
 window.render=renderAdmin;
 let moderationLog = [];
+let adminNotifications = [];
+let knownAdminNotificationIds = null;
+let adminNotificationPoll = null;
+async function loadAdminNotifications(notify = false){
+  const token=AdminManager.getToken();
+  if(!token)return;
+  try{
+    const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications`,{headers:{'X-Session-Token':token}});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    const data=await response.json();
+    adminNotifications=data.notifications||[];
+    const unread=adminNotifications.filter(item=>!item.read_at);
+    if(notify&&knownAdminNotificationIds&&'Notification' in window&&Notification.permission==='granted'){
+      unread.filter(item=>!knownAdminNotificationIds.has(item.id)).forEach(item=>{
+        const notification=new Notification('New GCSE Vault submission',{body:`${item.site}: ${item.title} · ${item.submitter}`,icon:'../favicon.ico',tag:item.id});
+        notification.onclick=()=>{window.focus();notification.close();};
+      });
+    }
+    knownAdminNotificationIds=new Set(adminNotifications.map(item=>item.id));
+    renderAdmin();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
+async function enableAdminBrowserAlerts(){
+  if(!('Notification' in window)){AdminManager.error='This browser does not support notifications.';renderAdmin();return;}
+  const permission=await Notification.requestPermission();
+  if(permission!=='granted'){AdminManager.error='Browser notifications were not enabled.';renderAdmin();return;}
+  await loadAdminNotifications(false);
+  AdminManager.error='';
+  renderAdmin();
+}
+async function markAdminNotificationsRead(){
+  const ids=adminNotifications.filter(item=>!item.read_at).map(item=>item.id);
+  if(!ids.length)return;
+  try{
+    const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/read`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids})});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    await loadAdminNotifications(false);
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
+function renderAdminNotifications(){
+  const unread=adminNotifications.filter(item=>!item.read_at).length;
+  const permission=('Notification' in window)?Notification.permission:'unsupported';
+  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminBrowserAlerts()">${permission==='granted'?'Browser alerts enabled':'Enable browser alerts'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
+}
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
   try{
@@ -117,6 +161,7 @@ function renderAdmin(){
   const publishedCount=items.filter(item=>item._pending===false).length;
   const counts=items.reduce((out,item)=>(out[item._kind]=(out[item._kind]||0)+1,out),{});
   app.innerHTML=`<div class="toolbar"><div><h1>Moderation queue</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh queue</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
+  ${renderAdminNotifications()}
   <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${publishedCount}</strong> published</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
   <div class="filters"><input aria-label="Search submissions" placeholder="Search submitted content, source, or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?"selected":""}>All types</option><option value="quote" ${kind==="quote"?"selected":""}>QuoteVault</option><option value="date" ${kind==="date"?"selected":""}>DateVault</option><option value="revision-note" ${kind==="revision-note"?"selected":""}>Revision notes</option><option value="feedback" ${kind==="feedback"?"selected":""}>Feedback</option></select></div>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
@@ -148,7 +193,10 @@ async function deleteFeedback(id){
     await AdminManager.refresh();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
-if(AdminManager.getToken())AdminManager.refresh().then(loadModerationLog);else AdminManager.checkStatus();
+if(AdminManager.getToken()){
+  AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);});
+  if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(true),30000);
+}else AdminManager.checkStatus();
 
 function renderQueueActions(item){
   if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\''+esc(item.id)+'\')">Delete</button>';
