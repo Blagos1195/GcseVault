@@ -145,7 +145,7 @@ function restoreRevisionSnapshot(userKey){
     state.xp=0;
     state.streak=0;
     state.lastReview='';
-    localStorage.removeItem(revisionLocalUpdatedAtKey());
+    localStorage.removeItem(revisionLocalUpdatedAtKey(userKey));
   }
   revisionActiveScope=userKey||null;
   saveRevision(true);
