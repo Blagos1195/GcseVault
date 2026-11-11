@@ -22,32 +22,45 @@ async function setLeaderboardHidden(username,hidden){
 }
 function renderOwnerAccounts(){
   if(AdminManager.role!=='owner')return '';
-  return `<section class="panel" style="margin-top:18px">
+  const query=(window.adminAccountQuery||'').trim().toLowerCase();
+  const role=window.adminAccountRole||'all';
+  const users=(AdminManager.users||[]).filter(user=>(role==='all'||user.role===role)&&String(user.username).toLowerCase().includes(query));
+  return \`<section class="panel" style="margin-top:18px">
     <h2>Owner controls</h2>
     <p class="sub">Manage account permissions, AI access, leaderboard visibility and legacy storage.</p>
     <div class="actions" style="margin-bottom:14px">
-      <button onclick="AdminManager.migrateStorage()" ${AdminManager.migrating?'disabled':''}>${AdminManager.migrating?'Migrating storage…':'Migrate legacy storage to D1'}</button>
+      <button onclick="AdminManager.migrateStorage()" \${AdminManager.migrating?'disabled':''}>\${AdminManager.migrating?'Migrating storage…':'Migrate legacy storage to D1'}</button>
       <button onclick="AdminManager.refresh()">Refresh accounts</button>
     </div>
-    ${AdminManager.migrationStatus?`<div class="notice">${esc(AdminManager.migrationStatus)}</div>`:''}
-    <div class="queue">${(AdminManager.users||[]).map(user=>`<article class="item">
-      <div><strong>${esc(user.username)}</strong><p>Current role: ${esc(user.role)} · AI access: ${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: ${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
+    \${AdminManager.migrationStatus?\`<div class="notice">\${esc(AdminManager.migrationStatus)}</div>\`:''}
+    <div class="filters">
+      <input aria-label="Search accounts" placeholder="Search usernames…" value="\${esc(query)}" oninput="window.adminAccountQuery=this.value;renderAdmin()">
+      <select aria-label="Filter accounts by role" onchange="window.adminAccountRole=this.value;renderAdmin()">
+        <option value="all" \${role==='all'?'selected':''}>All roles</option>
+        <option value="user" \${role==='user'?'selected':''}>Users</option>
+        <option value="admin" \${role==='admin'?'selected':''}>Admins</option>
+        <option value="owner" \${role==='owner'?'selected':''}>Owners</option>
+      </select>
+      <span class="sub">\${users.length} of \${(AdminManager.users||[]).length} accounts</span>
+    </div>
+    <div class="queue">\${users.map(user=>\`<article class="item">
+      <div><strong>\${esc(user.username)}</strong><p>Current role: \${esc(user.role)} · AI access: \${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: \${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
       <div class="item-actions">
-        <select aria-label="Role for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="changeAccountRole(this)" ${user.role==='owner'?'disabled':''}>
-          <option value="user" ${user.role==='user'?'selected':''}>User</option>
-          <option value="admin" ${user.role==='admin'?'selected':''}>Admin</option>
+        <select aria-label="Role for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="changeAccountRole(this)" \${user.role==='owner'?'disabled':''}>
+          <option value="user" \${user.role==='user'?'selected':''}>User</option>
+          <option value="admin" \${user.role==='admin'?'selected':''}>Admin</option>
         </select>
-        <select aria-label="AI access for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='1')" ${user.role!=='user'?'disabled':''}>
-          <option value="0" ${!user.ai_access?'selected':''}>AI off</option>
-          <option value="1" ${user.ai_access?'selected':''}>AI on</option>
+        <select aria-label="AI access for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="AdminManager.setAIAccess(this.dataset.username,this.value==='1')" \${user.role!=='user'?'disabled':''}>
+          <option value="0" \${!user.ai_access?'selected':''}>AI off</option>
+          <option value="1" \${user.ai_access?'selected':''}>AI on</option>
         </select>
-        <select aria-label="Leaderboard visibility for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')">
-          <option value="0" ${user.leaderboard_hidden?'':'selected'}>Leaderboard visible</option>
-          <option value="1" ${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
+        <select aria-label="Leaderboard visibility for \${esc(user.username)}" data-username="\${esc(user.username)}" onchange="setLeaderboardHidden(this.dataset.username,this.value==='1')">
+          <option value="0" \${user.leaderboard_hidden?'':'selected'}>Leaderboard visible</option>
+          <option value="1" \${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
         </select>
       </div>
-    </article>`).join('')||'<div class="empty">No accounts found.</div>'}</div>
-  </section>`;
+    </article>\`).join('')||'<div class="empty">No accounts match this filter.</div>'}</div>
+  </section>\`;
 }
 async function changeAccountRole(select){
   const username=select.dataset.username;
@@ -94,14 +107,15 @@ function renderAdmin(){
   const q=window.adminQuery||"";
   const kind=window.adminKind||"all";
   const filtered=items.filter(item=>(kind==="all"||item._kind===kind)&&JSON.stringify(item).toLowerCase().includes(q.toLowerCase()));
-  const pendingCount=items.filter(item=>item._kind!=="revision-note"||item._pending).length;
+  const pendingCount=items.filter(item=>item._pending!==false&&item._kind!=="feedback").length;
+  const publishedCount=items.filter(item=>item._pending===false).length;
   const counts=items.reduce((out,item)=>(out[item._kind]=(out[item._kind]||0)+1,out),{});
   app.innerHTML=`<div class="toolbar"><div><h1>Moderation queue</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh queue</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
-  <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
+  <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${publishedCount}</strong> published</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
   <div class="filters"><input aria-label="Search submissions" placeholder="Search submitted content, source, or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?"selected":""}>All types</option><option value="quote" ${kind==="quote"?"selected":""}>QuoteVault</option><option value="date" ${kind==="date"?"selected":""}>DateVault</option><option value="revision-note" ${kind==="revision-note"?"selected":""}>Revision notes</option><option value="feedback" ${kind==="feedback"?"selected":""}>Feedback</option></select></div>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
   ${AdminManager.loading?'<div class="notice">Refreshing submissions…</div>':""}
-  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p></div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>${renderOwnerAccounts()}${renderApprovalHistory()}`;
+  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p></div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>${renderOwnerAccounts()}${renderApprovalHistory()}`;
 }
 async function bootstrapAdmin(){
   const input=document.getElementById("admin-bootstrap-key");
@@ -131,9 +145,20 @@ async function deleteFeedback(id){
 if(AdminManager.getToken())AdminManager.refresh().then(loadModerationLog);else AdminManager.checkStatus();
 
 function renderQueueActions(item){
-  if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\''+esc(item.id)+'\')">Delete</button>';
-  if(item._kind==="revision-note"&&!item._pending)return '<button class="danger" onclick="deleteRevisionNote(\''+esc(item.id)+'\')">Delete</button>';
-  return '<button class="success" onclick="moderate(\''+esc(item._kind)+'\',\'approve\',\''+esc(item.id)+'\')">Approve</button><button class="danger" onclick="moderate(\''+esc(item._kind)+'\',\'reject\',\''+esc(item.id)+'\')">Reject</button>';
+  if(item._kind==="feedback")return '<button class="danger" onclick="deleteFeedback(\\''+esc(item.id)+'\\')">Delete</button>';
+  if(item._pending===false&&item._kind==="revision-note")return '<button class="danger" onclick="deleteRevisionNote(\\''+esc(item.id)+'\\')">Remove from public site</button>';
+  if(item._pending===false)return '<button class="danger" onclick="removePublished(\\''+esc(item._kind)+'\\',\\''+esc(item.id)+'\\')">Remove from public site</button>';
+  return '<button class="success" onclick="moderate(\\''+esc(item._kind)+'\\',\\'approve\\',\\''+esc(item.id)+'\\')">Approve</button><button class="danger" onclick="moderate(\\''+esc(item._kind)+'\\',\\'reject\\',\\''+esc(item.id)+'\\')">Reject</button>';
+}
+async function removePublished(kind,id){
+  if(!confirm("Remove this approved item from the public site? It will no longer be visible to everyone."))return;
+  const path=kind==="quote"?"/delete":"/dv/delete";
+  try{
+    const response=await fetch(\`\${VaultUser.WORKER_URL}\${path}\`,{method:"POST",headers:{"Content-Type":"application/json","X-Session-Token":AdminManager.getToken()},body:JSON.stringify({id})});
+    if(!response.ok)throw new Error(await response.text()||\`HTTP \${response.status}\`);
+    await AdminManager.refresh();
+    await loadModerationLog();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
 async function deleteRevisionNote(id){
   if(!confirm("Delete this public revision note?"))return;
