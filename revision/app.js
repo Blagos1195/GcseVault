@@ -34,29 +34,35 @@ function normalizeRevisionSet(set, fallbackId){
     } : {catalogues:{},attempts:[],mistakes:[],formulas:[],resources:[]}
   };
 }
-const existingRevisionSets = JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null');
-const activeSetId = localStorage.getItem(revisionActiveSetKey) || DEFAULT_REVISION_SET_ID;
+const revisionStartupUserKey = VaultUser.getAccountSession() ? VaultUser.getKey() : null;
+let revisionStartupSnapshot = null;
+try {
+  revisionStartupSnapshot = JSON.parse(localStorage.getItem(`revision_local_snapshot:${revisionStartupUserKey || 'anonymous'}`) || 'null');
+} catch {}
+const revisionUseLegacyLocal = !VaultUser.getKey();
+const existingRevisionSets = revisionStartupSnapshot?.accountSets || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(revisionAccountSetsKey) || 'null') : null);
+const activeSetId = revisionStartupSnapshot?.activeSetId || (revisionUseLegacyLocal ? localStorage.getItem(revisionActiveSetKey) : null) || DEFAULT_REVISION_SET_ID;
 const existingSetList = Array.isArray(existingRevisionSets) && existingRevisionSets.length ? existingRevisionSets.map(set => normalizeRevisionSet(set, DEFAULT_REVISION_SET_ID)) : [];
 const fallbackSet = normalizeRevisionSet({
   id: activeSetId,
   name: 'My main set',
-  cards: onlyDemoCards ? [] : (storedCards || []),
-  progress: JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}'),
-  xp: Number(localStorage.getItem('revision_xp') || 0),
-  streak: Number(localStorage.getItem('revision_streak') || 0),
-  lastReview: localStorage.getItem('revision_last_review') || ''
+  cards: revisionStartupSnapshot?.cards || (revisionUseLegacyLocal && !onlyDemoCards ? (storedCards || []) : []),
+  progress: revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {}),
+  xp: Number(revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)) || 0,
+  streak: Number(revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)) || 0,
+  lastReview: revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || ''
 }, activeSetId);
 const initialRevisionSets = existingSetList.length ? existingSetList : [fallbackSet];
 const selectedRevisionSet = initialRevisionSets.find(set => set.id === activeSetId) || initialRevisionSets[0];
 const state = {
-  cards: Array.isArray(selectedRevisionSet?.cards) ? selectedRevisionSet.cards : (onlyDemoCards ? [] : (storedCards || [])),
-  progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}')),
+  cards: Array.isArray(selectedRevisionSet?.cards) ? selectedRevisionSet.cards : (revisionStartupSnapshot?.cards || (revisionUseLegacyLocal && !onlyDemoCards ? (storedCards || []) : [])),
+  progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {})),
   accountSets: initialRevisionSets,
   activeSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
   view: 'overview', selected: null, studyIndex: 0, revealed: false,
-  xp: Number(selectedRevisionSet?.xp ?? Number(localStorage.getItem('revision_xp') || 0)),
-  streak: Number(selectedRevisionSet?.streak ?? Number(localStorage.getItem('revision_streak') || 0)),
-  lastReview: selectedRevisionSet?.lastReview || localStorage.getItem('revision_last_review') || '',
+  xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
+  streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
+  lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
   publicNotes: [], aiResult: null, aiNotice:'', syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
