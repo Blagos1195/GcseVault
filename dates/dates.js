@@ -630,27 +630,41 @@ function activateReviewScheduleScope(){
   reviewScheduleScope=next;
   localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
 }
+let reviewScheduleSyncPromise=null;
+let reviewScheduleSyncQueued=false;
 async function syncReviewSchedules(){
-  activateReviewScheduleScope();
-  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
-  if(!VaultUser.getAccountSession()||!VaultUser.getKey()||!navigator.onLine)return;
-  try{
-    const response=await fetch(`${WORKER_URL}/review-schedules?site=dv`);
-    if(!response.ok)throw new Error("Could not load review schedules");
-    const remote=await response.json();
-    const merged={...(remote.schedules||{})};
-    for(const [id,local] of Object.entries(S.srsData||{})){
-      const cloud=merged[id];
-      if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
-      const localAt=String(local?.updatedAt||"");
-      const cloudAt=String(cloud?.updatedAt||"");
-      if(localAt&&localAt>cloudAt)merged[id]=local;
-    }
-    S.srsData=merged;
+  if(reviewScheduleSyncPromise){reviewScheduleSyncQueued=true;return reviewScheduleSyncPromise;}
+  const run=(async()=>{
+    activateReviewScheduleScope();
     localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
-    const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:"dv",schedules:S.srsData})});
-    if(!saved.ok)throw new Error("Could not save review schedules");
-  }catch(error){console.warn("Review schedule sync failed:",error);}
+    const token=VaultUser.getAccountSession();
+    const userKey=VaultUser.getKey();
+    if(!token||!userKey||!navigator.onLine)return;
+    try{
+      const headers={"X-Account-Session":token};
+      const response=await fetch(`${WORKER_URL}/review-schedules?site=dv`,{headers});
+      if(!response.ok)throw new Error("Could not load review schedules");
+      const remote=await response.json();
+      if(token!==VaultUser.getAccountSession()||userKey!==VaultUser.getKey())return;
+      const merged={...(remote.schedules||{})};
+      for(const [id,local] of Object.entries(S.srsData||{})){
+        const cloud=merged[id];
+        if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
+        const localAt=String(local?.updatedAt||"");
+        const cloudAt=String(cloud?.updatedAt||"");
+        if(localAt&&localAt>cloudAt)merged[id]=local;
+      }
+      S.srsData=merged;
+      localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+      const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify({site:"dv",schedules:S.srsData})});
+      if(!saved.ok)throw new Error("Could not save review schedules");
+    }catch(error){console.warn("Review schedule sync failed:",error);window.VaultBugReporter?.capture(error,{detail:"DateVault review schedule sync"});}
+  })();
+  reviewScheduleSyncPromise=run;
+  try{await run;}finally{
+    reviewScheduleSyncPromise=null;
+    if(reviewScheduleSyncQueued){reviewScheduleSyncQueued=false;void syncReviewSchedules();}
+  }
 }
 function scheduleReviewSync(){
   activateReviewScheduleScope();
@@ -660,7 +674,7 @@ function scheduleReviewSync(){
 }
 window.syncReviewSchedules=syncReviewSchedules;
 window.addEventListener("storage",event=>{
-  if(event.key==="vault_userKey"||(event.key==="vault_account_session"&&!VaultUser.getAccountSession()))syncReviewSchedules();
+  if(event.key==="vault_userKey"||event.key==="vault_account_session")syncReviewSchedules();
 });
 
 
@@ -727,11 +741,11 @@ const setUserKey = (k) => VaultUser.setKey(k);
 async function lbUpdate(){
   const u=getUsername();
   if(!u)return;
-  const myPending=S.pending.filter(p=>p._submittedByMe);
+  const myPending=[...S.pending.filter(p=>p._submittedByMe),...S.custom.filter(p=>p._submittedByMe&&p._status==='approved-private')];
  const payload={
  username:u,site:'dv',mastered:S.mastered.size,xp:S.xp,
  mastered_ids:[...S.mastered].map(String),
- pending_ids:myPending.map(p=>String(p.id)),
+ pending_ids:myPending.filter(p=>p._status!=='denied'&&p._status!=='approved-private').map(p=>String(p.id)),
  pending_data:myPending,
  theme: localStorage.getItem('vt_theme') || 'default',
  streak:S.streak,max_streak:S.maxStreak
@@ -752,9 +766,51 @@ async function lbUpdate(){
 
 // Called any time mastery is granted — prompts for username if not set, then posts
 // ── Sync FROM worker on load (multi-device support) ──
+async function checkSubmissionNotifications(){
+  const token=VaultUser.getAccountSession();
+  if(!token)return false;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/notifications',{headers:{'X-Account-Session':token}});
+    if(!response.ok)return false;
+    const payload=await response.json();
+    const notice=(payload.notifications||[]).find(item=>item.site==='dv');
+    if(!notice)return false;
+    const approved=notice.status==='approved';
+    const message=approved
+      ?'Your date submission was approved. If an admin edited it, choose which version you want to keep in your own library.'
+      :'Your date submission was not approved. You can keep your original privately in your account or remove it.';
+    openModal(`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">${message}<br><strong>${String(notice.title||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong></div><div style="display:flex;gap:8px;flex-wrap:wrap">${approved?'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(&quot;replace&quot;)">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(&quot;remove&quot;)">Remove it</button>'}</div></div>`);
+    window._activeSubmissionNotification=notice;
+    return true;
+  }catch(error){return false;}
+}
+async function resolveSubmissionNotification(choice){
+  const notice=window._activeSubmissionNotification;
+  if(!notice)return;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/notifications/resolve',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({id:notice.id,choice})});
+    if(!response.ok)throw new Error(await response.text()||'Could not save your choice.');
+    if(notice.status==='approved'){
+      const chosen=choice==='replace'&&notice.payload?.approved?notice.payload.approved:notice.payload?.original;
+      S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
+      if(chosen&&!S.custom.some(item=>String(item.id)===String(notice.item_id)))S.custom.push({...chosen,_submittedByMe:true,_status:'approved-private'});
+    }else if(choice==='remove'){
+      S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
+    }else if(choice==='keep'){
+      const existing=S.pending.find(item=>String(item.id)===String(notice.item_id));
+      if(existing){existing._rejected=true;existing._status='denied';}
+      else if(notice.payload?.original)S.pending.push({...notice.payload.original,id:notice.item_id,_submittedByMe:true,_rejected:true,_status:'denied'});
+    }
+    window._activeSubmissionNotification=null;
+    closeModal();save();buildNav();render();
+    await checkSubmissionNotifications();
+  }catch(error){toast(error.message,4000);}
+}
+
 async function syncFromWorker(){
   const k=getUserKey();
   if(!k)return;
+  if(await checkSubmissionNotifications())return;
   try{
     const r=await fetch(WORKER_URL+'/lb/get?userKey='+encodeURIComponent(k));
     if(!r.ok)return;
@@ -807,12 +863,22 @@ async function syncFromWorker(){
       const localPendingIds=new Set(S.pending.map(p=>String(p.id)));
       let syncedPending=0;
       remotePending.forEach(item=>{
-        if(!localPendingIds.has(String(item.id))){
-          S.pending.push({...item,_submittedByMe:true,_status:'pending'});
+        const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
+        const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
+        if(restored._status==='approved-private'){
+          S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
+          if(!S.custom.some(saved=>String(saved.id)===String(restored.id))){
+            S.custom.push(restored);
+            syncedPending++;
+          }
+        }else if(!existing){
+          S.pending.push(restored);
           syncedPending++;
+        }else if(restored._status==='denied'){
+          Object.assign(existing,restored);
         }
       });
-      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} pending submission${syncedPending===1?'':'s'}`,3000);}
+      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
     }
     // Check for rejections
     const rejectedIds=Array.isArray(u.dv_rejected_ids)?u.dv_rejected_ids:[];
@@ -925,7 +991,7 @@ function showUsernameModal(onConfirm){
             setUserKey(uk);
           }
           
-          const myPending = S.pending ? S.pending.filter(p => p._submittedByMe) : [];
+          const myPending = [...(S.pending || []).filter(p => p._submittedByMe), ...(S.custom || []).filter(p => p._submittedByMe && p._status === 'approved-private')];
           
           // Construct full state bundle to satisfy strict backend checks
           const payload = {
@@ -935,7 +1001,7 @@ function showUsernameModal(onConfirm){
             mastered: S.mastered.size,
             xp: S.xp,
             mastered_ids: [...S.mastered].map(String),
-            pending_ids: myPending.map(p => String(p.id)),
+            pending_ids: myPending.filter(p => p._status !== 'denied' && p._status !== 'approved-private').map(p => String(p.id)),
             pending_data: myPending,
             theme: localStorage.getItem('vt_theme') || 'default'
           };
@@ -1348,7 +1414,7 @@ function rLib(){
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div class="dc-date">${q.year}</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">Pending</span>`:''}
+        ${q._submittedByMe&&q._status==='pending'?`<span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:1px 5px">${q._rejected?'Not approved':'Pending'}</span>`:''}
         ${S.hidden.has(q.id)
           ? `<button class="btn bsm" style="color:var(--amber);border-color:var(--amber);opacity:.7" onclick="toggleHidden('${q.id}')" title="Unhide">Hidden</button>`
           : S.mastered.has(q.id)
@@ -2629,7 +2695,7 @@ function runDump(){
 // ════════════════════════════════════════════════
 function rAdd(){
   const topicOpts=["Crime & Punishment","Weimar & Nazi Germany","Henry VIII","American West","Early Elizabethan England", "Superpower Relations and the Cold War", "Other"];
-  const myPending=S.pending.filter(p=>p._submittedByMe&&p._status==='pending');
+  const myPending=S.pending.filter(p=>p._submittedByMe&&(p._status==='pending'||p._status==='denied'));
   return`<div>
   ${backBtn()}
   <div class="pt">Add a Date/Fact</div>
@@ -2657,7 +2723,7 @@ function rAdd(){
   </div>
   ${myPending.length>0?`
   <div class="div"></div>
-  <div class="sec">My Pending Submissions</div>
+  <div class="sec">My Submissions</div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">These facts are visible to you while awaiting admin approval. You can withdraw any that are still pending.</div>
   ${myPending.map(q=>`
   <div class="dc" style="border-left:3px solid var(--amber);max-width:540px;margin-bottom:7px">
@@ -2667,10 +2733,10 @@ function rAdd(){
         <div class="dc-event">${q.event}</div>
         <div style="font-size:.7rem;color:var(--text2);margin-top:3px">${(q.significance||'').slice(0,100)}${(q.significance||'').length>100?'…':''}</div>
       </div>
-      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">Pending</span>
+      <span style="font-size:.6rem;background:rgba(245,166,35,.2);color:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;white-space:nowrap;flex-shrink:0">${q._rejected?'Not approved':'Pending'}</span>
     </div>
     ${q.submittedAt?`<div style="font-size:.62rem;color:var(--text3);margin-top:5px">Submitted: ${new Date(q.submittedAt).toLocaleString('en-GB')}</div>`:''}
-    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingFact('${q.id}')">✕ Withdraw</button>
+    <button class="btn bsm br" style="margin-top:8px" onclick="deletePendingFact('${q.id}')">${q._rejected?'Remove':'✕ Withdraw'}</button>
   </div>`).join('')}`:''}
   </div>`;
 }
@@ -2726,15 +2792,18 @@ async function saveFact(){
 
 async function deletePendingFact(id){
   if(!confirm('Remove this pending fact from your library?\nIf it hasn\'t been reviewed yet, the submission will also be withdrawn.'))return;
-  const k = getUserKey();
-  if(k){
+  const item=S.pending.find(p=>String(p.id)===String(id));
+  const k=getUserKey();
+  if(item?._rejected||item?._status==='denied'){
     try{
-      await fetch(WORKER_URL+'/dv/withdraw',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({userKey:k,id})
-      });
-    }catch(e){/* non-fatal */}
+      const response=await fetch(WORKER_URL+'/submissions/private/remove',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({site:'dv',id})});
+      if(!response.ok)throw new Error(await response.text());
+    }catch(e){toast('Could not remove this submission.');return;}
+  }else if(k){
+    try{
+      const response=await fetch(WORKER_URL+'/dv/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:k,id})});
+      if(!response.ok)throw new Error(await response.text());
+    }catch(e){toast('Could not withdraw this submission.');return;}
   }
   S.pending = S.pending.filter(p=>String(p.id)!==String(id));
   save(); lbUpdate(); buildNav(); toast('Submission removed'); render();

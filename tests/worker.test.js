@@ -92,6 +92,37 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("admin push subscriptions require an admin session and are stored per account", async () => {
+  const env = makeEnv();
+  const denied = await call("/admin/push/subscribe", env, {
+    endpoint: "https://push.example/subscription",
+    keys: { p256dh: "public-key", auth: "auth-key" }
+  });
+  assert.equal(denied.status, 401);
+
+  const allowed = await call("/admin/push/subscribe", env, {
+    endpoint: "https://push.example/subscription",
+    keys: { p256dh: "public-key", auth: "auth-key" }
+  }, { "X-Session-Token": "test-session" });
+  assert.equal(allowed.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO admin_push_subscriptions") && update.values[0] === "admin-key"));
+});
+
+test("submission notifications require the account session", async () => {
+  const env = makeEnv();
+  const response = await call("/submissions/notifications", env);
+  assert.equal(response.status, 401);
+});
+
+test("approved content is exposed to admins for later removal", async () => {
+  const env = makeEnv();
+  env.PUBLIC_QUOTES = { list: async () => ({ keys: [], list_complete: true }), get: async () => null };
+  env.DV_PUBLIC = { list: async () => ({ keys: [], list_complete: true }), get: async () => null };
+  const response = await call("/admin/published", env, null, { "X-Session-Token": "test-session" });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { quotes: [], dates: [] });
+});
+
 test("public leaderboard never exposes account keys", async () => {
   const env = makeEnv([{
     user_key: "private-account-key",
@@ -187,6 +218,7 @@ test("DateVault rejection keeps the pending submission when D1 cleanup fails", a
   env.QUOTEVAULT.get = async key => key === "session:test-session"
     ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" })
     : null;
+  env.DV_PENDING.get = async key => key === "fact-1" ? { id: "fact-1", event: "A date" } : null;
   env.DV_PENDING.delete = async () => { pendingDeleted = true; };
   env.DB.prepare = sql => ({
     bind: () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
@@ -211,14 +243,16 @@ test("QuoteVault rejection updates QuoteVault pending IDs without clearing unrel
     qv_rejected_ids: "[]"
   }]);
 
+  env.QUOTEVAULT.get = async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : key === "quote-1" ? { id: "quote-1", text: "A quote" } : null;
   const response = await call("/reject", env, {
     id: "quote-1"
   }, { "X-Session-Token": "test-session" });
 
   assert.equal(response.status, 200);
-  assert.equal(env.updates.length, 1);
-  assert.deepEqual(JSON.parse(env.updates[0].values[0]), ["quote-2"]);
-  assert.deepEqual(JSON.parse(env.updates[0].values[1]), ["quote-1"]);
+  const userUpdate = env.updates.find(update => update.sql.includes("UPDATE users SET qv_pending_ids"));
+  assert.ok(userUpdate);
+  assert.deepEqual(JSON.parse(userUpdate.values[0]), ["quote-2"]);
+  assert.deepEqual(JSON.parse(userUpdate.values[1]), ["quote-1"]);
 });
 
 test("DateVault withdrawal cannot delete another user's pending submission", async () => {
@@ -655,7 +689,8 @@ test("Revision leaderboard reads from D1", async () => {
   const env = makeEnv();
   let query = "";
   env.DB.prepare = sql => {
-    query = sql;
+    if (sql.includes("PRAGMA table_info(users)")) return { all: async () => ({ results: [{ name: "leaderboard_hidden" }] }) };
+    if (sql.includes("FROM revision_leaderboard")) query = sql;
     return { all: async () => ({ results: [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }] }) };
   };
   env.REVISION.list = async () => {
@@ -763,4 +798,62 @@ test("owner migration counts existing D1 records separately from newly copied re
   assert.equal(data.migrated, 0);
   assert.equal(data.alreadyPresent, 1);
   assert.equal(data.skipped, 0);
+});
+
+
+test("automatic bug feedback is stored with bounded diagnostic metadata", async () => {
+  const env = makeEnv();
+  const saved = new Map();
+  env.FEEDBACK = {
+    put: async (id, value) => saved.set(id, JSON.parse(value))
+  };
+  const response = await call("/feedback/submit", env, {
+    type: "Automatic bug report",
+    title: "TypeError: test failure",
+    description: "Automatically captured JavaScript error.\\nStack: test.js:1",
+    sourceApplication: "Revision",
+    errorName: "TypeError",
+    errorStack: "TypeError: test failure\\n at test.js:1",
+    errorLocation: "test.js:1:2",
+    fingerprint: "abc123",
+    page: "/GcseVault/revision/"
+  });
+  assert.equal(response.status, 200);
+  const record = [...saved.values()][0];
+  assert.equal(record.type, "Automatic bug report");
+  assert.equal(record.sourceApplication, "Revision");
+  assert.equal(record.errorName, "TypeError");
+  assert.equal(record.fingerprint, "abc123");
+  assert.equal(record.page, "/GcseVault/revision/");
+});
+
+test("review schedule routes authenticate and always scope writes to the signed-in account", async () => {
+  const env = makeEnv([{ user_key: "account-key", username: "student" }]);
+  const prepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = prepare(sql);
+    const bind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = bind(...values);
+      if (sql.includes("SELECT s.user_key, u.username, u.role FROM account_sessions")) {
+        bound.first = async () => ({ user_key: "account-key", username: "student", role: "user" });
+      } else if (sql.includes("FROM account_credentials")) {
+        bound.first = async () => ({ user_key: "account-key" });
+      } else if (sql.includes("SELECT schedules_json FROM review_schedules")) {
+        bound.first = async () => null;
+      }
+      return bound;
+    };
+    return statement;
+  };
+  const denied = await call("/review-schedules?site=qv", env);
+  assert.equal(denied.status, 401);
+  const token = "a".repeat(64);
+  const saved = await call("/review-schedules", env, {
+    site: "qv",
+    userKey: "different-account",
+    schedules: { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } }
+  }, { "X-Account-Session": token });
+  assert.equal(saved.status, 200);
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
 });

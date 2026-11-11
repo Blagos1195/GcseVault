@@ -63,7 +63,7 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
-  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
+  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
@@ -172,6 +172,7 @@ window.activateRevisionAccount=function(userKey){
     }
   }
   restoreRevisionSnapshot(key);
+  state.syncStatus=key?'syncing':'local';
   state.accountMessage='';
   state.accountMessageType='success';
   renderRevision();
@@ -382,6 +383,7 @@ function topicAnalytics(){const grouped={};state.cards.forEach(card=>{const topi
 function revisionUserKey(){return VaultUser.getAccountSession()?VaultUser.getKey():null;}
 function revisionUsername(){return VaultUser.getUsername();}
 let revisionSyncTimer=null;
+let revisionSyncQueued=false;
 let revisionRemoteUpdatedAt=null;
 let revisionConflictData=null;
 let revisionSyncConflict=false;
@@ -412,9 +414,13 @@ function applyRevisionRemoteData(data){
 }
 async function syncRevision(keepalive=false){
   if(revisionActiveScope!==revisionUserKey())return;
-  if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()||state.syncing||revisionSyncConflict){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
+  if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()){if(!VaultUser.getAccountSession())VaultUser.showAccountDialog();return;}
+  if(revisionSyncConflict)return;
+  if(state.syncing){revisionSyncQueued=true;return;}
   state.syncing=true;
+  state.syncStatus='syncing';
   const syncUserKey=revisionUserKey();
+  const syncToken=VaultUser.getAccountSession();
   const syncLocalKey=revisionLocalUpdatedAtKey();
   let syncAgain=false;
   try{
@@ -432,11 +438,14 @@ async function syncRevision(keepalive=false){
       streak: state.streak,
       lastReview: state.lastReview
     };
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify(payload),keepalive});
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':syncToken},body:JSON.stringify(payload),keepalive});
+    if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     if(response.status===409){
       const conflict=await response.json();
+      if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
       revisionConflictData=conflict.data;
       revisionSyncConflict=true;
+      state.syncStatus='conflict';
       state.accountMessage='Revision data changed on another device. Your local copy has been preserved.';
       state.accountMessageType='error';
       renderRevision();
@@ -444,15 +453,22 @@ async function syncRevision(keepalive=false){
     }
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const result=await response.json();
+    if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
+    state.syncStatus='synced';
+    state.accountMessage='';
     revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
     if(localStorage.getItem(syncLocalKey)===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(syncLocalKey,revisionRemoteUpdatedAt);
     else syncAgain=true;
   }catch(error){
-    state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
-    state.accountMessageType='error';
+    if(syncToken===VaultUser.getAccountSession()&&syncUserKey===revisionUserKey()&&revisionActiveScope===syncUserKey){
+      state.syncStatus='error';
+      state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
+      window.VaultBugReporter?.capture(error,{detail:'Revision account sync'});
+      state.accountMessageType='error';
+    }
   }finally{
     state.syncing=false;
-    if(syncAgain)syncRevisionSoon();
+    if(syncAgain||revisionSyncQueued){revisionSyncQueued=false;if(!revisionSyncConflict)syncRevisionSoon();}
   }
 }
 async function resolveRevisionSyncConflict(choice){
@@ -476,38 +492,89 @@ async function resolveRevisionSyncConflict(choice){
   await syncRevision();
   renderRevision();
 }
+let revisionLoadPromise=null;
+let revisionLoadQueued=false;
 async function loadRevision(){
-  if(revisionActiveScope!==revisionUserKey()||!revisionUserKey()||!VaultUser.getAccountSession())return;
-  if(!localStorage.getItem(revisionSnapshotKey(revisionUserKey())))captureRevisionSnapshot(revisionUserKey());
-  try{
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(revisionUserKey())}`,{headers:{'X-Account-Session':VaultUser.getAccountSession()}});
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const payload=await response.json();
-    if(payload.found&&payload.data){
-      const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
-      if(localUpdatedAt&&payload.data.updatedAt&&localUpdatedAt>payload.data.updatedAt){
-        revisionRemoteUpdatedAt=payload.data.updatedAt;
-        state.view='settings';
-        revisionConflictData=payload.data;
-        revisionSyncConflict=true;
-        state.accountMessage='This device has newer unsynced revision changes. Choose which copy to keep in Settings.';
-        state.accountMessageType='error';
+  if(revisionLoadPromise){revisionLoadQueued=true;return revisionLoadPromise;}
+  const run=(async()=>{
+    const requestedUserKey=revisionUserKey();
+    const requestedToken=VaultUser.getAccountSession();
+    if(revisionActiveScope!==requestedUserKey||!requestedUserKey||!requestedToken)return;
+    if(!localStorage.getItem(revisionSnapshotKey(requestedUserKey)))captureRevisionSnapshot(requestedUserKey);
+    state.syncStatus='syncing';
+    try{
+      const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(requestedUserKey)}`,{headers:{'X-Account-Session':requestedToken}});
+      if(requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()||revisionActiveScope!==requestedUserKey)return;
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const payload=await response.json();
+      if(requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()||revisionActiveScope!==requestedUserKey)return;
+      if(payload.found&&payload.data){
+        const localUpdatedAt=localStorage.getItem(revisionLocalUpdatedAtKey())||'';
+        if(localUpdatedAt&&payload.data.updatedAt&&localUpdatedAt>payload.data.updatedAt){
+          revisionRemoteUpdatedAt=payload.data.updatedAt;
+          state.view='settings';
+          revisionConflictData=payload.data;
+          revisionSyncConflict=true;
+          state.syncStatus='conflict';
+          state.accountMessage='This device has newer unsynced revision changes. Choose which copy to keep in Settings.';
+          state.accountMessageType='error';
+          renderRevision();
+          return;
+        }
+        revisionRemoteUpdatedAt=payload.data.updatedAt||null;
+        state.syncStatus='synced';
+        state.accountMessage='';
+        applyRevisionRemoteData(payload.data);
         renderRevision();
-        return;
+      }else{
+        revisionRemoteUpdatedAt=null;
+        await syncRevision();
       }
-      revisionRemoteUpdatedAt=payload.data.updatedAt||null;
-      applyRevisionRemoteData(payload.data);
-      renderRevision();
-    }else{
-      revisionRemoteUpdatedAt=null;
-      await syncRevision();
+    }catch(error){
+      if(requestedToken===VaultUser.getAccountSession()&&requestedUserKey===revisionUserKey()){
+        state.syncStatus='error';
+        state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
+        state.accountMessageType='error';
+        window.VaultBugReporter?.capture(error,{detail:'Revision account data load'});
+      }
     }
-  }catch(error){
-    state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
-    state.accountMessageType='error';
+  })();
+  revisionLoadPromise=run;
+  try{await run;}finally{
+    revisionLoadPromise=null;
+    if(revisionLoadQueued){revisionLoadQueued=false;void loadRevision();}
   }
 }
-async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();}catch(error){state.publicNotes=[];}}
+async function loadPublicNotes(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public${revisionUserKey()?`?userKey=${encodeURIComponent(revisionUserKey())}`:''}`);const payload=await response.json();state.publicNotes=payload.notes||[];renderRevision();await checkRevisionSubmissionNotifications();}catch(error){state.publicNotes=[];}}
+async function checkRevisionSubmissionNotifications(){
+  if(!VaultUser.getAccountSession()||window._activeRevisionNotice)return;
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/submissions/notifications`,{headers:{'X-Account-Session':VaultUser.getAccountSession()}});
+    if(!response.ok)return;
+    const data=await response.json();
+    const notice=(data.notifications||[]).find(item=>item.site==='revision');
+    if(!notice)return;
+    window._activeRevisionNotice=notice;
+    const approved=notice.status==='approved';
+    openModal(`<div><h2>Submission update</h2><p>${approved?'Your public revision notes were approved. Choose whether to keep your original cards or replace them with the edited version.':'Your public revision notes were not approved. Your private revision cards can remain in your account.'}</p><div class="actions">${approved?'<button class="btn" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;replace&quot;)">Use edited version</button>':'<button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my notes in my account</button>'}</div></div>`);
+  }catch(error){}
+}
+async function resolveRevisionSubmissionNotification(choice){
+  const notice=window._activeRevisionNotice;
+  if(!notice)return;
+  try{
+    const response=await fetch(`${ThemeManager.WORKER_URL}/submissions/notifications/resolve`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({id:notice.id,choice})});
+    if(!response.ok)throw new Error('Could not save your choice.');
+    if(notice.status==='approved'&&choice==='replace'&&Array.isArray(notice.payload?.approved?.cards)){
+      state.cards=notice.payload.approved.cards;
+      saveRevision();
+      renderRevision();
+    }
+    window._activeRevisionNotice=null;
+    closeModal();
+    await checkRevisionSubmissionNotifications();
+  }catch(error){alert(error.message);}
+}
 function awardRevisionXP(){
   const today=new Date().toISOString().slice(0,10);const previous=state.lastReview;
   state.xp+=10;
@@ -650,7 +717,9 @@ function renderSettings(){
   const activeSet = getActiveRevisionSet();
   const themes = ThemeManager.getAllThemes('global');
   const selectedTheme = localStorage.getItem('vt_theme') || 'default';
-  const accountStatus = state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '';
+  const syncLabel = state.syncStatus==='syncing' ? 'Syncing changes…' : state.syncStatus==='synced' ? 'All changes synced' : state.syncStatus==='error' ? 'Sync needs attention' : state.syncStatus==='conflict' ? 'Sync conflict needs a decision' : 'Saved on this device';
+  const syncStatus = `<div class="knowledge-meta" role="status">${syncLabel}</div>`;
+  const accountStatus = (state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '') + syncStatus;
   const themeStatus = state.themeMessage ? `<div class="knowledge-meta" role="status" style="margin-top:8px">${escapeRevision(state.themeMessage)}</div>` : '';
   return `<div style="max-width:820px;margin:0 auto">
     <div class="pt">Settings & account</div>

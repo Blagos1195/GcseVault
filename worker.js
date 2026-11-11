@@ -1,11 +1,11 @@
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
 
     const url = new URL(request.url);
 
     const cors = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Account-Session, X-AI-Session"
     };
 
@@ -99,10 +99,141 @@ export default {
       if (!columns.results.some(column => column.name === "leaderboard_hidden")) await env.DB.prepare("ALTER TABLE users ADD COLUMN leaderboard_hidden INTEGER NOT NULL DEFAULT 0").bind().run();
     }
 
-    async function recordApproval(site, id, item, actor) {
+    async function ensureModerationTables() {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_push_subscriptions (user_key TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, endpoint))").bind().run();
+    }
+    const pushEncoder = new TextEncoder();
+    function pushBase64UrlBytes(value) {
+      const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+      const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+      return Uint8Array.from(binary, char => char.charCodeAt(0));
+    }
+    function pushBase64Url(value) {
+      let binary = "";
+      for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
+      return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    }
+    function pushConcat(...parts) {
+      const output = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+      let offset = 0;
+      for (const part of parts) { output.set(part, offset); offset += part.length; }
+      return output;
+    }
+    async function pushHKDF(ikm, salt, info, length) {
+      const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+      return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, key, length * 8));
+    }
+    async function createVapidToken(endpoint) {
+      const publicKey = pushBase64UrlBytes(env.VAPID_PUBLIC_KEY);
+      const privateKey = pushBase64UrlBytes(env.VAPID_PRIVATE_KEY);
+      if (publicKey.length !== 65 || privateKey.length !== 32) throw new Error("Invalid VAPID key configuration");
+      const x = pushBase64Url(publicKey.slice(1, 33));
+      const y = pushBase64Url(publicKey.slice(33, 65));
+      const d = pushBase64Url(privateKey);
+      const key = await crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x, y, d, ext: true, key_ops: ["sign"] }, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+      const audience = new URL(endpoint).origin;
+      const header = pushBase64Url(pushEncoder.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+      const payload = pushBase64Url(pushEncoder.encode(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 43200, sub: env.VAPID_SUBJECT || "mailto:admin@gcsevault.example" })));
+      const unsigned = header + "." + payload;
+      const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, pushEncoder.encode(unsigned));
+      return unsigned + "." + pushBase64Url(signature);
+    }
+    async function encryptPushPayload(subscription, payload) {
+      const receiverPublic = pushBase64UrlBytes(subscription.p256dh);
+      const authSecret = pushBase64UrlBytes(subscription.auth);
+      if (receiverPublic.length !== 65 || authSecret.length !== 16) throw new Error("Invalid push subscription keys");
+      const receiverKey = await crypto.subtle.importKey("raw", receiverPublic, { name: "ECDH", namedCurve: "P-256" }, false, []);
+      const ephemeral = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+      const senderPublic = new Uint8Array(await crypto.subtle.exportKey("raw", ephemeral.publicKey));
+      const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: receiverKey }, ephemeral.privateKey, 256));
+      const keyInfo = pushConcat(pushEncoder.encode("WebPush: info" + String.fromCharCode(0)), receiverPublic, senderPublic);
+      const ikm = await pushHKDF(sharedSecret, authSecret, keyInfo, 32);
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const cek = await pushHKDF(ikm, salt, pushEncoder.encode("Content-Encoding: aes128gcm" + String.fromCharCode(0)), 16);
+      const nonce = await pushHKDF(ikm, salt, pushEncoder.encode("Content-Encoding: nonce" + String.fromCharCode(0)), 12);
+      const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+      const plaintext = pushConcat(pushEncoder.encode(JSON.stringify(payload)), new Uint8Array([2]));
+      const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, tagLength: 128 }, aesKey, plaintext));
+      const header = new Uint8Array(16 + 4 + 1 + senderPublic.length);
+      header.set(salt, 0);
+      new DataView(header.buffer).setUint32(16, 4096);
+      header[20] = senderPublic.length;
+      header.set(senderPublic, 21);
+      return pushConcat(header, ciphertext);
+    }
+    async function sendAdminPush(userKey, notification) {
+      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
+      const { results } = await env.DB.prepare("SELECT endpoint, p256dh, auth FROM admin_push_subscriptions WHERE user_key = ?").bind(userKey).all();
+      await Promise.all((results || []).map(async subscription => {
+        try {
+          const token = await createVapidToken(subscription.endpoint);
+          const body = await encryptPushPayload(subscription, notification);
+          const response = await fetch(subscription.endpoint, {
+            method: "POST",
+            headers: {
+              "Authorization": "vapid t=" + token + ", k=" + env.VAPID_PUBLIC_KEY,
+              "Content-Type": "application/octet-stream",
+              "Content-Encoding": "aes128gcm",
+              "TTL": "86400",
+              "Urgency": "high"
+            },
+            body
+          });
+          if (response.status === 404 || response.status === 410) {
+            await env.DB.prepare("DELETE FROM admin_push_subscriptions WHERE user_key = ? AND endpoint = ?").bind(userKey, subscription.endpoint).run();
+          }
+        } catch {}
+      }));
+    }
+    async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
+      await ensureModerationTables();
+      const title = String(item.text || item.event || item.title || item.description || "New submission").slice(0, 300);
+      const { results } = await env.DB.prepare("SELECT user_key FROM users WHERE role IN ('owner', 'admin')").all();
+      const createdAt = new Date().toISOString();
+      const pushJobs = [];
+      for (const admin of results || []) {
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        if (inserted.meta?.changes) pushJobs.push(sendAdminPush(admin.user_key, { title: "New GCSE Vault submission", body: site + ": " + title + " · " + String(submitter || "Unknown submitter"), tag: site + ":" + id, url: "/GcseVault/admin/" }));
+      }
+      if (ctx?.waitUntil) ctx.waitUntil(Promise.allSettled(pushJobs));
+      else await Promise.allSettled(pushJobs);
+    }
+    async function attachSubmissionOwner(site, id, item) {
+      const pendingColumn = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
+      const { results } = await env.DB.prepare("SELECT user_key, username, " + pendingColumn + " AS pending_ids FROM users WHERE " + pendingColumn + " LIKE ?").bind("%" + id + "%").all();
+      for (const row of results || []) {
+        let ids = [];
+        try { ids = JSON.parse(row.pending_ids || "[]").map(String); } catch {}
+        if (!ids.includes(String(id))) continue;
+        item._submittedByUserKey = item._submittedByUserKey || row.user_key;
+        item.submittedBy = item.submittedBy || row.username;
+        return row;
+      }
+      return null;
+    }
+    async function createSubmissionNotification(site, id, item, status, approvedItem = null) {
+      const userKey = String(item._submittedByUserKey || item.ownerKey || "");
+      if (!userKey) return;
+      await ensureModerationTables();
+      const title = String(item.text || item.event || item.title || "Untitled submission").slice(0, 300);
+      const original = { ...(item.originalSubmission && typeof item.originalSubmission === "object" ? item.originalSubmission : item) };
+      delete original._submittedByUserKey;
+      delete original.ownerKey;
+      delete original.userKey;
+      delete original.originalSubmission;
+      const payload = JSON.stringify({ original, approved: approvedItem || null });
+      await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
+    }
+    async function recordModerationAction(site, id, item, actor, action) {
+      await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
-      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), "approved", new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
+    }
+    async function recordApproval(site, id, item, actor) {
+      return recordModerationAction(site, id, item, actor, "approved");
     }
     function sanitizeSubmission(value) {
       if (Array.isArray(value)) return value.map(sanitizeSubmission);
@@ -397,6 +528,21 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/published" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quotes = await listPendingItems(env.PUBLIC_QUOTES);
+      const dates = await listPendingItems(env.DV_PUBLIC);
+      await ensureModerationTables();
+      const [quoteAudit, dateAudit] = await Promise.all([
+        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'quote' AND action = 'approved'").all(),
+        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'date' AND action = 'approved'").all()
+      ]);
+      const quoteOwners = new Map((quoteAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
+      const dateOwners = new Map((dateAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
+      for (const item of quotes) item.submittedBy = quoteOwners.get(String(item.id)) || "Legacy submission";
+      for (const item of dates) item.submittedBy = dateOwners.get(String(item.id)) || "Legacy submission";
+      return new Response(JSON.stringify({ quotes, dates }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/users" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -423,12 +569,116 @@ export default {
       return new Response(JSON.stringify({ success: true, username, hidden: body.hidden }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/admin/push/subscribe" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const endpoint = String(body.endpoint || "");
+      const p256dh = String(body.keys?.p256dh || "");
+      const auth = String(body.keys?.auth || "");
+      if (!endpoint.startsWith("https://") || endpoint.length > 2048 || !p256dh || !auth || p256dh.length > 200 || auth.length > 100) return new Response("Invalid push subscription", { status: 400, headers: cors });
+      await ensureModerationTables();
+      const now = new Date().toISOString();
+      await env.DB.prepare("INSERT INTO admin_push_subscriptions (user_key, endpoint, p256dh, auth, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_key, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth, updated_at=excluded.updated_at").bind(actor.user_key, endpoint, p256dh, auth, now, now).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/push/subscribe" && request.method === "DELETE") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const endpoint = String(body.endpoint || "");
+      if (!endpoint.startsWith("https://") || endpoint.length > 2048) return new Response("Invalid push endpoint", { status: 400, headers: cors });
+      await ensureModerationTables();
+      await env.DB.prepare("DELETE FROM admin_push_subscriptions WHERE user_key = ? AND endpoint = ?").bind(actor.user_key, endpoint).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/notifications" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      await ensureModerationTables();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean).slice(0, 100) : [];
+      if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
+      await ensureModerationTables();
+      const now = new Date().toISOString();
+      for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
       const { results } = await env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all();
       return new Response(JSON.stringify({ entries: results }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/submissions/notifications" && request.method === "GET") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to view submission updates.", { status: 401, headers: cors });
+      await ensureModerationTables();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
+      return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/submissions/private/remove" && request.method === "POST") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to manage saved submissions.", { status: 401, headers: cors });
+      const body = await request.json();
+      const site = String(body.site || "");
+      const id = String(body.id || "");
+      if (!["qv", "dv"].includes(site) || !id) return new Response("Invalid submission.", { status: 400, headers: cors });
+      const dataColumn = site + "_pending_data";
+      const idsColumn = site + "_pending_ids";
+      const rejectedColumn = site + "_rejected_ids";
+      const row = await env.DB.prepare("SELECT " + dataColumn + ", " + idsColumn + ", " + rejectedColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
+      if (!row) return new Response("Account not found.", { status: 404, headers: cors });
+      let pendingData = [], pendingIds = [], rejectedIds = [];
+      try { pendingData = JSON.parse(row[dataColumn] || "[]"); } catch {}
+      try { pendingIds = JSON.parse(row[idsColumn] || "[]"); } catch {}
+      try { rejectedIds = JSON.parse(row[rejectedColumn] || "[]"); } catch {}
+      pendingData = pendingData.filter(item => String(item.id) !== id);
+      pendingIds = pendingIds.filter(value => String(value) !== id);
+      rejectedIds = rejectedIds.filter(value => String(value) !== id);
+      await env.DB.prepare("UPDATE users SET " + dataColumn + " = ?, " + idsColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/submissions/notifications/resolve" && request.method === "POST") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to update submission notifications.", { status: 401, headers: cors });
+      const body = await request.json();
+      const id = String(body.id || "");
+      const choice = String(body.choice || "");
+      if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
+      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM submission_notifications WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
+      if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
+      if (["qv", "dv"].includes(notification.site)) {
+        const pendingDataColumn = notification.site + "_pending_data";
+        const rejectedColumn = notification.site + "_rejected_ids";
+        const row = await env.DB.prepare("SELECT " + pendingDataColumn + ", " + rejectedColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
+        let pendingData = [], rejectedIds = [];
+        try { pendingData = JSON.parse(row?.[pendingDataColumn] || "[]"); } catch {}
+        try { rejectedIds = JSON.parse(row?.[rejectedColumn] || "[]"); } catch {}
+        if (notification.status === "denied") rejectedIds = rejectedIds.filter(value => String(value) !== notification.item_id);
+        if (notification.status === "denied" && choice === "remove") {
+          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
+        } else if (notification.status === "approved") {
+          const payload = JSON.parse(notification.payload || "{}");
+          const chosen = choice === "replace" && payload.approved ? payload.approved : payload.original;
+          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
+          if (chosen) pendingData.push({ ...chosen, id: notification.item_id, _status: "approved-private" });
+        } else if (notification.status === "denied") {
+          const payload = JSON.parse(notification.payload || "{}");
+          pendingData = pendingData.map(item => String(item.id) === notification.item_id ? { ...item, _status: "denied" } : item);
+          if (!pendingData.some(item => String(item.id) === notification.item_id) && payload.original) pendingData.push({ ...payload.original, id: notification.item_id, _status: "denied" });
+        }
+        await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
+      }
+      await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/ai-access" && request.method === "POST") {
@@ -629,10 +879,12 @@ export default {
       const submitter = await getAccountSession(request);
       delete data.userKey;
       data.submittedBy = submitter?.username || "Account holder";
+      data._submittedByUserKey = userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.QUOTEVAULT.put(id, JSON.stringify(data));
+      await createAdminNotification("QuoteVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -647,11 +899,15 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("qv", id, quote);
       const publishedQuote = { ...quote };
       delete publishedQuote.submittedBy;
+      delete publishedQuote._submittedByUserKey;
+      delete publishedQuote.originalSubmission;
       delete publishedQuote.userKey;
       await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
       try {
+        await createSubmissionNotification("qv", id, quote, "approved", publishedQuote);
         await recordApproval("quote", id, quote, actor);
         await updateModerationRecords("qv", id, false);
       } catch {
@@ -671,8 +927,14 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quote = await env.QUOTEVAULT.get(id, "json");
+      if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("qv", id, quote);
       try {
+        await createSubmissionNotification("qv", id, quote, "denied");
+        await recordModerationAction("quote", id, quote, actor, "denied");
         await updateModerationRecords("qv", id, true);
       } catch {
         return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
@@ -695,7 +957,7 @@ export default {
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
       const existing = await env.QUOTEVAULT.get(id, "json");
       if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
+      const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       delete updated.userKey;
       await env.QUOTEVAULT.put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
@@ -710,7 +972,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
       await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -722,6 +984,8 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      if (existing) await recordModerationAction("quote", body.id, existing, await getSessionUser(url, request), "removed");
       await env.PUBLIC_QUOTES.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -739,10 +1003,12 @@ export default {
       const submitter = await getAccountSession(request);
       delete data.userKey;
       data.submittedBy = submitter?.username || "Account holder";
+      data._submittedByUserKey = userKey;
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.DV_PENDING.put(id, JSON.stringify(data));
+      await createAdminNotification("DateVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -828,11 +1094,15 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const fact = await env.DV_PENDING.get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("dv", id, fact);
       const publishedFact = { ...fact };
       delete publishedFact.submittedBy;
+      delete publishedFact._submittedByUserKey;
+      delete publishedFact.originalSubmission;
       delete publishedFact.userKey;
       await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
       try {
+        await createSubmissionNotification("dv", id, fact, "approved", publishedFact);
         await recordApproval("date", id, fact, actor);
         await updateModerationRecords("dv", id, false);
       } catch {
@@ -851,8 +1121,14 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const fact = await env.DV_PENDING.get(id, "json");
+      if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
+      await attachSubmissionOwner("dv", id, fact);
       try {
+        await createSubmissionNotification("dv", id, fact, "denied");
+        await recordModerationAction("date", id, fact, actor, "denied");
         await updateModerationRecords("dv", id, true);
       } catch {
         return new Response("Account records could not be updated. The submission remains pending so you can retry.", {
@@ -872,7 +1148,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PENDING.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       await env.DV_PENDING.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -896,6 +1172,8 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      if (existing) await recordModerationAction("date", body.id, existing, await getSessionUser(url, request), "removed");
       await env.DV_PUBLIC.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1359,11 +1637,13 @@ export default {
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
-      const body = await request.json();
-      const sanitize = (str) => String(str || "").replace(/[<>]/g, "").trim();
-      const type = sanitize(body.type);
-      const title = sanitize(body.title);
-      const description = sanitize(body.description);
+      if (Number(request.headers.get("content-length") || 0) > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
+      let body;
+      try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
+      const type = sanitize(body.type, 80);
+      const title = sanitize(body.title, 300);
+      const description = sanitize(body.description, 6000);
       if (!type || !title || !description) {
         return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
           status: 400, headers: { ...cors, "Content-Type": "application/json" }
@@ -1372,13 +1652,19 @@ export default {
       const id = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
       const record = {
         id, type, title, description,
-        device: sanitize(body.device),
-        browser: sanitize(body.browser),
-        appVersion: sanitize(body.appVersion),
-        sourceApplication: sanitize(body.sourceApplication),
+        device: sanitize(body.device, 100),
+        browser: sanitize(body.browser, 400),
+        appVersion: sanitize(body.appVersion, 80),
+        sourceApplication: sanitize(body.sourceApplication, 100),
+        errorName: sanitize(body.errorName, 100),
+        errorStack: sanitize(body.errorStack, 2600),
+        errorLocation: sanitize(body.errorLocation, 300),
+        fingerprint: sanitize(body.fingerprint, 40),
+        page: sanitize(body.page, 300),
         timestamp: new Date().toISOString()
       };
       await env.FEEDBACK.put(id, JSON.stringify(record));
+      await createAdminNotification("Feedback", id, record, "Visitor feedback");
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1457,7 +1743,7 @@ export default {
       if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
       if (request.method === "GET") {
         const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
         let schedules = {};
@@ -1639,8 +1925,9 @@ export default {
     }
 
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
+      await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT username, xp, streak, updated_at AS updatedAt FROM revision_leaderboard ORDER BY xp DESC, updated_at DESC LIMIT 100"
+        "SELECT r.username, r.xp, r.streak, r.updated_at AS updatedAt FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key WHERE COALESCE(u.leaderboard_hidden, 0) = 0 ORDER BY r.xp DESC, r.updated_at DESC LIMIT 100"
       ).all();
       return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1654,7 +1941,7 @@ export default {
         for (const key of page.keys) {
           const value = await env.REVISION.get(key.name, "json");
           if (value) {
-            const { ownerKey, ...publicValue } = value;
+            const { ownerKey, submittedBy, submittedAt, originalSubmission, ...publicValue } = value;
             notes.push({ ...publicValue, owned: Boolean(requesterKey && ownerKey === requesterKey) });
           }
         }
@@ -1670,11 +1957,12 @@ export default {
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
-      const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
+      const account = await env.DB.prepare("SELECT username FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
-      const publicNote = { id, ownerKey: userKey, title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
+      const publicNote = { id, ownerKey: userKey, submittedBy: account.username, submittedAt: new Date().toISOString(), title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
       await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
+      await createAdminNotification("Revision", id, publicNote, account.username);
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -1702,7 +1990,7 @@ export default {
           const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
           for (const key of page.keys) {
             const value = await env.REVISION.get(key.name, "json");
-            if (value) notes.push({ ...value, pending: prefix === "public-pending:" });
+            if (value) notes.push({ ...value, submittedBy: value.submittedBy || "Legacy submission", submittedAt: value.submittedAt || value.updatedAt, pending: prefix === "public-pending:" });
           }
           cursor = page.list_complete ? null : page.cursor;
         } while (cursor);
@@ -1718,6 +2006,7 @@ export default {
       const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await createSubmissionNotification("revision", id, note, "approved", note);
       await recordApproval("revision-note", id, note, actor);
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -1728,6 +2017,11 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      const note = await env.REVISION.get(`public-pending:${id}`, "json");
+      if (!note) return new Response("Note not found", { status: 404, headers: cors });
+      const actor = await getSessionUser(url, request);
+      await createSubmissionNotification("revision", id, note, "denied");
+      await recordModerationAction("revision-note", id, note, actor, "denied");
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1744,7 +2038,7 @@ export default {
       const existingPending = existing ? null : await env.REVISION.get(pendingKey, "json");
       const current = existing || existingPending;
       if (!current) return new Response("Note not found", { status: 404, headers: cors });
-      const updated = { ...current, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
+      const updated = { ...current, originalSubmission: current.originalSubmission || { title: current.title, subject: current.subject, level: current.level, cards: current.cards }, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
       await env.REVISION.put(existing ? publicKey : pendingKey, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true, note: updated }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -1754,6 +2048,8 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
+      const note = await env.REVISION.get(`public:${id}`, "json") || await env.REVISION.get(`public-pending:${id}`, "json");
+      if (note) await recordModerationAction("revision-note", id, note, await getSessionUser(url, request), "removed");
       await env.REVISION.delete(`public:${id}`);
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });

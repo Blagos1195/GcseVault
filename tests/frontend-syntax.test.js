@@ -16,6 +16,7 @@ const files = [
   "revision/practice.js",
   "admin/index.html",
   "admin/admin.js",
+  "admin/push-sw.js",
   "admin/editor.html",
   "admin/editor.js"
 ];
@@ -49,7 +50,7 @@ test("storage migration summary aggregates all phases", async () => {
   };
   const context = {
     document: { addEventListener() {} },
-    window: { render() {}, __vaultAccountFetchWrapped: true },
+    window: { render() {}, addEventListener() {}, __vaultAccountFetchWrapped: true },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     sessionStorage: { getItem() { return "test-session"; }, setItem() {}, removeItem() {} },
     fetch: async (_url, options) => {
@@ -519,6 +520,9 @@ test("review schedules are stored per account and synchronised through authentic
     assert.ok(source.includes("function scheduleReviewSync()"));
     assert.ok(source.includes("updatedAt:new Date().toISOString()"));
     assert.ok(source.includes("/review-schedules?site="));
+    assert.ok(source.includes("X-Account-Session"));
+    assert.ok(source.includes("token!==VaultUser.getAccountSession()||userKey!==VaultUser.getKey()"));
+    assert.ok(source.includes("reviewScheduleSyncPromise"));
   }
   assert.ok(worker.includes('url.pathname === "/review-schedules"'));
   assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
@@ -540,6 +544,11 @@ test("Revision local snapshots are isolated between anonymous use and signed-in 
   assert.ok(app.includes("revisionUseLegacyLocal"));
   assert.ok(app.includes("revisionActiveScope!==revisionUserKey()"));
   assert.ok(app.includes("Another tab changed accounts"));
+  assert.ok(app.includes("let revisionLoadPromise=null;"));
+  assert.ok(app.includes("requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()"));
+  assert.ok(app.includes("revisionLoadQueued"));
+  assert.ok(app.includes("revisionSyncQueued"));
+  assert.ok(app.includes("syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()"));
   assert.ok(shared.includes("prepareRevisionAccountLogout"));
   assert.ok(shared.includes("finishRevisionAccountLogout"));
   assert.ok(shared.includes("typeof window !=="));
@@ -599,7 +608,7 @@ test("content submissions authenticate their account and admin moderation is aud
   assert.ok(worker.includes("recordApproval(\"revision-note\""));
   assert.ok(worker.includes("leaderboard_hidden"));
   assert.ok(worker.includes("/admin/leaderboard-visibility"));
-  assert.ok(admin.includes("Approval history"));
+  assert.ok(admin.includes("Moderation history"));
   assert.ok(admin.includes("Leaderboard visibility"));
 });
 
@@ -619,6 +628,38 @@ test("all site admin navigation points to the shared workspace", () => {
   }
 });
 
+test("central admin can search accounts and moderate already-published content", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(admin, /Search accounts/);
+  assert.match(admin, /Filter accounts by role/);
+  assert.match(admin, /pageSize=50/);
+  assert.match(admin, /removePublished/);
+  assert.match(shared, /this\.request\('\/admin\/published'\)/);
+  assert.match(worker, /url\.pathname === "\/admin\/published"/);
+  assert.match(worker, /recordModerationAction\("quote", body\.id/);
+  assert.match(worker, /recordModerationAction\("date", body\.id/);
+});
+
+test("submission ownership and one-time notifications cover all three sites", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const quote = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const date = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(worker, /data\._submittedByUserKey = userKey/);
+  assert.match(worker, /async function createSubmissionNotification/);
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS submission_notifications/);
+  assert.match(worker, /url\.pathname === "\/submissions\/notifications"/);
+  assert.match(worker, /url\.pathname === "\/submissions\/notifications\/resolve"/);
+  assert.match(worker, /originalSubmission/);
+  assert.match(quote, /checkSubmissionNotifications/);
+  assert.match(date, /checkSubmissionNotifications/);
+  assert.match(revision, /checkRevisionSubmissionNotifications/);
+  assert.match(quote, /Keep my original/);
+  assert.match(date, /Use approved version/);
+});
+
 test("central admin workspace includes owner account management controls", () => {
   const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
@@ -631,4 +672,115 @@ test("central admin workspace includes owner account management controls", () =>
   assert.match(shared, /this\.users = this\.role === 'owner' \? \(await this\.request\('\/admin\/users'\)\)/);
   assert.match(worker, /if \(actor\.role !== "owner"\) return new Response\("Owner access required"/);
   assert.match(worker, /if \(!user \|\| !\["owner", "admin"\]\.includes\(user\.role\)\) return null/);
+});
+
+
+test("Revision leaderboard excludes accounts hidden by owner controls", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const route = worker.slice(worker.indexOf('url.pathname === "/revision/leaderboard"'), worker.indexOf('url.pathname === "/revision/public"'));
+  assert.match(route, /LEFT JOIN users u ON u\.user_key = r\.user_key/);
+  assert.match(route, /COALESCE\(u\.leaderboard_hidden, 0\) = 0/);
+});
+
+test("admin submissions use Web Push when the admin site is closed", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const serviceWorker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
+  assert.match(worker, /url\.pathname === "\/admin\/push\/subscribe"/);
+  assert.match(worker, /Content-Encoding": "aes128gcm"/);
+  assert.match(worker, /createVapidToken/);
+  assert.match(worker, /encryptPushPayload/);
+  assert.match(admin, /enableAdminPushNotifications/);
+  assert.match(admin, /PushManager/);
+  assert.match(admin, /Notification\.requestPermission/);
+  assert.match(admin, /pushManager\.subscribe/);
+  assert.match(serviceWorker, /addEventListener\("push"/);
+  assert.match(serviceWorker, /showNotification/);
+  assert.match(serviceWorker, /notificationclick/);
+});
+
+
+test("automatic bug reports redact secrets and identify the failing site", async () => {
+  const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const start = source.indexOf("const VaultBugReporter = (() => {");
+  const end = source.indexOf("window.VaultBugReporter = VaultBugReporter;", start) + "window.VaultBugReporter = VaultBugReporter;".length;
+  assert.ok(start >= 0 && end > start);
+  const listeners = {};
+  const requests = [];
+  const context = {
+    window: { addEventListener(name, callback) { listeners[name] = callback; } },
+    VaultUser: { WORKER_URL: "https://worker.example" },
+    location: { pathname: "/GcseVault/revision/" },
+    navigator: { platform: "Android", userAgent: "Test Browser" },
+    document: { documentElement: { dataset: {} } },
+    URL,
+    fetch: async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true }; },
+    Date,
+    Map,
+    Error,
+    String,
+    Math,
+    JSON
+  };
+  vm.runInNewContext(source.slice(start, end), context);
+  listeners.error({ error: new Error("Token=secret-value failed for student@example.com"), filename: "https://site.example/app.js?session=private", lineno: 4, colno: 2 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].body.type, "Automatic bug report");
+  assert.equal(requests[0].body.sourceApplication, "Revision");
+  assert.equal(requests[0].body.page, "/GcseVault/revision/");
+  assert.doesNotMatch(JSON.stringify(requests[0].body), /secret-value|student@example.com|session=private/);
+});
+
+
+test("review schedule responses cannot cross accounts during an account switch", async () => {
+  const source = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const start = source.indexOf("let reviewScheduleScope=");
+  const end = source.indexOf("\n\nfunction save(){", start);
+  assert.ok(start >= 0 && end > start);
+  let account = { token: "token-A", key: "account-A" };
+  let resolveA;
+  const requests = [];
+  const storage = new Map([["qv_srs:account-A", JSON.stringify({ a: { updatedAt: "2026-11-10T10:00:00.000Z" } })]]);
+  const context = {
+    S: { srsData: { a: { updatedAt: "2026-11-10T10:00:00.000Z" } } },
+    VaultUser: { getAccountSession: () => account.token, getKey: () => account.key },
+    WORKER_URL: "https://worker.example",
+    navigator: { onLine: true },
+    localStorage: {
+      getItem(key) { return storage.get(key) ?? null; },
+      setItem(key, value) { storage.set(key, value); }
+    },
+    window: { addEventListener() {}, confirm() { return false; } },
+    fetch: (url, options) => {
+      const token = options.headers["X-Account-Session"];
+      if (options.method === "POST") {
+        requests.push({ method: "POST", token, schedules: JSON.parse(options.body).schedules });
+        return Promise.resolve({ ok: true });
+      }
+      requests.push({ method: "GET", token });
+      if (token === "token-A") return new Promise(resolve => { resolveA = resolve; });
+      return Promise.resolve({ ok: true, json: async () => ({ schedules: { b: { updatedAt: "2026-11-11T10:00:00.000Z" } } }) });
+    },
+    Date,
+    Promise,
+    Object,
+    JSON,
+    console,
+    setTimeout,
+    clearTimeout
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nglobalThis.__sync = syncReviewSchedules;", context);
+  const first = context.__sync();
+  await Promise.resolve();
+  account = { token: "token-B", key: "account-B" };
+  const second = context.__sync();
+  resolveA({ ok: true, json: async () => ({ schedules: { a: { updatedAt: "2026-11-10T10:00:00.000Z" } } }) });
+  await Promise.all([first, second]);
+  await new Promise(resolve => setImmediate(resolve));
+  const posts = requests.filter(request => request.method === "POST");
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].token, "token-B");
+  assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
