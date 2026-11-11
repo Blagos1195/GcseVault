@@ -563,3 +563,21 @@ test("expired account sessions preserve Revision and review schedule caches befo
   assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout"));
   assert.ok(shared.includes("typeof window !== 'undefined' && typeof window.syncReviewSchedules"));
 });
+
+test("review schedule account switching never offers one signed-in account's data to another", () => {
+  for (const path of ["../quotes/quotes.js", "../dates/dates.js"]) {
+    const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.ok(source.includes('reviewScheduleScope==="anonymous"&&next!=="anonymous"'));
+    assert.ok(source.includes('event.key==="vault_userKey"'));
+  }
+});
+
+test("moderation editors can update feedback and published content excludes submitter metadata", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("../admin/editor.js", import.meta.url), "utf8");
+  assert.ok(worker.includes('url.pathname === "/feedback/update"'));
+  assert.ok(editor.includes('feedback:"/feedback/update"'));
+  assert.ok(worker.includes("delete publishedQuote.submittedBy"));
+  assert.ok(worker.includes("delete publishedFact.submittedBy"));
+  assert.ok(worker.includes("function sanitizeSubmission"));
+});
