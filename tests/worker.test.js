@@ -799,3 +799,40 @@ test("owner migration counts existing D1 records separately from newly copied re
   assert.equal(data.alreadyPresent, 1);
   assert.equal(data.skipped, 0);
 });
+
+
+test("automatic bug feedback is stored with bounded diagnostic metadata", async () => {
+  const env = makeEnv();
+  const saved = new Map();
+  env.FEEDBACK = {
+    put: async (id, value) => saved.set(id, JSON.parse(value))
+  };
+  const response = await call("/feedback/submit", env, {
+    type: "Automatic bug report",
+    title: "TypeError: test failure",
+    description: "Automatically captured JavaScript error.\\nStack: test.js:1",
+    sourceApplication: "Revision",
+    errorName: "TypeError",
+    errorStack: "TypeError: test failure\\n at test.js:1",
+    errorLocation: "test.js:1:2",
+    fingerprint: "abc123",
+    page: "/GcseVault/revision/"
+  });
+  assert.equal(response.status, 200);
+  const record = [...saved.values()][0];
+  assert.equal(record.type, "Automatic bug report");
+  assert.equal(record.sourceApplication, "Revision");
+  assert.equal(record.errorName, "TypeError");
+  assert.equal(record.fingerprint, "abc123");
+  assert.equal(record.page, "/GcseVault/revision/");
+});
+
+test("review schedule sync sends account authentication and avoids cross-account writes", () => {
+  const quoteApp = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const dateApp = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  for (const app of [quoteApp, dateApp]) {
+    assert.match(app, /X-Account-Session/);
+    assert.match(app, /token!==VaultUser\.getAccountSession\(\)\|\|userKey!==VaultUser\.getKey\(\)/);
+    assert.match(app, /reviewScheduleSyncPromise/);
+  }
+});
