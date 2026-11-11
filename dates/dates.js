@@ -974,7 +974,7 @@ function showUsernameModal(onConfirm){
             setUserKey(uk);
           }
           
-          const myPending = S.pending ? S.pending.filter(p => p._submittedByMe) : [];
+          const myPending = [...(S.pending || []).filter(p => p._submittedByMe), ...(S.custom || []).filter(p => p._submittedByMe && p._status === 'approved-private')];
           
           // Construct full state bundle to satisfy strict backend checks
           const payload = {
@@ -984,7 +984,7 @@ function showUsernameModal(onConfirm){
             mastered: S.mastered.size,
             xp: S.xp,
             mastered_ids: [...S.mastered].map(String),
-            pending_ids: myPending.map(p => String(p.id)),
+            pending_ids: myPending.filter(p => p._status !== 'denied' && p._status !== 'approved-private').map(p => String(p.id)),
             pending_data: myPending,
             theme: localStorage.getItem('vt_theme') || 'default'
           };
@@ -2706,7 +2706,7 @@ function rAdd(){
   </div>
   ${myPending.length>0?`
   <div class="div"></div>
-  <div class="sec">My Pending Submissions</div>
+  <div class="sec">My Submissions</div>
   <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px">These facts are visible to you while awaiting admin approval. You can withdraw any that are still pending.</div>
   ${myPending.map(q=>`
   <div class="dc" style="border-left:3px solid var(--amber);max-width:540px;margin-bottom:7px">
