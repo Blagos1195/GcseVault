@@ -442,6 +442,7 @@ async function syncRevision(keepalive=false){
     if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     if(response.status===409){
       const conflict=await response.json();
+      if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
       revisionConflictData=conflict.data;
       revisionSyncConflict=true;
       state.syncStatus='conflict';
@@ -452,16 +453,19 @@ async function syncRevision(keepalive=false){
     }
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const result=await response.json();
+    if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     state.syncStatus='synced';
     state.accountMessage='';
     revisionRemoteUpdatedAt=result.data?.updatedAt||revisionRemoteUpdatedAt;
     if(localStorage.getItem(syncLocalKey)===localUpdatedAt&&revisionRemoteUpdatedAt)localStorage.setItem(syncLocalKey,revisionRemoteUpdatedAt);
     else syncAgain=true;
   }catch(error){
-    state.syncStatus='error';
-    state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
-    window.VaultBugReporter?.capture(error,{detail:'Revision account sync'});
-    state.accountMessageType='error';
+    if(syncToken===VaultUser.getAccountSession()&&syncUserKey===revisionUserKey()&&revisionActiveScope===syncUserKey){
+      state.syncStatus='error';
+      state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
+      window.VaultBugReporter?.capture(error,{detail:'Revision account sync'});
+      state.accountMessageType='error';
+    }
   }finally{
     state.syncing=false;
     if(syncAgain||revisionSyncQueued){revisionSyncQueued=false;if(!revisionSyncConflict)syncRevisionSoon();}
