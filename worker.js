@@ -94,6 +94,16 @@ export default {
       return owners;
     }
 
+    async function ensureLeaderboardVisibilityColumn() {
+      const columns = await env.DB.prepare("PRAGMA table_info(users)").all();
+      if (!columns.results.some(column => column.name === "leaderboard_hidden")) await env.DB.prepare("ALTER TABLE users ADD COLUMN leaderboard_hidden INTEGER NOT NULL DEFAULT 0").bind().run();
+    }
+
+    async function recordApproval(site, id, item, actor) {
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
+      const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
+      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), "approved", new Date().toISOString()).run();
+    }
     function sanitizeSubmission(value) {
       if (Array.isArray(value)) return value.map(sanitizeSubmission);
       if (!value || typeof value !== "object") return value;
@@ -391,12 +401,34 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT username, role, ai_access FROM users ORDER BY username COLLATE NOCASE"
+        "SELECT username, role, ai_access, leaderboard_hidden FROM users ORDER BY username COLLATE NOCASE"
       ).all();
       return new Response(JSON.stringify({ users: results }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
+    }
+
+    if (url.pathname === "/admin/leaderboard-visibility" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const body = await request.json();
+      const username = String(body.username || "").trim();
+      if (!username || typeof body.hidden !== "boolean") return new Response("Invalid leaderboard visibility request", { status: 400, headers: cors });
+      await ensureLeaderboardVisibilityColumn();
+      const result = await env.DB.prepare("UPDATE users SET leaderboard_hidden = ? WHERE LOWER(username) = LOWER(?)").bind(body.hidden ? 1 : 0, username).run();
+      if (!result.meta?.changes) return new Response("Account not found", { status: 404, headers: cors });
+      return new Response(JSON.stringify({ success: true, username, hidden: body.hidden }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
+      const { results } = await env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all();
+      return new Response(JSON.stringify({ entries: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/ai-access" && request.method === "POST") {
@@ -611,7 +643,8 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const quote = await env.QUOTEVAULT.get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       const publishedQuote = { ...quote };
@@ -619,6 +652,7 @@ export default {
       delete publishedQuote.userKey;
       await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
       try {
+        await recordApproval("quote", id, quote, actor);
         await updateModerationRecords("qv", id, false);
       } catch {
         return new Response("Quote was published, but account records could not be updated. The submission remains pending so you can retry.", {
@@ -790,7 +824,8 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const fact = await env.DV_PENDING.get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       const publishedFact = { ...fact };
@@ -798,6 +833,7 @@ export default {
       delete publishedFact.userKey;
       await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
       try {
+        await recordApproval("date", id, fact, actor);
         await updateModerationRecords("dv", id, false);
       } catch {
         return new Response("Fact was published, but account records could not be updated. The submission remains pending so you can retry.", {
@@ -836,7 +872,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.DV_PENDING.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy };
       await env.DV_PENDING.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -872,10 +908,12 @@ export default {
 
     // GET /lb/list
     if (url.pathname === "/lb/list" && request.method === "GET") {
+      await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(`
         SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp,
                streak, max_streak, updated_at
         FROM users
+        WHERE COALESCE(leaderboard_hidden, 0) = 0
         ORDER BY (qv_xp + dv_xp) DESC
       `).all();
 
@@ -1673,12 +1711,14 @@ export default {
     }
 
     if (url.pathname === "/revision/public/approve" && request.method === "POST") {
-      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const body = await request.json();
       const id = String(body.id || "").trim();
       const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await recordApproval("revision-note", id, note, actor);
       await env.REVISION.delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }

@@ -2589,7 +2589,7 @@ async function saveQuote(){
   try{
     const resp=await fetch(WORKER_URL+'/submit',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},
       body:JSON.stringify({...q,userKey:VaultUser.getKey()})
     });
     if(!resp.ok)throw new Error('HTTP '+resp.status);

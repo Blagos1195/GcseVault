@@ -2709,7 +2709,7 @@ async function saveFact(){
   const fbEl=document.getElementById('add-fb');
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
-    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
+    const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();
     if(result.id)q.id=result.id;

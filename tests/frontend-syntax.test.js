@@ -584,3 +584,21 @@ test("moderation editors can update feedback and published content excludes subm
   assert.ok(worker.includes("delete publishedFact.submittedBy"));
   assert.ok(worker.includes("function sanitizeSubmission"));
 });
+
+test("content submissions authenticate their account and admin moderation is auditable", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const quotes = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const dates = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(quotes.includes("X-Account-Session"));
+  assert.ok(dates.includes("X-Account-Session"));
+  assert.ok(worker.includes("async function recordApproval"));
+  assert.ok(worker.includes("/admin/moderation-log"));
+  assert.ok(worker.includes("recordApproval(\"quote\""));
+  assert.ok(worker.includes("recordApproval(\"date\""));
+  assert.ok(worker.includes("recordApproval(\"revision-note\""));
+  assert.ok(worker.includes("leaderboard_hidden"));
+  assert.ok(worker.includes("/admin/leaderboard-visibility"));
+  assert.ok(admin.includes("Approval history"));
+  assert.ok(admin.includes("Leaderboard visibility"));
+});
