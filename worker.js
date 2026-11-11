@@ -829,7 +829,7 @@ export default {
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
       const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
-      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
+      const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
       await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
