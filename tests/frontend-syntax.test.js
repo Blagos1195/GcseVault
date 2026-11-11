@@ -522,7 +522,10 @@ test("review schedules are stored per account and synchronised through authentic
   }
   assert.ok(worker.includes('url.pathname === "/review-schedules"'));
   assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
-  assert.ok(worker.includes("verifyPasswordAccountAccess"));
+  const routeStart = worker.indexOf("/review-schedules");
+  const routeEnd = worker.indexOf("/revision/sync", routeStart);
+  const scheduleRoute = worker.slice(routeStart, routeEnd);
+  assert.ok(scheduleRoute.includes("verifyPasswordAccountAccess(session.user_key, request)"));
 });
 
 test("Revision local snapshots are isolated between anonymous use and signed-in accounts", () => {
