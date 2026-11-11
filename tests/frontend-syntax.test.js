@@ -535,6 +535,8 @@ test("Revision local snapshots are isolated between anonymous use and signed-in 
   assert.ok(app.includes("Import it into "));
   assert.ok(app.includes("revisionStartupUserKey"));
   assert.ok(app.includes("revisionUseLegacyLocal"));
+  assert.ok(app.includes("revisionActiveScope!==revisionUserKey()"));
+  assert.ok(app.includes("Another tab changed accounts"));
   assert.ok(shared.includes("prepareRevisionAccountLogout"));
   assert.ok(shared.includes("finishRevisionAccountLogout"));
   assert.ok(shared.includes("typeof window !=="));
