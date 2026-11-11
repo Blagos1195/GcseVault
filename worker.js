@@ -80,6 +80,35 @@ export default {
       }
     }
 
+    async function getSubmissionOwners(site) {
+      const column = site === "qv" ? "qv_pending_ids" : "dv_pending_ids";
+      const { results } = await env.DB.prepare(
+        `SELECT username, ${column} AS pending_ids FROM users WHERE ${column} IS NOT NULL AND ${column} != '[]'`
+      ).all();
+      const owners = new Map();
+      for (const row of results) {
+        let ids = [];
+        try { ids = JSON.parse(row.pending_ids || "[]").map(String); } catch {}
+        for (const id of ids) owners.set(id, row.username);
+      }
+      return owners;
+    }
+
+    async function listPendingItems(binding) {
+      const items = [];
+      let cursor;
+      do {
+        const page = await binding.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
+        for (const key of page.keys) {
+          if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:")) continue;
+          const value = await binding.get(key.name, "json");
+          if (value) items.push(value);
+        }
+        cursor = page.list_complete ? null : page.cursor;
+      } while (cursor);
+      return items;
+    }
+
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
@@ -492,12 +521,10 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const list = await env.QUOTEVAULT.list();
-      const items = [];
-      for (const key of list.keys) {
-        if (key.name.startsWith("session:")) continue;
-        const value = await env.QUOTEVAULT.get(key.name, "json");
-        if (value) items.push(value);
+      const items = await listPendingItems(env.QUOTEVAULT);
+      const owners = await getSubmissionOwners("qv");
+      for (const item of items) {
+        item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
       }
       return new Response(JSON.stringify({ items }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -556,7 +583,9 @@ export default {
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
       }
+      const submitter = await getAccountSession(request);
       delete data.userKey;
+      data.submittedBy = submitter?.username || "Account holder";
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -659,7 +688,9 @@ export default {
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
       }
+      const submitter = await getAccountSession(request);
       delete data.userKey;
+      data.submittedBy = submitter?.username || "Account holder";
       const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       data.id = id;
       data.submittedAt = new Date().toISOString();
@@ -731,12 +762,10 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const list = await env.DV_PENDING.list();
-      const items = [];
-      for (const key of list.keys) {
-        if (key.name.startsWith("session:")) continue;
-        const value = await env.DV_PENDING.get(key.name, "json");
-        if (value) items.push(value);
+      const items = await listPendingItems(env.DV_PENDING);
+      const owners = await getSubmissionOwners("dv");
+      for (const item of items) {
+        item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
       }
       return new Response(JSON.stringify({ items }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1342,6 +1371,36 @@ export default {
     }
 
     // ── REVISION DATA ────────────────────────────────────────────────────────
+    if (url.pathname === "/review-schedules" && (request.method === "GET" || request.method === "POST")) {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
+      const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
+      if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").run();
+      if (request.method === "GET") {
+        const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
+        let schedules = {};
+        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
+        return new Response(JSON.stringify({ found: Boolean(row), schedules, updatedAt: row?.updated_at || null }), { headers: { ...cors, "Content-Type": "application/json" } });
+      }
+      const body = await request.json();
+      const incoming = body.schedules && typeof body.schedules === "object" && !Array.isArray(body.schedules) ? body.schedules : null;
+      if (!incoming) return new Response("Invalid schedules", { status: 400, headers: cors });
+      const row = await env.DB.prepare("SELECT schedules_json FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
+      let merged = {};
+      try { merged = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
+      for (const [id, schedule] of Object.entries(incoming).slice(0, 10000)) {
+        if (!id || !schedule || typeof schedule !== "object" || Array.isArray(schedule)) continue;
+        const current = merged[id];
+        const incomingAt = String(schedule.updatedAt || "");
+        const currentAt = String(current?.updatedAt || "");
+        if (!current || (incomingAt && incomingAt >= currentAt)) merged[id] = schedule;
+      }
+      const updatedAt = new Date().toISOString();
+      await env.DB.prepare("INSERT INTO review_schedules (user_key, site, schedules_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET schedules_json=excluded.schedules_json, updated_at=excluded.updated_at").bind(session.user_key, site, JSON.stringify(merged), updatedAt).run();
+      return new Response(JSON.stringify({ success: true, schedules: merged, updatedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/revision/sync" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
