@@ -531,6 +531,21 @@ function sm2(srs,grade){
   return{ef,interval,reps,due:d.toISOString().slice(0,10)};
 }
 function isDue(srs){if(!srs||!srs.due)return true;return srs.due<=new Date().toISOString().slice(0,10);}
+function loadReviewScheduleData(site){
+  const scope=VaultUser.getAccountSession()?VaultUser.getKey():"anonymous";
+  const key=`${site}_srs:${scope||"anonymous"}`;
+  const stored=localStorage.getItem(key);
+  if(stored){try{return JSON.parse(stored);}catch{return {};}}
+  if(scope==="anonymous"){
+    const legacy=localStorage.getItem(site+"_srs");
+    if(legacy&&!localStorage.getItem(site+"_srs_legacy_migrated")){
+      localStorage.setItem(key,legacy);
+      localStorage.setItem(site+"_srs_legacy_migrated","1");
+      try{return JSON.parse(legacy);}catch{}
+    }
+  }
+  return {};
+}
 function dueCount(){return allQ().filter(q=>isDue(qSRS(q.id))).length;}
 
 // ════════════════════════════════════════════════
@@ -548,7 +563,7 @@ const S = {
   custom:JSON.parse(localStorage.getItem('dv_c')||'[]'),
   hidden:new Set(JSON.parse(localStorage.getItem('dv_h')||'[]')),
   pending:JSON.parse(localStorage.getItem('dv_p')||'[]'),
-  srsData:JSON.parse(localStorage.getItem('dv_srs')||'{}'),
+  srsData:loadReviewScheduleData('dv'),
   quizHistory:JSON.parse(localStorage.getItem('dv_qh')||'[]'),
   settings:JSON.parse(localStorage.getItem('dv_set')||'{"board":"Edexcel","daily":50}'),
   achievements:new Set(JSON.parse(localStorage.getItem('dv_ach')||'[]')),
@@ -603,6 +618,10 @@ function activateReviewScheduleScope(){
   const saved=localStorage.getItem(reviewScheduleKey(next));
   let schedules={};
   try{schedules=saved?JSON.parse(saved):{};}catch{}
+  if(next==="anonymous"&&!saved){
+    const legacy=localStorage.getItem("dv_srs");
+    if(legacy){try{schedules=JSON.parse(legacy)||{};}catch{}}
+  }
   if(next!=="anonymous"&&!saved&&Object.keys(S.srsData||{}).length&&window.confirm("This device has a review schedule that is not linked to an account. Import it into the account you just signed into?")){
     schedules={...S.srsData};
     Object.values(schedules).forEach(item=>{if(item&&!item.updatedAt)item.updatedAt=new Date().toISOString();});
@@ -652,7 +671,7 @@ function save(){
   localStorage.setItem('dv_c',JSON.stringify(S.custom));
   localStorage.setItem('dv_h',JSON.stringify([...S.hidden]));
   localStorage.setItem('dv_p',JSON.stringify(S.pending));
-  localStorage.setItem('dv_srs',JSON.stringify(S.srsData));
+  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
   scheduleReviewSync();
   localStorage.setItem('dv_qh',JSON.stringify(S.quizHistory));
   localStorage.setItem('dv_set',JSON.stringify(S.settings));
