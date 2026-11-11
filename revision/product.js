@@ -146,6 +146,16 @@ syncRevision=async function(keepalive=false){
  else state.syncStatus='synced';
  updateRevisionSyncStatus();
 };
+const productOriginalLoadRevision=loadRevision;
+loadRevision=async function(){
+ if(!VaultUser.getAccountSession()){state.syncStatus='local';updateRevisionSyncStatus();return productOriginalLoadRevision();}
+ state.syncStatus='syncing';updateRevisionSyncStatus();
+ await productOriginalLoadRevision();
+ if(revisionSyncConflict)state.syncStatus='conflict';
+ else if(state.accountMessage)state.syncStatus='failed';
+ else state.syncStatus='synced';
+ updateRevisionSyncStatus();
+};
 window.addEventListener('online',()=>{if(revisionUserKey()&&VaultUser.getAccountSession())syncRevisionSoon();else updateRevisionSyncStatus();});
 window.addEventListener('offline',updateRevisionSyncStatus);
 const productOriginalSettings=renderSettings;
@@ -154,3 +164,4 @@ renderSettings=function(){
 };
 updateRevisionSyncStatus();
 renderRevision();
+if(VaultUser.getAccountSession())loadRevision();

@@ -136,6 +136,37 @@ test("temporary account session verification failures preserve the stored token"
   assert.equal(context.__VaultUser.getAccountSession(), "temporary-failure-token");
 });
 
+test("Revision sync status reflects successful remote loads", async () => {
+  const source = fs.readFileSync(new URL("../revision/product.js", import.meta.url), "utf8");
+  const start = source.indexOf("const productOriginalLoadRevision=loadRevision;");
+  const end = source.indexOf("\nwindow.addEventListener('online'", start);
+  assert.ok(start >= 0 && end > start);
+  assert.match(source.slice(source.lastIndexOf("updateRevisionSyncStatus();")), /if\(VaultUser\.getAccountSession\(\)\)loadRevision\(\);/);
+  const context = {
+    state: { syncStatus: "local", accountMessage: "" },
+    VaultUser: { getAccountSession: () => "account-session" },
+    revisionSyncConflict: false,
+    loadRevision: async () => {},
+    updateRevisionSyncStatus() {}
+  };
+  vm.createContext(context);
+  vm.runInContext(source.slice(start, end), context);
+  await context.loadRevision();
+  assert.equal(context.state.syncStatus, "synced");
+
+  const failedContext = {
+    state: { syncStatus: "local", accountMessage: "" },
+    VaultUser: { getAccountSession: () => "account-session" },
+    revisionSyncConflict: false,
+    loadRevision: async () => { failedContext.state.accountMessage = "Could not load synced revision data."; },
+    updateRevisionSyncStatus() {}
+  };
+  vm.createContext(failedContext);
+  vm.runInContext(source.slice(start, end), failedContext);
+  await failedContext.loadRevision();
+  assert.equal(failedContext.state.syncStatus, "failed");
+});
+
 test("DateVault timed challenge skip renders the next prompt", () => {
   const source = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
   const renderStart = source.indexOf("function rTimed(){");
