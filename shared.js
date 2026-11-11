@@ -1484,3 +1484,91 @@ document.addEventListener('DOMContentLoaded', () => {
   UI.initMobileMenu();
   VaultUser.clearStaleLegacyKeys();
 });
+
+const VaultBugReporter = (() => {
+  const recent = new Map();
+  let sentCount = 0;
+  const limit = 5;
+  const windowMs = 10 * 60 * 1000;
+  const clean = (value, max = 1800) => String(value || '')
+    .replace(/https?:\\/\\/[^\\s)]+/g, value => {
+      try {
+        const url = new URL(value);
+        return url.origin + url.pathname;
+      } catch {
+        return '[url]';
+      }
+    })
+    .replace(/(bearer\\s+)[^\\s,;]+/gi, '$1[redacted]')
+    .replace(/(token|password|secret|authorization|session)([=:\\s]+)[^&\\s,;]+/gi, '$1$2[redacted]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, '[email]')
+    .slice(0, max);
+  const hash = value => {
+    let result = 2166136261;
+    for (let i = 0; i < value.length; i++) result = Math.imul(result ^ value.charCodeAt(i), 16777619);
+    return (result >>> 0).toString(16);
+  };
+  const source = () => {
+    const path = location.pathname;
+    if (path.includes('/quotes/')) return 'QuoteVault';
+    if (path.includes('/dates/')) return 'DateVault';
+    if (path.includes('/revision/')) return 'Revision';
+    if (path.includes('/admin/')) return 'Admin';
+    if (path.includes('/feedback/')) return 'Feedback';
+    return 'GCSE Vault';
+  };
+  function capture(error, context = {}) {
+    try {
+      const value = error instanceof Error ? error : new Error(String(error || 'Unknown error'));
+      const name = clean(value.name || 'Error', 100);
+      const message = clean(value.message || 'Unknown error', 700);
+      const locationText = clean(context.location || '', 300);
+      const stack = clean(value.stack || '', 2600);
+      const fingerprint = hash([name, message, locationText, stack.split('\\n')[1] || ''].join('|'));
+      const now = Date.now();
+      if (sentCount >= limit || now - (recent.get(fingerprint) || 0) < windowMs) return;
+      recent.set(fingerprint, now);
+      sentCount++;
+      const description = [
+        'Automatically captured JavaScript error.',
+        'Message: ' + message,
+        locationText ? 'Location: ' + locationText : '',
+        stack ? 'Stack: ' + stack : '',
+        context.detail ? 'Details: ' + clean(context.detail, 500) : ''
+      ].filter(Boolean).join('\\n');
+      const page = clean(location.pathname, 300);
+      fetch(VaultUser.WORKER_URL + '/feedback/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          type: 'Automatic bug report',
+          title: name + ': ' + message.slice(0, 160),
+          description,
+          device: clean(navigator.platform || 'Unknown device', 100),
+          browser: clean(navigator.userAgent || 'Unknown browser', 400),
+          appVersion: document.documentElement.dataset.version || '',
+          sourceApplication: source(),
+          errorName: name,
+          errorStack: stack,
+          errorLocation: locationText,
+          fingerprint,
+          page
+        })
+      }).catch(() => {});
+    } catch {}
+  }
+  window.addEventListener('error', event => {
+    if (event.target && event.target !== window) {
+      const target = event.target;
+      capture(new Error('Resource failed to load'), { location: target.src || target.href || location.pathname });
+      return;
+    }
+    capture(event.error || event.message || 'Uncaught browser error', {
+      location: [event.filename, event.lineno, event.colno].filter(Boolean).join(':')
+    });
+  }, true);
+  window.addEventListener('unhandledrejection', event => capture(event.reason || 'Unhandled promise rejection'));
+  return { capture };
+})();
+window.VaultBugReporter = VaultBugReporter;
