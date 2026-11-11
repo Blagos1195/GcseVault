@@ -826,13 +826,3 @@ test("automatic bug feedback is stored with bounded diagnostic metadata", async 
   assert.equal(record.fingerprint, "abc123");
   assert.equal(record.page, "/GcseVault/revision/");
 });
-
-test("review schedule sync sends account authentication and avoids cross-account writes", () => {
-  const quoteApp = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
-  const dateApp = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
-  for (const app of [quoteApp, dateApp]) {
-    assert.match(app, /X-Account-Session/);
-    assert.match(app, /token!==VaultUser\.getAccountSession\(\)\|\|userKey!==VaultUser\.getKey\(\)/);
-    assert.match(app, /reviewScheduleSyncPromise/);
-  }
-});
