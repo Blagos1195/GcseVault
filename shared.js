@@ -1491,7 +1491,7 @@ const VaultBugReporter = (() => {
   const limit = 5;
   const windowMs = 10 * 60 * 1000;
   const clean = (value, max = 1800) => String(value || '')
-    .replace(/https?:\/\\/[^\s)]+/g, value => {
+    .replace(/https?:\/\/[^\s)]+/g, value => {
       try {
         const url = new URL(value);
         return url.origin + url.pathname;
