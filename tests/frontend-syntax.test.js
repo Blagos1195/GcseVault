@@ -547,6 +547,8 @@ test("Revision local snapshots are isolated between anonymous use and signed-in 
   assert.ok(app.includes("let revisionLoadPromise=null;"));
   assert.ok(app.includes("requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()"));
   assert.ok(app.includes("revisionLoadQueued"));
+  assert.ok(app.includes("revisionSyncQueued"));
+  assert.ok(app.includes("syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()"));
   assert.ok(shared.includes("prepareRevisionAccountLogout"));
   assert.ok(shared.includes("finishRevisionAccountLogout"));
   assert.ok(shared.includes("typeof window !=="));
