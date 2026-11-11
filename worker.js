@@ -413,6 +413,12 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/published" && request.method === "GET") {
+      if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
+      const quotes = await listPendingItems(env.PUBLIC_QUOTES);
+      const dates = await listPendingItems(env.DV_PUBLIC);
+      return new Response(JSON.stringify({ quotes, dates }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/users" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -765,6 +771,8 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      if (existing) await recordModerationAction("quote", body.id, existing, await getSessionUser(url, request), "removed");
       await env.PUBLIC_QUOTES.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -948,6 +956,8 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
+      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      if (existing) await recordModerationAction("date", body.id, existing, await getSessionUser(url, request), "removed");
       await env.DV_PUBLIC.delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
