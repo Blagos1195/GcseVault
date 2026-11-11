@@ -25,6 +25,10 @@ function renderOwnerAccounts(){
   const query=(window.adminAccountQuery||'').trim().toLowerCase();
   const role=window.adminAccountRole||'all';
   const users=(AdminManager.users||[]).filter(user=>(role==='all'||user.role===role)&&String(user.username).toLowerCase().includes(query));
+  const pageSize=50;
+  const pageCount=Math.max(1,Math.ceil(users.length/pageSize));
+  const page=Math.min(window.adminAccountPage||0,pageCount-1);
+  const visibleUsers=users.slice(page*pageSize,(page+1)*pageSize);
   return `<section class="panel" style="margin-top:18px">
     <h2>Owner controls</h2>
     <p class="sub">Manage account permissions, AI access, leaderboard visibility and legacy storage.</p>
@@ -34,16 +38,16 @@ function renderOwnerAccounts(){
     </div>
     ${AdminManager.migrationStatus?`<div class="notice">${esc(AdminManager.migrationStatus)}</div>`:''}
     <div class="filters">
-      <input aria-label="Search accounts" placeholder="Search usernames…" value="${esc(query)}" oninput="window.adminAccountQuery=this.value"><button onclick="renderAdmin()">Search</button>
-      <select aria-label="Filter accounts by role" onchange="window.adminAccountRole=this.value;renderAdmin()">
+      <input aria-label="Search accounts" placeholder="Search usernames…" value="${esc(query)}" oninput="window.adminAccountQuery=this.value"><button onclick="window.adminAccountPage=0;renderAdmin()">Search</button>
+      <select aria-label="Filter accounts by role" onchange="window.adminAccountRole=this.value;window.adminAccountPage=0;renderAdmin()">
         <option value="all" ${role==='all'?'selected':''}>All roles</option>
         <option value="user" ${role==='user'?'selected':''}>Users</option>
         <option value="admin" ${role==='admin'?'selected':''}>Admins</option>
         <option value="owner" ${role==='owner'?'selected':''}>Owners</option>
       </select>
-      <span class="sub">${users.length} of ${(AdminManager.users||[]).length} accounts</span>
+      <span class="sub">Showing ${users.length?Math.min(page*pageSize+1,users.length):0}–${Math.min((page+1)*pageSize,users.length)} of ${users.length} matching accounts</span>
     </div>
-    <div class="queue">${users.map(user=>`<article class="item">
+    <div class="queue">${visibleUsers.map(user=>`<article class="item">
       <div><strong>${esc(user.username)}</strong><p>Current role: ${esc(user.role)} · AI access: ${user.role!=='user'?'Inherited':user.ai_access?'Enabled':'Disabled'} · Leaderboard: ${user.leaderboard_hidden?'Hidden':'Visible'}</p></div>
       <div class="item-actions">
         <select aria-label="Role for ${esc(user.username)}" data-username="${esc(user.username)}" onchange="changeAccountRole(this)" ${user.role==='owner'?'disabled':''}>
@@ -59,9 +63,11 @@ function renderOwnerAccounts(){
           <option value="1" ${user.leaderboard_hidden?'selected':''}>Leaderboard hidden</option>
         </select>
       </div>
-    </article>`).join('')||'<div class="empty">No accounts match this filter.</div>'}</div>
+    </article>`).join('')||'<div class="empty">No accounts match this filter.</div>'}</div><div class="actions" style="margin-top:12px"><button onclick="changeAccountPage(-1)" ${page===0?'disabled':''}>Previous</button><span class="sub">Page ${page+1} of ${pageCount}</span><button onclick="changeAccountPage(1)" ${page>=pageCount-1?'disabled':''}>Next</button></div>
   </section>`;
 }
+function changeAccountPage(direction){window.adminAccountPage=Math.max(0,(window.adminAccountPage||0)+direction);renderAdmin();}
+
 async function changeAccountRole(select){
   const username=select.dataset.username;
   const role=select.value;
@@ -73,7 +79,7 @@ async function changeAccountRole(select){
   await AdminManager.setRole(username,role);
 }
 function renderApprovalHistory(){
-  return `<section class="panel" style="margin-top:18px"><h2>Approval history</h2><p class="sub">Who approved each published submission and when.</p><div class="queue">${moderationLog.map(entry=>`<article class="item"><div class="meta"><span class="tag">${esc(entry.site)}</span><span>Approved by ${esc(entry.moderator)}</span><span>${esc(entry.acted_at)}</span></div><h2>${esc(entry.item_title)}</h2><p>Submitted by ${esc(entry.submitted_by)} · Record ${esc(entry.item_id)}</p></article>`).join('')||'<div class="empty">No approvals recorded yet.</div>'}</div></section>`;
+  return `<section class="panel" style="margin-top:18px"><h2>Moderation history</h2><p class="sub">Who reviewed, approved, denied or removed each submission, and when.</p><div class="queue">${moderationLog.map(entry=>`<article class="item"><div class="meta"><span class="tag">${esc(entry.site)}</span><span>${esc(entry.action)} by ${esc(entry.moderator)}</span><span>${esc(entry.acted_at)}</span></div><h2>${esc(entry.item_title)}</h2><p>Submitted by ${esc(entry.submitted_by)} · Record ${esc(entry.item_id)}</p></article>`).join('')||'<div class="empty">No approvals recorded yet.</div>'}</div></section>`;
 }
 function itemTitle(item){
   if(item._kind==="quote")return item.text||"Quote submission";
