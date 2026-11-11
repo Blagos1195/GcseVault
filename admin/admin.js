@@ -1,5 +1,5 @@
 const app=document.getElementById("app");
-const ADMIN_PUSH_PUBLIC_KEY="BJlem6cB64EvW2K7_sCZe6c-PJzKpTwn_14FiyYjk9Bs6kH7Vj517ndIAD9IiK9lMNIp3hDT8KY-GU-ONLIcWDg";
+const ADMIN_PUSH_PUBLIC_KEY="BFAcjYArlW3-YvgBzIL5mZnFpNThGnX-7npAc7akXqPxRBle_IC4ZMo8NehBuuT0QFU_0aOFYJWpcGQ9HLsw7Ng";
 let adminPushEnabled=false;
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 window.openModal=html=>{document.getElementById("modal").innerHTML=html;document.getElementById("modal-bg").classList.add("open");};
@@ -160,6 +160,7 @@ function itemSummary(item){
   if(item._kind==="quote")return [item.char,item.work,item.loc].filter(Boolean).join(" · ");
   if(item._kind==="date")return [item.year,item.topic].filter(Boolean).join(" · ");
   if(item._kind==="revision-note")return [item.subject,item.level,`${item.cards?.length||0} linked cards`].filter(Boolean).join(" · ");
+  if(item._kind==="feedback")return [item.sourceApplication,item.errorName,item.browser,item.device,item.page].filter(Boolean).join(" · ") + (item.description ? " · " + item.description : "");
   return item.description||item.message||"";
 }
 function login(){
