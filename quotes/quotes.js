@@ -717,27 +717,41 @@ function activateReviewScheduleScope(){
   reviewScheduleScope=next;
   localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
 }
+let reviewScheduleSyncPromise=null;
+let reviewScheduleSyncQueued=false;
 async function syncReviewSchedules(){
-  activateReviewScheduleScope();
-  localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
-  if(!VaultUser.getAccountSession()||!VaultUser.getKey()||!navigator.onLine)return;
-  try{
-    const response=await fetch(`${WORKER_URL}/review-schedules?site=qv`);
-    if(!response.ok)throw new Error("Could not load review schedules");
-    const remote=await response.json();
-    const merged={...(remote.schedules||{})};
-    for(const [id,local] of Object.entries(S.srsData||{})){
-      const cloud=merged[id];
-      if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
-      const localAt=String(local?.updatedAt||"");
-      const cloudAt=String(cloud?.updatedAt||"");
-      if(localAt&&localAt>cloudAt)merged[id]=local;
-    }
-    S.srsData=merged;
+  if(reviewScheduleSyncPromise){reviewScheduleSyncQueued=true;return reviewScheduleSyncPromise;}
+  const run=(async()=>{
+    activateReviewScheduleScope();
     localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
-    const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site:"qv",schedules:S.srsData})});
-    if(!saved.ok)throw new Error("Could not save review schedules");
-  }catch(error){console.warn("Review schedule sync failed:",error);}
+    const token=VaultUser.getAccountSession();
+    const userKey=VaultUser.getKey();
+    if(!token||!userKey||!navigator.onLine)return;
+    try{
+      const headers={"X-Account-Session":token};
+      const response=await fetch(`${WORKER_URL}/review-schedules?site=qv`,{headers});
+      if(!response.ok)throw new Error("Could not load review schedules");
+      const remote=await response.json();
+      if(token!==VaultUser.getAccountSession()||userKey!==VaultUser.getKey())return;
+      const merged={...(remote.schedules||{})};
+      for(const [id,local] of Object.entries(S.srsData||{})){
+        const cloud=merged[id];
+        if(!cloud){merged[id]={...local,updatedAt:local.updatedAt||new Date().toISOString()};continue;}
+        const localAt=String(local?.updatedAt||"");
+        const cloudAt=String(cloud?.updatedAt||"");
+        if(localAt&&localAt>cloudAt)merged[id]=local;
+      }
+      S.srsData=merged;
+      localStorage.setItem(reviewScheduleKey(),JSON.stringify(S.srsData));
+      const saved=await fetch(`${WORKER_URL}/review-schedules`,{method:"POST",headers:{"Content-Type":"application/json",...headers},body:JSON.stringify({site:"qv",schedules:S.srsData})});
+      if(!saved.ok)throw new Error("Could not save review schedules");
+    }catch(error){console.warn("Review schedule sync failed:",error);}
+  })();
+  reviewScheduleSyncPromise=run;
+  try{await run;}finally{
+    reviewScheduleSyncPromise=null;
+    if(reviewScheduleSyncQueued){reviewScheduleSyncQueued=false;void syncReviewSchedules();}
+  }
 }
 function scheduleReviewSync(){
   activateReviewScheduleScope();
@@ -747,7 +761,7 @@ function scheduleReviewSync(){
 }
 window.syncReviewSchedules=syncReviewSchedules;
 window.addEventListener("storage",event=>{
-  if(event.key==="vault_userKey"||(event.key==="vault_account_session"&&!VaultUser.getAccountSession()))syncReviewSchedules();
+  if(event.key==="vault_userKey"||event.key==="vault_account_session")syncReviewSchedules();
 });
 
 
