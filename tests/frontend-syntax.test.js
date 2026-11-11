@@ -664,3 +664,25 @@ test("central admin workspace includes owner account management controls", () =>
   assert.match(worker, /if \(actor\.role !== "owner"\) return new Response\("Owner access required"/);
   assert.match(worker, /if \(!user \|\| !\["owner", "admin"\]\.includes\(user\.role\)\) return null/);
 });
+
+
+test("Revision leaderboard excludes accounts hidden by owner controls", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const route = worker.slice(worker.indexOf('url.pathname === "/revision/leaderboard"'), worker.indexOf('url.pathname === "/revision/public"'));
+  assert.match(route, /LEFT JOIN users u ON u\.user_key = r\.user_key/);
+  assert.match(route, /COALESCE\(u\.leaderboard_hidden, 0\) = 0/);
+});
+
+test("admin submission inbox and browser alerts are available", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_notifications/);
+  assert.match(worker, /createAdminNotification\("QuoteVault"/);
+  assert.match(worker, /createAdminNotification\("DateVault"/);
+  assert.match(worker, /createAdminNotification\("Feedback"/);
+  assert.match(worker, /createAdminNotification\("Revision"/);
+  assert.match(worker, /url\.pathname === "\/admin\/notifications"/);
+  assert.match(admin, /Notification\.requestPermission/);
+  assert.match(admin, /setInterval\(\(\)=>loadAdminNotifications\(true\),30000\)/);
+  assert.match(admin, /renderAdminNotifications/);
+});
