@@ -13,7 +13,11 @@ const files = [
   "revision/index.html",
   "revision/app.js",
   "revision/product.js",
-  "revision/practice.js"
+  "revision/practice.js",
+  "admin/index.html",
+  "admin/admin.js",
+  "admin/editor.html",
+  "admin/editor.js"
 ];
 
 for (const file of files) {
@@ -502,4 +506,48 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.match(app, /class="library-results"/);
     assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
   }
+});
+
+
+test("review schedules are stored per account and synchronised through authenticated routes", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  for (const [path, site] of [["../quotes/quotes.js", "qv"], ["../dates/dates.js", "dv"]]) {
+    const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
+    assert.match(source, new RegExp(`function loadReviewScheduleData\\(site\\)`));
+    assert.match(source, new RegExp(`\\${site}_srs:\\${scope`));
+    assert.match(source, /async function syncReviewSchedules\\(\\)/);
+    assert.match(source, /function scheduleReviewSync\\(\\)/);
+    assert.match(source, /updatedAt:new Date\\(\\)\\.toISOString\\(\\)/);
+    assert.match(source, new RegExp(`review-schedules\\?site=${site}`));
+  }
+  assert.match(worker, /url\\.pathname === "\\/review-schedules"/);
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS review_schedules/);
+  assert.match(worker, /verifyPasswordAccountAccess/);
+});
+
+test("Revision local snapshots are isolated between anonymous use and signed-in accounts", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.match(app, /function revisionUserKey\\(\\)\\{return VaultUser\\.getAccountSession\\(\\)\\?VaultUser\\.getKey\\(\\):null;\\}/);
+  assert.match(app, /window\\.prepareRevisionAccountLogout/);
+  assert.match(app, /window\\.finishRevisionAccountLogout/);
+  assert.match(app, /window\\.activateRevisionAccount/);
+  assert.match(app, /Import it into /);
+  assert.match(shared, /prepareRevisionAccountLogout/);
+  assert.match(shared, /finishRevisionAccountLogout/);
+});
+
+test("admin moderation has a separate full-content editor and safe submitter metadata", () => {
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const queue = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const editor = fs.readFileSync(new URL("../admin/editor.js", import.meta.url), "utf8");
+  assert.match(queue, /Open editor/);
+  assert.match(editor, /submission-json/);
+  assert.match(editor, /Save changes/);
+  assert.match(shared, /admin\\/editor\\.html/);
+  assert.doesNotMatch(shared, /Edit the complete submission as JSON/);
+  assert.match(worker, /function sanitizeSubmission/);
+  assert.match(worker, /data\\.submittedBy = submitter/);
+  assert.match(worker, /getSubmissionOwners/);
 });
