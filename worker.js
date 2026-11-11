@@ -485,6 +485,28 @@ export default {
       const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
       return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
+    if (url.pathname === "/submissions/private/remove" && request.method === "POST") {
+      const account = await getAccountSession(request);
+      if (!account) return new Response("Sign in to manage saved submissions.", { status: 401, headers: cors });
+      const body = await request.json();
+      const site = String(body.site || "");
+      const id = String(body.id || "");
+      if (!["qv", "dv"].includes(site) || !id) return new Response("Invalid submission.", { status: 400, headers: cors });
+      const dataColumn = site + "_pending_data";
+      const idsColumn = site + "_pending_ids";
+      const rejectedColumn = site + "_rejected_ids";
+      const row = await env.DB.prepare("SELECT " + dataColumn + ", " + idsColumn + ", " + rejectedColumn + " FROM users WHERE user_key = ?").bind(account.user_key).first();
+      if (!row) return new Response("Account not found.", { status: 404, headers: cors });
+      let pendingData = [], pendingIds = [], rejectedIds = [];
+      try { pendingData = JSON.parse(row[dataColumn] || "[]"); } catch {}
+      try { pendingIds = JSON.parse(row[idsColumn] || "[]"); } catch {}
+      try { rejectedIds = JSON.parse(row[rejectedColumn] || "[]"); } catch {}
+      pendingData = pendingData.filter(item => String(item.id) !== id);
+      pendingIds = pendingIds.filter(value => String(value) !== id);
+      rejectedIds = rejectedIds.filter(value => String(value) !== id);
+      await env.DB.prepare("UPDATE users SET " + dataColumn + " = ?, " + idsColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(pendingIds), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/submissions/notifications/resolve" && request.method === "POST") {
       const account = await getAccountSession(request);
       if (!account) return new Response("Sign in to update submission notifications.", { status: 401, headers: cors });
