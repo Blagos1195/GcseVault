@@ -2530,7 +2530,7 @@ function runDump(){
 // ════════════════════════════════════════════════
 function rAdd(){
   const workOpts=["Macbeth","A Christmas Carol","An Inspector Calls","Jekyll and Hyde","Romeo and Juliet","The Crucible","Power and Conflict","Love and Relationships","Other"];
-  const myPending=S.pending.filter(p=>p._submittedByMe&&p._status==='pending');
+  const myPending=S.pending.filter(p=>p._submittedByMe&&(p._status==='pending'||p._status==='denied'));
   return`<div>
   ${backBtn()}
   <div class="pt">Add a Quote</div>
