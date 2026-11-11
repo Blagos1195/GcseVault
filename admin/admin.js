@@ -138,7 +138,7 @@ function itemSummary(item){
 }
 function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
-  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();});
+  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);});
 }
 function renderAdmin(){
   const token=AdminManager.getToken();
