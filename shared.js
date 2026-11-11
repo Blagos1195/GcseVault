@@ -473,7 +473,7 @@ const VaultUser = {
       const error = document.getElementById('vault-account-error');
       const finish = async () => {
         window.closeModal();
-        if (typeof window.activateRevisionAccount === 'function' && this.getAccountSession()) window.activateRevisionAccount(this.getKey());
+        if (typeof window !== 'undefined' && typeof window.activateRevisionAccount === 'function' && this.getAccountSession()) window.activateRevisionAccount(this.getKey());
         if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
         if (typeof window.syncFromWorker === 'function') await window.syncFromWorker();
         if (typeof window.loadRevision === 'function') await window.loadRevision();
