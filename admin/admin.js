@@ -7,7 +7,6 @@ window.closeModal=()=>document.getElementById("modal-bg").classList.remove("open
 window.render=renderAdmin;
 let moderationLog = [];
 let adminNotifications = [];
-let knownAdminNotificationIds = null;
 let adminNotificationPoll = null;
 async function loadAdminNotifications(notify = false){
   const token=AdminManager.getToken();
@@ -18,13 +17,6 @@ async function loadAdminNotifications(notify = false){
     const data=await response.json();
     adminNotifications=data.notifications||[];
     const unread=adminNotifications.filter(item=>!item.read_at);
-    if(false&&notify&&knownAdminNotificationIds&&'Notification' in window&&Notification.permission==='granted'){
-      unread.filter(item=>!knownAdminNotificationIds.has(item.id)).forEach(item=>{
-        const notification=new Notification('New GCSE Vault submission',{body:`${item.site}: ${item.title} · ${item.submitter}`,icon:'../favicon.ico',tag:item.id});
-        notification.onclick=()=>{window.focus();notification.close();};
-      });
-    }
-    knownAdminNotificationIds=new Set(adminNotifications.map(item=>item.id));
     renderAdmin();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
@@ -79,8 +71,8 @@ async function markAdminNotificationsRead(){
 }
 function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
-  const permission=('Notification' in window)?Notification.permission:'unsupported';
-  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${permission==='granted'?'Push notifications enabled':'Enable push notifications'}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
+  const pushLabel=adminPushEnabled?'Push notifications enabled':'Enable push notifications';
+  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${pushLabel}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
 }
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
@@ -228,7 +220,7 @@ async function deleteFeedback(id){
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
 if(AdminManager.getToken()){
-  AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);});
+  AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
   if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(false),30000);
 }else AdminManager.checkStatus();
 
