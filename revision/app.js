@@ -534,6 +534,7 @@ async function resolveRevisionSubmissionNotification(choice){
     }
     window._activeRevisionNotice=null;
     closeModal();
+    await checkRevisionSubmissionNotifications();
   }catch(error){alert(error.message);}
 }
 function awardRevisionXP(){
