@@ -622,7 +622,7 @@ function activateReviewScheduleScope(){
     const legacy=localStorage.getItem("dv_srs");
     if(legacy){try{schedules=JSON.parse(legacy)||{};}catch{}}
   }
-  if(next!=="anonymous"&&!saved&&Object.keys(S.srsData||{}).length&&window.confirm("This device has a review schedule that is not linked to an account. Import it into the account you just signed into?")){
+  if(reviewScheduleScope==="anonymous"&&next!=="anonymous"&&!saved&&Object.keys(S.srsData||{}).length&&window.confirm("This device has a review schedule that is not linked to an account. Import it into the account you just signed into?")){
     schedules={...S.srsData};
     Object.values(schedules).forEach(item=>{if(item&&!item.updatedAt)item.updatedAt=new Date().toISOString();});
   }
