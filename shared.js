@@ -296,10 +296,10 @@ const VaultUser = {
     });
     if (response.status === 401) {
       if (this.getAccountSession() === token) {
-        if (typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
+        if (typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
         localStorage.removeItem('vault_account_session');
-        if (typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
-        if (typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+        if (typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
+        if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
       }
       return false;
     }
