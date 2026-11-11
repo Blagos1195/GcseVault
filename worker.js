@@ -1637,11 +1637,13 @@ export default {
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
-      const body = await request.json();
-      const sanitize = (str) => String(str || "").replace(/[<>]/g, "").trim();
-      const type = sanitize(body.type);
-      const title = sanitize(body.title);
-      const description = sanitize(body.description);
+      if (Number(request.headers.get("content-length") || 0) > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
+      let body;
+      try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
+      const type = sanitize(body.type, 80);
+      const title = sanitize(body.title, 300);
+      const description = sanitize(body.description, 6000);
       if (!type || !title || !description) {
         return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
           status: 400, headers: { ...cors, "Content-Type": "application/json" }
@@ -1650,10 +1652,15 @@ export default {
       const id = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
       const record = {
         id, type, title, description,
-        device: sanitize(body.device),
-        browser: sanitize(body.browser),
-        appVersion: sanitize(body.appVersion),
-        sourceApplication: sanitize(body.sourceApplication),
+        device: sanitize(body.device, 100),
+        browser: sanitize(body.browser, 400),
+        appVersion: sanitize(body.appVersion, 80),
+        sourceApplication: sanitize(body.sourceApplication, 100),
+        errorName: sanitize(body.errorName, 100),
+        errorStack: sanitize(body.errorStack, 2600),
+        errorLocation: sanitize(body.errorLocation, 300),
+        fingerprint: sanitize(body.fingerprint, 40),
+        page: sanitize(body.page, 300),
         timestamp: new Date().toISOString()
       };
       await env.FEEDBACK.put(id, JSON.stringify(record));
