@@ -1375,9 +1375,6 @@ const AdminManager = {
       const body = { id: item.id };
       if (action === 'edit') {
         const editable = { ...item };
-        delete editable._source;
-        delete editable._kind;
-        delete editable._pending;
         window.location.href = `/GcseVault/admin/editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}`;
         return;
       }
