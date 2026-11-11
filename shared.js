@@ -1491,7 +1491,7 @@ const VaultBugReporter = (() => {
   const limit = 5;
   const windowMs = 10 * 60 * 1000;
   const clean = (value, max = 1800) => String(value || '')
-    .replace(/https?:\\/\\/[^\\s)]+/g, value => {
+    .replace(/https?:\/\\/[^\s)]+/g, value => {
       try {
         const url = new URL(value);
         return url.origin + url.pathname;
@@ -1499,9 +1499,9 @@ const VaultBugReporter = (() => {
         return '[url]';
       }
     })
-    .replace(/(bearer\\s+)[^\\s,;]+/gi, '$1[redacted]')
-    .replace(/(token|password|secret|authorization|session)([=:\\s]+)[^&\\s,;]+/gi, '$1$2[redacted]')
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, '[email]')
+    .replace(/(bearer\s+)[^\s,;]+/gi, '$1[redacted]')
+    .replace(/(token|password|secret|authorization|session)([=:\s]+)[^&\s,;]+/gi, '$1$2[redacted]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
     .slice(0, max);
   const hash = value => {
     let result = 2166136261;
@@ -1524,7 +1524,7 @@ const VaultBugReporter = (() => {
       const message = clean(value.message || 'Unknown error', 700);
       const locationText = clean(context.location || '', 300);
       const stack = clean(value.stack || '', 2600);
-      const fingerprint = hash([name, message, locationText, stack.split('\\n')[1] || ''].join('|'));
+      const fingerprint = hash([name, message, locationText, stack.split('\n')[1] || ''].join('|'));
       const now = Date.now();
       if (sentCount >= limit || now - (recent.get(fingerprint) || 0) < windowMs) return;
       recent.set(fingerprint, now);
@@ -1535,7 +1535,7 @@ const VaultBugReporter = (() => {
         locationText ? 'Location: ' + locationText : '',
         stack ? 'Stack: ' + stack : '',
         context.detail ? 'Details: ' + clean(context.detail, 500) : ''
-      ].filter(Boolean).join('\\n');
+      ].filter(Boolean).join('\n');
       const page = clean(location.pathname, 300);
       fetch(VaultUser.WORKER_URL + '/feedback/submit', {
         method: 'POST',
