@@ -225,7 +225,7 @@ function renderAdmin(){
   const feedback=items.filter(item=>item._kind==="feedback");
   const pendingFiltered=pending.filter(matches);
   const publishedFiltered=published.filter(matches);
-  const feedbackFiltered=feedback.filter(matches);
+  const feedbackFiltered=feedback.filter(item=>JSON.stringify(item).toLowerCase().includes(q.toLowerCase()));
   const unread=adminNotifications.filter(item=>!item.read_at).length;
   const pendingCount=pending.length;
   const publishedCount=published.length;
