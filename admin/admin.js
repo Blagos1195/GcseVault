@@ -60,19 +60,50 @@ async function enableAdminPushNotifications(){
     renderAdmin();
   }
 }
+async function markAdminNotificationRead(id){
+  try{
+    const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/read`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids:[id]})});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    const notification=adminNotifications.find(item=>item.id===id);
+    if(notification)notification.read_at=new Date().toISOString();
+    renderAdmin();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
 async function markAdminNotificationsRead(){
   const ids=adminNotifications.filter(item=>!item.read_at).map(item=>item.id);
   if(!ids.length)return;
   try{
     const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/read`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids})});
     if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
-    await loadAdminNotifications(false);
+    const now=new Date().toISOString();
+    adminNotifications=adminNotifications.map(item=>item.read_at?item:{...item,read_at:now});
+    renderAdmin();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
+async function deleteAdminNotification(id){
+  if(!confirm("Delete this notification?"))return;
+  await deleteAdminNotifications([id]);
+}
+async function clearReadAdminNotifications(){
+  const ids=adminNotifications.filter(item=>item.read_at).map(item=>item.id);
+  if(!ids.length)return;
+  if(!confirm(`Delete all ${ids.length} read notifications?`))return;
+  await deleteAdminNotifications(ids);
+}
+async function deleteAdminNotifications(ids){
+  try{
+    const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/delete`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids})});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    const deleted=new Set(ids);
+    adminNotifications=adminNotifications.filter(item=>!deleted.has(item.id));
+    renderAdmin();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
 function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
+  const read=adminNotifications.length-unread;
   const pushLabel=adminPushEnabled?'Push notifications enabled':'Enable push notifications';
-  return `<section class="panel"><div class="toolbar"><div><h2>Submission notifications · ${unread} unread</h2><p class="sub">New quotes, dates, Revision notes and feedback.</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${pushLabel}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button></div></div><div class="queue">${adminNotifications.slice(0,20).map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span>${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div></article>`).join('')||'<div class="empty">No submission notifications yet.</div>'}</div></section>`;
+  return `<section class="panel"><div class="toolbar"><div><h2>Notifications</h2><p class="sub">${unread} unread · ${read} read</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${pushLabel}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button><button class="danger" onclick="clearReadAdminNotifications()" ${read?'':'disabled'}>Clear read</button></div></div><div class="queue">${adminNotifications.map(item=>`<article class="item ${item.read_at?'notification-read':''}"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span class="tag">${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div><div class="item-actions">${item.read_at?'':`<button onclick="markAdminNotificationRead('${esc(item.id)}')">Mark read</button>`}<button class="danger" onclick="deleteAdminNotification('${esc(item.id)}')">Delete</button></div></article>`).join('')||'<div class="empty">No submission notifications.</div>'}</div></section>`;
 }
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
@@ -187,17 +218,37 @@ function renderAdmin(){
   const items=AdminManager.items||[];
   const q=window.adminQuery||"";
   const kind=window.adminKind||"all";
-  const filtered=items.filter(item=>(kind==="all"||item._kind===kind)&&JSON.stringify(item).toLowerCase().includes(q.toLowerCase()));
-  const pendingCount=items.filter(item=>item._pending!==false&&item._kind!=="feedback").length;
-  const publishedCount=items.filter(item=>item._pending===false).length;
+  const tab=window.adminTab||"review";
+  const matches=item=>(kind==="all"||item._kind===kind)&&JSON.stringify(item).toLowerCase().includes(q.toLowerCase());
+  const pending=items.filter(item=>item._pending!==false&&item._kind!=="feedback");
+  const published=items.filter(item=>item._pending===false);
+  const feedback=items.filter(item=>item._kind==="feedback");
+  const pendingFiltered=pending.filter(matches);
+  const publishedFiltered=published.filter(matches);
+  const feedbackFiltered=feedback.filter(item=>JSON.stringify(item).toLowerCase().includes(q.toLowerCase()));
+  const unread=adminNotifications.filter(item=>!item.read_at).length;
+  const pendingCount=pending.length;
+  const publishedCount=published.length;
   const counts=items.reduce((out,item)=>(out[item._kind]=(out[item._kind]||0)+1,out),{});
-  app.innerHTML=`<div class="toolbar"><div><h1>Moderation queue</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh queue</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
-  ${renderAdminNotifications()}
+  const tabButton=(id,label,count)=>`<button class="admin-tab ${tab===id?'active':''}" onclick="window.adminTab='${id}';renderAdmin()" ${tab===id?'aria-current="page"':''}>${label}<span>${count}</span></button>`;
+  let content="";
+  if(tab==="review"||tab==="published"||tab==="feedback"){
+    const selected=tab==="review"?pendingFiltered:tab==="published"?publishedFiltered:feedbackFiltered;
+    const title=tab==="review"?"Awaiting review":tab==="published"?"Published content":"Feedback";
+    content=`<div class="toolbar"><div><h2>${title}</h2><p class="sub">${selected.length} ${selected.length===1?'item':'items'}</p></div></div><div class="filters"><input aria-label="Search submissions" placeholder="Search content or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?'selected':''}>All types</option><option value="quote" ${kind==="quote"?'selected':''}>QuoteVault</option><option value="date" ${kind==="date"?'selected':''}>DateVault</option><option value="revision-note" ${kind==="revision-note"?'selected':''}>Revision notes</option><option value="feedback" ${kind==="feedback"?'selected':''}>Feedback</option></select></div><section class="queue">${selected.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":item._kind==="feedback"?"Feedback":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">Nothing in this section matches your filters.</div>'}</section>`;
+  }else if(tab==="notifications"){
+    content=renderAdminNotifications();
+  }else if(tab==="users"){
+    content=AdminManager.role==="owner"?renderOwnerAccounts():'<div class="empty">Only the owner can manage accounts.</div>';
+  }else if(tab==="history"){
+    content=renderApprovalHistory();
+  }
+  app.innerHTML=`<div class="toolbar"><div><h1>Admin workspace</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
   <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${publishedCount}</strong> published</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
-  <div class="filters"><input aria-label="Search submissions" placeholder="Search submitted content, source, or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?"selected":""}>All types</option><option value="quote" ${kind==="quote"?"selected":""}>QuoteVault</option><option value="date" ${kind==="date"?"selected":""}>DateVault</option><option value="revision-note" ${kind==="revision-note"?"selected":""}>Revision notes</option><option value="feedback" ${kind==="feedback"?"selected":""}>Feedback</option></select></div>
+  <nav class="admin-tabs" aria-label="Admin sections">${tabButton("review","To review",pendingCount)}${tabButton("published","Published",publishedCount)}${tabButton("feedback","Feedback",feedback.length)}${tabButton("notifications","Notifications",unread)}${AdminManager.role==="owner"?tabButton("users","Users",(AdminManager.users||[]).length):""}${tabButton("history","History",moderationLog.length)}</nav>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
   ${AdminManager.loading?'<div class="notice">Refreshing submissions…</div>':""}
-  <section class="queue">${filtered.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">No submissions match this filter.</div>'}</section>${renderOwnerAccounts()}${renderApprovalHistory()}`;
+  ${content}`;
 }
 async function bootstrapAdmin(){
   const input=document.getElementById("admin-bootstrap-key");
