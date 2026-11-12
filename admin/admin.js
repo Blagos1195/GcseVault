@@ -1,5 +1,5 @@
 const app=document.getElementById("app");
-const ADMIN_PUSH_PUBLIC_KEY="BFAcjYArlW3-YvgBzIL5mZnFpNThGnX-7npAc7akXqPxRBle_IC4ZMo8NehBuuT0QFU_0aOFYJWpcGQ9HLsw7Ng";
+const ADMIN_PUSH_PUBLIC_KEY="BOaU8cDpW3gJFdhWh1mTVif8dfn-vKB3AzVnWKnKDLUxLwLMWZri33_jBy7iJWAt7QHvDCCVSt3E9wqb1B3asCs";
 let adminPushEnabled=false;
 const esc=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 window.openModal=html=>{document.getElementById("modal").innerHTML=html;document.getElementById("modal-bg").classList.add("open");};
