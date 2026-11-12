@@ -610,6 +610,16 @@ export default {
       for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
+    if (url.pathname === "/admin/notifications/delete" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      const body = await request.json();
+      const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(String).filter(Boolean))].slice(0, 100) : [];
+      if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
+      await ensureModerationTables();
+      for (const id of ids) await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
