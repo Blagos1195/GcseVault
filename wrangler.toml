@@ -44,3 +44,7 @@ binding = "DB"
 database_name = "leaderboard"
 database_id = "5670b9d5-b36e-48bf-aeb2-1a7e1490095c"
 migrations_dir = "migrations"
+
+[vars]
+VAPID_PUBLIC_KEY = "BOaU8cDpW3gJFdhWh1mTVif8dfn-vKB3AzVnWKnKDLUxLwLMWZri33_jBy7iJWAt7QHvDCCVSt3E9wqb1B3asCs"
+VAPID_SUBJECT = "mailto:nbarker249@gmail.com"
