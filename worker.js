@@ -104,7 +104,16 @@ export default {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_push_subscriptions (user_key TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, endpoint))").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_account_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, target_username TEXT NOT NULL, actor_username TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL)").bind().run();
     }
+
+    async function recordAccountAdminAction(targetUsername, actorUsername, action) {
+      await ensureModerationTables();
+      await env.DB.prepare("INSERT INTO admin_account_audit (target_username, actor_username, action, acted_at) VALUES (?, ?, ?, ?)").bind(
+        String(targetUsername), String(actorUsername), String(action), new Date().toISOString()
+      ).run();
+    }
+
     const pushEncoder = new TextEncoder();
     function pushBase64UrlBytes(value) {
       const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
@@ -804,9 +813,16 @@ export default {
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
-      const { results } = await env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all();
-      return new Response(JSON.stringify({ entries: results }), { headers: { ...cors, "Content-Type": "application/json" } });
+      await ensureModerationTables();
+      const [moderation, accountChanges] = await Promise.all([
+        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all(),
+        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM admin_account_audit ORDER BY acted_at DESC LIMIT 500").all()
+      ]);
+      const entries = [
+        ...(moderation.results || []),
+        ...(accountChanges.results || []).map(item => ({site:"Account",item_id:item.target_username,item_title:"Account permissions changed",submitted_by:item.target_username,moderator:item.actor_username,action:item.action,acted_at:item.acted_at}))
+      ].sort((a,b)=>String(b.acted_at).localeCompare(String(a.acted_at))).slice(0,500);
+      return new Response(JSON.stringify({ entries }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/submissions/notifications" && request.method === "GET") {
       const account = await getAccountSession(request);
@@ -880,13 +896,17 @@ export default {
       const username = String(body.username || "").trim();
       if (!username || typeof body.enabled !== "boolean") return new Response("Invalid AI access request", { status: 400, headers: cors });
       const target = await env.DB.prepare(
-        "SELECT user_key, role FROM users WHERE LOWER(username) = LOWER(?)"
+        "SELECT user_key, role, ai_access FROM users WHERE LOWER(username) = LOWER(?)"
       ).bind(username).first();
       if (!target) return new Response("Account not found", { status: 404, headers: cors });
       if (target.role !== "user") return new Response("AI access is inherited by owners and admins.", { status: 400, headers: cors });
+      const nextAccess = body.enabled ? 1 : 0;
       await env.DB.prepare(
         "UPDATE users SET ai_access = ? WHERE user_key = ? AND role = 'user'"
-      ).bind(body.enabled ? 1 : 0, target.user_key).run();
+      ).bind(nextAccess, target.user_key).run();
+      if (Number(target.ai_access || 0) !== nextAccess) {
+        await recordAccountAdminAction(username, actor.username, `AI access ${nextAccess ? "enabled" : "disabled"}`);
+      }
       return new Response(JSON.stringify({ success: true, username, ai_access: body.enabled }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -982,6 +1002,9 @@ export default {
       await env.DB.prepare(
         "UPDATE users SET role = ? WHERE user_key = ? AND role != 'owner'"
       ).bind(role, target.user_key).run();
+      if (target.role !== role) {
+        await recordAccountAdminAction(username, actor.username, `Role changed from ${target.role} to ${role}`);
+      }
       return new Response(JSON.stringify({ success: true, username, role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
