@@ -861,27 +861,30 @@ async function syncFromWorker(){
     }
     // Sync pending submissions from other devices
     const remotePending=Array.isArray(u.dv_pending_data)?u.dv_pending_data:[];
-    if(remotePending.length>0){
-      const localPendingIds=new Set(S.pending.map(p=>String(p.id)));
-      let syncedPending=0;
-      remotePending.forEach(item=>{
-        const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
-        const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
-        if(restored._status==='approved-private'){
-          S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
-          if(!S.custom.some(saved=>String(saved.id)===String(restored.id))){
-            S.custom.push(restored);
-            syncedPending++;
-          }
-        }else if(!existing){
-          S.pending.push(restored);
+    const remoteIds=new Set(remotePending.map(item=>String(item.id)));
+    S.pending=S.pending.filter(item=>!item._submittedByMe||remoteIds.has(String(item.id)));
+    S.custom=S.custom.filter(item=>!item._submittedByMe||item._status!=='approved-private'||remoteIds.has(String(item.id)));
+    let syncedPending=0;
+    remotePending.forEach(item=>{
+      const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
+      const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
+      if(restored._status==='approved-private'){
+        S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
+        const customIndex=S.custom.findIndex(saved=>String(saved.id)===String(restored.id));
+        if(customIndex<0){
+          S.custom.push(restored);
           syncedPending++;
-        }else if(restored._status==='denied'){
-          Object.assign(existing,restored);
+        }else{
+          S.custom[customIndex]=restored;
         }
-      });
-      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
-    }
+      }else if(!existing){
+        S.pending.push(restored);
+        syncedPending++;
+      }else{
+        Object.assign(existing,restored);
+      }
+    });
+    if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
     // Check for rejections
     const rejectedIds=Array.isArray(u.dv_rejected_ids)?u.dv_rejected_ids:[];
     if(rejectedIds.length>0){
