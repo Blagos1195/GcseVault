@@ -96,7 +96,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/quotes/" || path === "/dates/") {
-          const menu = page.locator("#site-page-select");
+          const menu = page.locator('select[aria-label="Library navigation"]');
           await menu.selectOption("library");
           assert.equal(await page.locator("#tb-title").innerText(), "Library", path + " navigation did not change sections");
         }
