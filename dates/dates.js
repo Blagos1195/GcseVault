@@ -2808,6 +2808,16 @@ async function saveFact(privateOnly=false){
   }catch(e){fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — ${e.message}</div>`;}
 }
 
+async function deletePrivateFact(id){
+  if(!confirm('Delete this personal date? This removes it from your account and synced devices.'))return;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/private/remove',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({site:'dv',id})});
+    if(!response.ok)throw new Error(await response.text());
+  }catch(e){toast('Could not delete this date.');return;}
+  S.custom=S.custom.filter(item=>String(item.id)!==String(id));
+  S.pending=S.pending.filter(item=>String(item.id)!==String(id));
+  save();await lbUpdate();buildNav();toast('Personal date deleted');render();
+}
 async function deletePendingFact(id){
   if(!confirm('Remove this pending fact from your library?\nIf it hasn\'t been reviewed yet, the submission will also be withdrawn.'))return;
   const item=S.pending.find(p=>String(p.id)===String(id));
