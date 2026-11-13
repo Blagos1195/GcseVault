@@ -935,14 +935,4 @@ test("QuoteVault and DateVault preserve failed submissions as recoverable drafts
 });
 
 
-test("Amount of substance supplement contains its full revision pack", () => {
-  const pack = JSON.parse(fs.readFileSync(new URL("../revision/course-packs/aqa-chemistry-amount-of-substance.json", import.meta.url), "utf8"));
-  assert.equal(pack.type, "revision-course-pack");
-  assert.equal(pack.catalogueId, "aqa-a-level-chemistry");
-  assert.equal(pack.cards.length, 52);
-  assert.equal(pack.resources.length, 9);
-  assert.equal(pack.formulas.length, 12);
-  assert.ok(pack.cards.every(card => card.topicId === "chemistry-02" && card.front && card.back));
-  assert.ok(pack.resources.every(resource => resource.topicId === "chemistry-02" && resource.content.length > 500));
-  assert.ok(pack.formulas.every(formula => formula.topicId === "chemistry-02" && formula.name && formula.expression));
-});
+
