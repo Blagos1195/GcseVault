@@ -784,3 +784,13 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("icon-only navigation and data controls have accessible names", async () => {
+  for (const file of ["../quotes/index.html", "../dates/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(html.includes('aria-label="Open navigation menu"'));
+    assert.ok(html.includes('aria-label="Export data"'));
+    assert.ok(html.includes('aria-label="Import data from a JSON file"'));
+  }
+});
