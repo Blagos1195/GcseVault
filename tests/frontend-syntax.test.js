@@ -784,3 +784,12 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("admin feedback view groups recurring error reports by fingerprint", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(admin.includes("function renderErrorTrends(reports)"));
+  assert.ok(admin.includes("item.fingerprint"));
+  assert.ok(admin.includes("Recurring error trends"));
+  assert.ok(admin.includes("tab==="feedback"?renderErrorTrends(feedbackFiltered)"));
+});
