@@ -1249,7 +1249,7 @@ test("QuoteVault submission retries reuse the same server item and admin notific
     const value = storage.get(key);
     return type === "json" && value ? JSON.parse(value) : value || null;
   };
-  env.QUOTEVAULT.put = async (key, value) => { puts++; storage.set(key, value); };
+  env.QUOTEVAULT.put = async (key, value) => { if (!key.startsWith("quote-submit:")) puts++; storage.set(key, value); };
   const body = { userKey: "student-key", submissionRequestId: "8f7e6d5c-4b3a-2910-8f7e-6d5c4b3a2910", text: "A test quote", char: "A character" };
   const headers = { "X-Account-Session": "a".repeat(64) };
   const first = await call("/submit", env, body, headers);
@@ -1280,6 +1280,7 @@ test("DateVault submission retries reuse the same server item", async () => {
     if (sql.includes("SELECT user_key FROM users WHERE role IN")) statement.all = async () => ({ results: [] });
     return statement;
   };
+  env.QUOTEVAULT.put = async () => {};
   env.DV_PENDING = {
     get: async (key, type) => { const value = storage.get(key); return type === "json" && value ? JSON.parse(value) : value || null; },
     put: async (key, value) => { puts++; storage.set(key, value); }
@@ -1298,6 +1299,7 @@ test("DateVault submission retries reuse the same server item", async () => {
 
 test("QuoteVault rejects malformed idempotency request IDs", async () => {
   const env = makeEnv();
+  env.QUOTEVAULT.put = async () => {};
   const basePrepare = env.DB.prepare.bind(env.DB);
   env.DB.prepare = sql => {
     const statement = basePrepare(sql);
