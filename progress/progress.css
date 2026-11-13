@@ -1,0 +1,40 @@
+:root{color-scheme:dark;--page:#0b0a14;--panel:#161526;--line:rgba(255,255,255,.09);--text:#e4e1f2;--muted:#9a98b5;--purple:#c4aaff;--gold:#e8c547;--teal:#3de09a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse 70% 45% at 20% 0%,rgba(124,92,191,.15),transparent 65%),var(--page);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:inherit}
+.progress-shell{width:min(960px,100%);margin:0 auto;padding:38px 22px 30px}
+.progress-header{margin-bottom:28px}
+.home-link{display:inline-block;color:var(--muted);font-size:.86rem;text-decoration:none;margin-bottom:36px}
+.home-link:hover{color:var(--text)}
+.eyebrow,.card-kicker{font-size:.68rem;letter-spacing:.16em;font-weight:700;color:var(--muted)}
+h1{font-size:clamp(2rem,6vw,3.2rem);letter-spacing:-.045em;margin:8px 0}
+.progress-header p,.progress-card p,.sign-in p{color:var(--muted);line-height:1.6}
+.progress-header p{margin:0}
+.account-name{margin-top:12px;color:var(--purple);font-size:.88rem}
+.status{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--muted)}
+.progress-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.progress-card{min-width:0;padding:22px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.progress-card h2{font-size:1.25rem;margin:8px 0 20px}
+.progress-card.purple{border-top:2px solid var(--purple)}
+.progress-card.gold{border-top:2px solid var(--gold)}
+.progress-card.teal{border-top:2px solid var(--teal)}
+.purple .card-kicker{color:var(--purple)}
+.gold .card-kicker{color:var(--gold)}
+.teal .card-kicker{color:var(--teal)}
+.metric{display:flex;align-items:baseline;gap:8px}
+.metric span{font-size:2.8rem;font-weight:700;letter-spacing:-.06em}
+.metric small{color:var(--muted)}
+.progress-card p{font-size:.82rem;margin:12px 0}
+.progress-card a{display:inline-block;margin-top:12px;font-size:.86rem;text-decoration:none;color:var(--text)}
+.progress-card a:hover{text-decoration:underline}
+.progress-track{height:7px;border-radius:99px;background:#302d42;overflow:hidden;margin:12px 0}
+.progress-track div{height:100%;width:0;background:var(--teal);border-radius:inherit;transition:width .25s}
+.data-note{margin:20px 2px 14px;color:var(--muted);font-size:.8rem;line-height:1.6}
+.refresh-button,.sign-in-links a{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:9px;padding:10px 14px;background:#211e35;color:var(--text);font:inherit;font-size:.85rem;text-decoration:none;cursor:pointer}
+.refresh-button:hover,.sign-in-links a:hover{border-color:rgba(255,255,255,.3)}
+.sign-in{padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.sign-in h2{margin-top:0}
+.sign-in-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-size:.72rem;color:var(--muted)}
+[hidden]{display:none!important}
+@media(max-width:700px){.progress-grid{grid-template-columns:1fr}.progress-shell{padding:24px 16px}.home-link{margin-bottom:26px}.progress-card{padding:19px}}
