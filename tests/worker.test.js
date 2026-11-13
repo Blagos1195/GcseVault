@@ -807,6 +807,7 @@ test("automatic bug feedback is stored with bounded diagnostic metadata", async 
   env.FEEDBACK = {
     put: async (id, value) => saved.set(id, JSON.parse(value))
   };
+  env.QUOTEVAULT.put = async () => {};
   const response = await call("/feedback/submit", env, {
     type: "Automatic bug report",
     title: "TypeError: test failure",
