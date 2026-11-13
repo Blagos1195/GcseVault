@@ -1221,11 +1221,13 @@ function deleteRevisionCard(id){const card=cardById(id);if(!card)return;state.ca
 const revisionSidebar = document.getElementById('sidebar');
 const revisionHbg = document.getElementById('hbg');
 const revisionOverlay = document.getElementById('overlay');
+const revisionMobileMenu = document.getElementById('revision-mobile-menu');
 
 function closeRevisionSidebar(){
   if(revisionSidebar)revisionSidebar.classList.remove('open');
   if(revisionOverlay)revisionOverlay.style.display='none';
   if(revisionHbg)revisionHbg.setAttribute('aria-expanded','false');
+  if(revisionMobileMenu)revisionMobileMenu.setAttribute('aria-expanded','false');
 }
 
 document.querySelectorAll('.ni').forEach(item => {
@@ -1237,6 +1239,7 @@ document.querySelectorAll('.ni').forEach(item => {
     closeRevisionSidebar();
   });
 });
+if(revisionMobileMenu){revisionMobileMenu.addEventListener('click',()=>{if(!revisionSidebar)return;const isOpen=revisionSidebar.classList.toggle('open');if(revisionOverlay)revisionOverlay.style.display=isOpen?'block':'none';revisionMobileMenu.setAttribute('aria-expanded',String(isOpen));});}
 if (revisionHbg) {
   revisionHbg.addEventListener('click', () => {
     if (!revisionSidebar) return;
