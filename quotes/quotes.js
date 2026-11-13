@@ -1311,8 +1311,12 @@ const PAGES=[
 
 function buildNav(){
   const groups={"Study":["dashboard","srs","flashcards","fill","quiz","timed","braindump","timeline"],"Library":["library"],"Progress":["stats","leaderboard","achievements"],"Tools":["add","settings"]};
-  document.getElementById('nav').innerHTML=Object.entries(groups).map(([group,ids])=>{const pages=PAGES.filter(page=>ids.includes(page.id));return pages.length?'<label class="nav-group nav-'+group.toLowerCase()+'"><span>'+group+'</span><select aria-label="'+group+' navigation" onchange="if(this.value)go(this.value)"><option value="" selected>'+group+'</option>'+pages.map(page=>'<option value="'+page.id+'">'+page.label+'</option>').join('')+'</select></label>':'';}).join('');
-  document.querySelectorAll('#nav select').forEach(select=>{if([...select.options].some(option=>option.value===S.page))select.value=S.page;});
+  document.getElementById('nav').innerHTML=Object.entries(groups).map(([group,ids])=>{
+    const pages=PAGES.filter(page=>ids.includes(page.id));
+    if(!pages.length)return '';
+    const current=pages.find(page=>page.id===S.page);
+    return '<details class="nav-menu"><summary><span class="nav-menu-name">'+group+'</span><span class="nav-menu-current">'+(current?current.label:'Browse')+'</span><span class="nav-chevron" aria-hidden="true"></span></summary><div class="nav-options">'+pages.map(page=>'<button type="button" class="nav-option'+(page.id===S.page?' active':'')+'" onclick="go(\''+page.id+'\')">'+page.label+'</button>').join('')+'</div></details>';
+  }).join('');
 }
 function go(page){
   if(S.tc.timer){clearInterval(S.tc.timer);S.tc.timer=null;}
