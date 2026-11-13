@@ -851,6 +851,7 @@ test("Revision queues sync while online and preserves changes locally while offl
     revisionSyncTimer: null,
     clearTimeout() {},
     revisionActiveScope: "account",
+    revisionSyncConflict: false,
     revisionUserKey: () => "account",
     revisionUsername: () => "student",
     VaultUser: { getAccountSession: () => "session" },
