@@ -791,5 +791,5 @@ test("admin feedback view groups recurring error reports by fingerprint", () => 
   assert.ok(admin.includes("function renderErrorTrends(reports)"));
   assert.ok(admin.includes("item.fingerprint"));
   assert.ok(admin.includes("Recurring error trends"));
-  assert.ok(admin.includes("tab==="feedback"?renderErrorTrends(feedbackFiltered)"));
+  assert.ok(admin.includes('tab===\"feedback\"?renderErrorTrends(feedbackFiltered)'));
 });
