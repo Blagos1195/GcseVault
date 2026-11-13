@@ -776,10 +776,11 @@ async function checkSubmissionNotifications(){
     const notice=(payload.notifications||[]).find(item=>item.site==='dv');
     if(!notice)return false;
     const approved=notice.status==='approved';
+    const title=String(notice.title||'Untitled date').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const message=approved
-      ?'Your date submission was approved. If an admin edited it, choose which version you want to keep in your own library.'
-      :'Your date submission was not approved. You can keep your original privately in your account or remove it.';
-    openModal(`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">${message}<br><strong>${String(notice.title||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong></div><div style="display:flex;gap:8px;flex-wrap:wrap">${approved?'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(&quot;replace&quot;)">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(&quot;remove&quot;)">Remove it</button>'}</div></div>`);
+      ?`Your date “${title}” was approved. If it was edited, choose which version to keep in your library.`
+      :`Your date “${title}” was not approved. You can keep the original privately or remove it.`;
+    openModal(`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">${message}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${approved?'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(&quot;replace&quot;)">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(&quot;remove&quot;)">Remove it</button>'}</div></div>`);
     window._activeSubmissionNotification=notice;
     return true;
   }catch(error){return false;}
@@ -793,7 +794,8 @@ async function resolveSubmissionNotification(choice){
     if(notice.status==='approved'){
       const chosen=choice==='replace'&&notice.payload?.approved?notice.payload.approved:notice.payload?.original;
       S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
-      if(chosen&&!S.custom.some(item=>String(item.id)===String(notice.item_id)))S.custom.push({...chosen,_submittedByMe:true,_status:'approved-private'});
+      S.custom=S.custom.filter(item=>String(item.id)!==String(notice.item_id));
+      if(chosen)S.custom.push({...chosen,id:notice.item_id,_submittedByMe:true,_status:'approved-private'});
     }else if(choice==='remove'){
       S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
     }else if(choice==='keep'){
@@ -859,27 +861,30 @@ async function syncFromWorker(){
     }
     // Sync pending submissions from other devices
     const remotePending=Array.isArray(u.dv_pending_data)?u.dv_pending_data:[];
-    if(remotePending.length>0){
-      const localPendingIds=new Set(S.pending.map(p=>String(p.id)));
-      let syncedPending=0;
-      remotePending.forEach(item=>{
-        const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
-        const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
-        if(restored._status==='approved-private'){
-          S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
-          if(!S.custom.some(saved=>String(saved.id)===String(restored.id))){
-            S.custom.push(restored);
-            syncedPending++;
-          }
-        }else if(!existing){
-          S.pending.push(restored);
+    const remoteIds=new Set(remotePending.map(item=>String(item.id)));
+    S.pending=S.pending.filter(item=>!item._submittedByMe||remoteIds.has(String(item.id)));
+    S.custom=S.custom.filter(item=>!item._submittedByMe||item._status!=='approved-private'||remoteIds.has(String(item.id)));
+    let syncedPending=0;
+    remotePending.forEach(item=>{
+      const existing=S.pending.find(saved=>String(saved.id)===String(item.id));
+      const restored={...(existing||{}),...item,_submittedByMe:true,_status:item._status||existing?._status||'pending'};
+      if(restored._status==='approved-private'){
+        S.pending=S.pending.filter(saved=>String(saved.id)!==String(restored.id));
+        const customIndex=S.custom.findIndex(saved=>String(saved.id)===String(restored.id));
+        if(customIndex<0){
+          S.custom.push(restored);
           syncedPending++;
-        }else if(restored._status==='denied'){
-          Object.assign(existing,restored);
+        }else{
+          S.custom[customIndex]=restored;
         }
-      });
-      if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
-    }
+      }else if(!existing){
+        S.pending.push(restored);
+        syncedPending++;
+      }else{
+        Object.assign(existing,restored);
+      }
+    });
+    if(syncedPending>0){save();toast(`☁️ Synced ${syncedPending} submission update${syncedPending===1?'':'s'}`,3000);}
     // Check for rejections
     const rejectedIds=Array.isArray(u.dv_rejected_ids)?u.dv_rejected_ids:[];
     if(rejectedIds.length>0){
@@ -1422,7 +1427,9 @@ function rLib(){
             : ''}
         ${q._submittedByMe&&q._status==='pending'
           ?`<button class="btn bsm" onclick="deletePendingFact('${q.id}')" style="color:var(--coral);border-color:var(--coral);padding:3px 6px" title="Withdraw">✕</button>`
-          :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'Unhide':'Hide'}</button>`}
+          :q._submittedByMe&&q._status==='approved-private'
+            ?`<button class="btn bsm" onclick="deletePrivateFact('${q.id}')" style="color:var(--coral);border-color:var(--coral);padding:3px 6px" title="Delete personal card">✕ Delete</button>`
+            :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'Unhide':'Hide'}</button>`}
       </div>
     </div>
     <div class="dc-event">${q.event}</div>
@@ -2717,6 +2724,7 @@ function rAdd(){
     <div class="fg"><label>Note (optional)</label><input type="text" id="a-no" placeholder="Common errors, exam tips…"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
       <button class="btn bg" onclick="saveFact()">Submit for Review</button>
+      <button class="btn" onclick="saveFact(true)">Save to My Library</button>
       <button class="btn" onclick="checkDupFact()">Check duplicate</button>
     </div>
     <div id="add-fb" style="margin-top:10px"></div>
@@ -2758,7 +2766,7 @@ function checkDupFact(){
   else if(score>.5)el.innerHTML=`<div class="qfb" style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)">Most similar (${Math.round(score*100)}%):<br>${quote.year} — ${quote.event}</div>`;
   else el.innerHTML=`<div class="qfb qok">✓ No duplicate — looks new!</div>`;
 }
-async function saveFact(){
+async function saveFact(privateOnly=false){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const yr=(document.getElementById('a-yr')?.value||'').trim();
   const ev=(document.getElementById('a-ev')?.value||'').trim();
@@ -2771,6 +2779,20 @@ async function saveFact(){
     stars:+document.getElementById('a-st').value,note:document.getElementById('a-no').value,
     yearNum:parseInt(yr.match(/\d+/)?.[0])||0,submittedAt:new Date().toISOString(),
     _submittedByMe:true,_status:'pending'};
+  if(privateOnly){
+    q._status='approved-private';
+    S.custom=S.custom.filter(item=>String(item.id)!==String(q.id));
+    S.custom.push(q);
+    save();
+    await lbUpdate();
+    toast('Date saved to your personal library.');
+    ['a-yr','a-ev','a-sig','a-pe','a-sec','a-no'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    const liveDup=document.getElementById('live-dup');if(liveDup)liveDup.innerHTML='';
+    buildNav();render();
+    const newFb=document.getElementById('add-fb');
+    if(newFb)newFb.innerHTML='<div class="qfb qok">Saved privately. Only you can see this date.</div>';
+    return;
+  }
   const fbEl=document.getElementById('add-fb');
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
@@ -2790,6 +2812,16 @@ async function saveFact(){
   }catch(e){fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — ${e.message}</div>`;}
 }
 
+async function deletePrivateFact(id){
+  if(!confirm('Delete this personal date? This removes it from your account and synced devices.'))return;
+  try{
+    const response=await fetch(WORKER_URL+'/submissions/private/remove',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({site:'dv',id})});
+    if(!response.ok)throw new Error(await response.text());
+  }catch(e){toast('Could not delete this date.');return;}
+  S.custom=S.custom.filter(item=>String(item.id)!==String(id));
+  S.pending=S.pending.filter(item=>String(item.id)!==String(id));
+  save();await lbUpdate();buildNav();toast('Personal date deleted');render();
+}
 async function deletePendingFact(id){
   if(!confirm('Remove this pending fact from your library?\nIf it hasn\'t been reviewed yet, the submission will also be withdrawn.'))return;
   const item=S.pending.find(p=>String(p.id)===String(id));

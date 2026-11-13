@@ -807,6 +807,7 @@ test("automatic bug feedback is stored with bounded diagnostic metadata", async 
   env.FEEDBACK = {
     put: async (id, value) => saved.set(id, JSON.parse(value))
   };
+  env.QUOTEVAULT.put = async () => {};
   const response = await call("/feedback/submit", env, {
     type: "Automatic bug report",
     title: "TypeError: test failure",
@@ -856,4 +857,167 @@ test("review schedule routes authenticate and always scope writes to the signed-
   }, { "X-Account-Session": token });
   assert.equal(saved.status, 200);
   assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
+});
+
+
+test("submission approval replaces existing private copies instead of duplicating them", async () => {
+  const env = makeEnv();
+  const updates = [];
+  const existing = [
+    { id: "quote-1", text: "Older local copy" },
+    { id: "quote-1", text: "Duplicate local copy" },
+    { id: "quote-2", text: "Unrelated quote" }
+  ];
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
+        if (sql.includes("FROM submission_notifications")) return {
+          site: "qv",
+          item_id: "quote-1",
+          status: "approved",
+          payload: JSON.stringify({
+            original: { id: "quote-1", text: "Original quote" },
+            approved: { id: "quote-1", text: "Edited quote" }
+          })
+        };
+        if (sql.includes("SELECT qv_pending_data, qv_rejected_ids")) return {
+          qv_pending_data: JSON.stringify(existing),
+          qv_rejected_ids: "[]"
+        };
+        return null;
+      },
+      run: async () => {
+        updates.push({ sql, values });
+        return { success: true, meta: { changes: 1 } };
+      }
+    })
+  });
+
+  const response = await call("/submissions/notifications/resolve", env, {
+    id: "qv:quote-1:approved",
+    choice: "replace"
+  }, { "X-Account-Session": "a".repeat(64) });
+
+  assert.equal(response.status, 200);
+  const saved = updates.find(update => update.sql.includes("UPDATE users SET qv_pending_data"));
+  assert.ok(saved);
+  const pending = JSON.parse(saved.values[0]);
+  assert.equal(pending.filter(item => String(item.id) === "quote-1").length, 1);
+  assert.equal(pending.find(item => String(item.id) === "quote-1").text, "Edited quote");
+  assert.equal(pending.some(item => item.id === "quote-2"), true);
+});
+
+test("feedback submissions enforce a per-IP rate limit", async () => {
+  const env = makeEnv();
+  let saved = false;
+  env.QUOTEVAULT.get = async key => key.startsWith("feedback-submit:") ? "5" : null;
+  env.FEEDBACK = { put: async () => { saved = true; } };
+
+  const response = await call("/feedback/submit", env, {
+    type: "Bug report",
+    title: "Test",
+    description: "Test description"
+  }, { "CF-Connecting-IP": "192.0.2.1" });
+
+  assert.equal(response.status, 429);
+  assert.equal(saved, false);
+});
+
+
+test("QuoteVault submission, approval and publication complete as one Worker lifecycle", async () => {
+  const studentToken = "a".repeat(64);
+  const ownerToken = "b".repeat(64);
+  const studentHash = await hashVerifier(studentToken);
+  const ownerHash = await hashVerifier(ownerToken);
+  const pending = new Map();
+  const published = new Map();
+  const notifications = [];
+  const moderation = [];
+  const env = makeEnv();
+  env.QUOTEVAULT.get = async key => {
+    if (key === "session:owner-session") return JSON.stringify({ userKey: "owner-key", accountTokenHash: ownerHash });
+    if (!pending.has(key)) return null;
+    return JSON.parse(pending.get(key));
+  };
+  env.QUOTEVAULT.put = async (key, value) => pending.set(key, value);
+  env.QUOTEVAULT.delete = async key => pending.delete(key);
+  env.PUBLIC_QUOTES = {
+    put: async (key, value) => published.set(key, JSON.parse(value)),
+    get: async key => published.get(key) || null
+  };
+  env.DB.prepare = sql => {
+    const statement = values => ({
+      bind: (...next) => statement(next),
+      first: async () => {
+        if (sql.includes("FROM account_credentials")) return values[0] === "student-key" ? { user_key: "student-key" } : null;
+        if (sql.includes("FROM account_sessions s JOIN users")) {
+          if (values[0] === studentHash) return { user_key: "student-key", username: "student", role: "user" };
+          return null;
+        }
+        if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) {
+          return values[0] === ownerHash ? { user_key: "owner-key" } : null;
+        }
+        if (sql.includes("SELECT user_key, username, role FROM users")) {
+          return values[0] === "owner-key" ? { user_key: "owner-key", username: "owner", role: "owner" } : null;
+        }
+        if (sql.includes("FROM submission_notifications WHERE user_key")) {
+          return notifications.find(item => item.user_key === values[0] && item.acknowledged_at == null) || null;
+        }
+        return null;
+      },
+      all: async () => {
+        if (sql.includes("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications")) {
+          return { results: notifications.filter(item => item.user_key === values[0] && item.acknowledged_at == null) };
+        }
+        return { results: [] };
+      },
+      run: async () => {
+        if (sql.includes("INSERT OR IGNORE INTO submission_notifications")) {
+          notifications.push({
+            id: values[0], user_key: values[1], site: values[2], item_id: values[3],
+            title: values[4], status: values[5], payload: values[6], created_at: values[7],
+            acknowledged_at: null
+          });
+        }
+        if (sql.includes("INSERT OR IGNORE INTO moderation_audit")) {
+          moderation.push({
+            site: values[0], item_id: values[1], item_title: values[2],
+            submitted_by: values[3], moderator: values[4], action: values[5]
+          });
+        }
+        return { success: true, meta: { changes: 1 } };
+      }
+    });
+    return statement([]);
+  };
+
+  const submitted = await call("/submit", env, {
+    userKey: "student-key",
+    text: "A synthetic quote for the lifecycle test",
+    char: "Test character",
+    work: "Test work"
+  }, { "X-Account-Session": studentToken });
+  assert.equal(submitted.status, 200);
+  const submission = await submitted.json();
+  assert.ok(submission.id);
+  assert.ok(pending.has(submission.id));
+
+  const approved = await call("/approve", env, { id: submission.id }, { "X-Session-Token": "owner-session" });
+  assert.equal(approved.status, 200);
+  assert.equal(pending.has(submission.id), false);
+  assert.equal(published.get(submission.id).text, "A synthetic quote for the lifecycle test");
+  assert.equal(published.get(submission.id)._submittedByUserKey, undefined);
+
+  const updates = await call("/submissions/notifications", env, null, { "X-Account-Session": studentToken });
+  assert.equal(updates.status, 200);
+  const updateData = await updates.json();
+  assert.equal(updateData.notifications.length, 1);
+  assert.equal(updateData.notifications[0].item_id, submission.id);
+  assert.equal(updateData.notifications[0].status, "approved");
+  assert.equal(updateData.notifications[0].payload.original.text, "A synthetic quote for the lifecycle test");
+
+  assert.equal(moderation.length, 1);
+  assert.equal(moderation[0].action, "approved");
+  assert.equal(moderation[0].moderator, "owner");
 });

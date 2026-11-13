@@ -767,6 +767,10 @@ export default {
       if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
       const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM submission_notifications WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
       if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
+      const validChoice = notification.status === "approved"
+        ? ["keep", "replace"].includes(choice)
+        : notification.status === "denied" && ["keep", "remove"].includes(choice);
+      if (!validChoice) return new Response("Invalid choice for this submission outcome.", { status: 400, headers: cors });
       if (["qv", "dv"].includes(notification.site)) {
         const pendingDataColumn = notification.site + "_pending_data";
         const rejectedColumn = notification.site + "_rejected_ids";
@@ -774,18 +778,14 @@ export default {
         let pendingData = [], rejectedIds = [];
         try { pendingData = JSON.parse(row?.[pendingDataColumn] || "[]"); } catch {}
         try { rejectedIds = JSON.parse(row?.[rejectedColumn] || "[]"); } catch {}
-        if (notification.status === "denied") rejectedIds = rejectedIds.filter(value => String(value) !== notification.item_id);
-        if (notification.status === "denied" && choice === "remove") {
-          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
-        } else if (notification.status === "approved") {
-          const payload = JSON.parse(notification.payload || "{}");
+        const payload = JSON.parse(notification.payload || "{}");
+        pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
+        if (notification.status === "denied") {
+          rejectedIds = rejectedIds.filter(value => String(value) !== notification.item_id);
+          if (choice === "keep" && payload.original) pendingData.push({ ...payload.original, id: notification.item_id, _status: "denied" });
+        } else {
           const chosen = choice === "replace" && payload.approved ? payload.approved : payload.original;
-          pendingData = pendingData.filter(item => String(item.id) !== notification.item_id);
           if (chosen) pendingData.push({ ...chosen, id: notification.item_id, _status: "approved-private" });
-        } else if (notification.status === "denied") {
-          const payload = JSON.parse(notification.payload || "{}");
-          pendingData = pendingData.map(item => String(item.id) === notification.item_id ? { ...item, _status: "denied" } : item);
-          if (!pendingData.some(item => String(item.id) === notification.item_id) && payload.original) pendingData.push({ ...payload.original, id: notification.item_id, _status: "denied" });
         }
         await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
       }
@@ -1749,9 +1749,14 @@ export default {
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
-      if (Number(request.headers.get("content-length") || 0) > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
+      const rateKey = "feedback-submit:" + await hashValue(request.headers.get("CF-Connecting-IP") || "unknown");
+      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      if (attempts >= 5) return new Response("Too many feedback submissions. Try again in 15 minutes.", { status: 429, headers: cors });
+      const rawBody = await request.text();
+      if (new TextEncoder().encode(rawBody).byteLength > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
       let body;
-      try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      try { body = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
       const type = sanitize(body.type, 80);
       const title = sanitize(body.title, 300);
