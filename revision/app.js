@@ -21,6 +21,7 @@ function normalizeRevisionSet(set, fallbackId){
     xp: Number(set && set.xp) || 0,
     streak: Number(set && set.streak) || 0,
     lastReview: set && set.lastReview ? String(set.lastReview) : '',
+    dailyGoal: Math.max(1, Math.min(200, Number(set && set.dailyGoal) || 20)),
     published: Boolean(set && set.published),
     syllabus: Array.isArray(set && set.syllabus) ? set.syllabus : [],
     syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === 'object' ? set.syllabusDone : {},
@@ -65,7 +66,7 @@ const state = {
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
   publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, setMessageType: 'success', linkSource: null, editingCard: null,
-  studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
+  studyQueue: [], studySessionActive: false, sessionReviewed: 0, bulkSelected: [], libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
 function getActiveRevisionSet(){
@@ -130,6 +131,7 @@ function restoreRevisionSnapshot(userKey){
   try{snapshot=JSON.parse(localStorage.getItem(revisionSnapshotKey(userKey))||'null');}catch{}
   if(snapshot){
     state.accountSets=Array.isArray(snapshot.accountSets)?snapshot.accountSets.map(set=>normalizeRevisionSet(set,DEFAULT_REVISION_SET_ID)):initialRevisionSets;
+    state.bulkSelected=[];
     state.activeSetId=snapshot.activeSetId||state.accountSets[0]?.id||DEFAULT_REVISION_SET_ID;
     state.publishSetId=state.activeSetId;
     state.cards=Array.isArray(snapshot.cards)?snapshot.cards:[];
@@ -197,6 +199,7 @@ function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
   state.activeSetId = selected.id;
+  state.bulkSelected = [];
   state.publishSetId = selected.id;
   state.cards = Array.isArray(selected.cards) ? selected.cards : [];
   state.progress = selected.progress && typeof selected.progress === 'object' ? selected.progress : {};
@@ -211,6 +214,7 @@ function switchRevisionSet(setId){
 function addRevisionSet(name = 'New set'){
   const newSet = normalizeRevisionSet({id:`set-${Date.now()}`,name,name,cards:[],progress:{},xp:0,streak:0,lastReview:''}, `set-${Date.now()}`);
   state.accountSets.push(newSet);
+  state.bulkSelected = [];
   state.activeSetId = newSet.id;
   state.publishSetId = newSet.id;
   state.cards = [];
@@ -222,8 +226,41 @@ function addRevisionSet(name = 'New set'){
   renderRevision();
   return newSet;
 }
+function duplicateRevisionSet(setId){
+  const source=state.accountSets.find(set=>set.id===setId);
+  if(!source)return;
+  const copy=JSON.parse(JSON.stringify(source));
+  const baseName=(source.name||'Revision set').slice(0,74)+' (copy)';
+  const names=new Set(state.accountSets.map(set=>set.name));
+  let name=baseName;
+  let suffix=2;
+  while(names.has(name)){
+    const ending=' (copy '+suffix+++')';
+    name=(source.name||'Revision set').slice(0,80-ending.length)+ending;
+  }
+  copy.id=globalThis.crypto?.randomUUID?.()||'set-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
+  copy.name=name;
+  copy.published=false;
+  const index=state.accountSets.findIndex(set=>set.id===setId);
+  state.accountSets.splice(index+1,0,normalizeRevisionSet(copy,copy.id));
+  state.setMessage='Created a copy of “'+source.name+'”.';
+  state.setMessageType='success';
+  saveRevision();
+  renderRevision();
+  return copy.id;
+}
+function moveRevisionSet(setId,direction){
+  const index=state.accountSets.findIndex(set=>set.id===setId);
+  const next=index+Number(direction);
+  if(index<0||next<0||next>=state.accountSets.length)return;
+  const [set]=state.accountSets.splice(index,1);
+  state.accountSets.splice(next,0,set);
+  saveRevision();
+  renderRevision();
+}
 function deleteRevisionSet(setId){
   if (state.accountSets.length <= 1) {
+    state.bulkSelected = [];
     state.accountSets = [normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''}, DEFAULT_REVISION_SET_ID)];
     state.activeSetId = DEFAULT_REVISION_SET_ID;
     state.publishSetId = DEFAULT_REVISION_SET_ID;
@@ -239,6 +276,7 @@ function deleteRevisionSet(setId){
   const index = state.accountSets.findIndex(set => set.id === setId);
   if (index < 0) return;
   const [removed] = state.accountSets.splice(index, 1);
+  state.bulkSelected = [];
   const fallback = state.accountSets[0];
   state.activeSetId = fallback.id;
   state.publishSetId = fallback.id;
@@ -349,6 +387,21 @@ function rateCard(id,rating){
   state.revealed=false;saveRevision();renderRevision();
 }
 function dueSummary(){const due=dueCards();return{due:due.length,total:state.cards.length,reviewed:state.cards.length-due.length};}
+function dailyReviewCount(){
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  const start=now.getTime();
+  return (getActiveRevisionSet().reviewLog||[]).filter(entry=>Number(entry.at)>=start&&Number(entry.at)<start+86400000).length;
+}
+function updateDailyGoal(){
+  const input=document.getElementById('revision-daily-goal');
+  const value=Number(input?.value);
+  if(!Number.isFinite(value)||value<1)return;
+  getActiveRevisionSet().dailyGoal=Math.max(1,Math.min(200,Math.round(value)));
+  saveRevision();
+  renderRevision();
+}
+
 function normalizeTopic(value){return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
 function syllabusCoverage(item){const target=normalizeTopic(typeof item==='string'?item:item.text);const ignored=new Set(['and','the','for','with','from','into','that','this']);const words=target.split(' ').filter(word=>word.length>2&&!ignored.has(word));if(!words.length)return 0;return state.cards.filter(card=>{const haystack=normalizeTopic(`${card.topic} ${card.title} ${card.answer}`);const hits=words.filter(word=>haystack.includes(word)).length;return haystack.includes(target)||hits/words.length>=0.6;}).length;}
 function toggleSyllabusDone(index){const set=getActiveRevisionSet();set.syllabusDone=set.syllabusDone||{};set.syllabusDone[index]=!set.syllabusDone[index];saveRevision();renderRevision();}
@@ -648,13 +701,41 @@ function renderSuggestions(){
   const suggestions=suggestedTopics();
   return `<div class="card"><div class="sec" style="margin-top:0">Suggested next topics</div>${suggestions.length?suggestions.map(([topic,stats])=>`<div class="suggestion"><div><div class="suggestion-name">${escapeRevision(topic)}</div><div class="suggestion-reason">${stats.due} card${stats.due===1?'':'s'} due · ${stats.reviewed}/${stats.total} reviewed</div></div><button class="btn bsm" onclick="startTopic('${encodeURIComponent(topic)}')">Study</button></div>`).join(''):'<div class="ps">Add cards to receive recommendations.</div>'}</div>`;
 }
+function renderBulkCardList(cards){
+  return `<div class="knowledge-list">${cards.map(card=>`<div class="knowledge-item${state.selected===card.id?' active':''}" onclick="selectRevisionCard('${escapeRevision(card.id)}')"><input type="checkbox" data-bulk-card="${escapeRevision(card.id)}" ${state.bulkSelected.includes(card.id)?'checked':''} aria-label="Select ${escapeRevision(card.title)}" onclick="event.stopPropagation()"><span class="knowledge-dot"></span><div><div class="knowledge-title">${escapeRevision(card.title)}</div><div class="knowledge-meta">${escapeRevision(card.subject)} · ${escapeRevision(card.topic)} · ${linkedCards(card).length} linked ideas · ${formatDue(state.progress[card.id]?.due)}</div></div></div>`).join('')}</div>`;
+}
+function applyBulkEdit(){
+  const ids=new Set(state.bulkSelected);
+  if(!ids.size)return;
+  const subject=document.getElementById('bulk-subject')?.value.trim()||'';
+  const topic=document.getElementById('bulk-topic')?.value.trim()||'';
+  if(!subject&&!topic)return;
+  state.cards.forEach(card=>{if(!ids.has(card.id))return;if(subject)card.subject=subject;if(topic)card.topic=topic;});
+  state.bulkSelected=[];
+  saveRevision();
+  renderRevision();
+}
+function deleteBulkSelected(){
+  const ids=new Set(state.bulkSelected);
+  if(!ids.size||!confirm(`Delete ${ids.size} selected revision cards? This cannot be undone.`))return;
+  state.cards=state.cards.filter(card=>!ids.has(card.id));
+  state.cards.forEach(card=>card.links=(card.links||[]).filter(id=>!ids.has(id)));
+  ids.forEach(id=>delete state.progress[id]);
+  Object.keys(state.progress).forEach(key=>{if(key.startsWith('link:')&&key.slice(5).split(':').some(id=>ids.has(id)))delete state.progress[key];});
+  const set=getActiveRevisionSet();
+  set.reviewLog=(set.reviewLog||[]).filter(entry=>!ids.has(entry.cardId)&&!(entry.link&&entry.link.slice(5).split(':').some(id=>ids.has(id))));
+  state.bulkSelected=[];
+  if(ids.has(state.selected))state.selected=null;
+  saveRevision();
+  renderRevision();
+}
 function renderLibrary(){
   const subjects=[...new Set(state.cards.map(card=>card.subject||'General'))].sort();
   const topics=[...new Set(state.cards.map(card=>card.topic||'Untopiced'))].sort();
   const query=state.libraryQuery.toLowerCase();
   let cards=state.cards.filter(card=>(state.librarySubject==='all'||(card.subject||'General')===state.librarySubject)&&(state.libraryTopic==='all'||(card.topic||'Untopiced')===state.libraryTopic)&&(state.libraryDue==='all'||(state.libraryDue==='due'?cardIsDue(card):!cardIsDue(card)))&&(!query||`${card.title} ${card.answer} ${card.source||''}`.toLowerCase().includes(query)));
   cards.sort((a,b)=>state.librarySort==='alpha'?a.title.localeCompare(b.title):state.librarySort==='topic'?a.topic.localeCompare(b.topic)||a.title.localeCompare(b.title):Number(state.progress[a.id]?.due||0)-Number(state.progress[b.id]?.due||0));
-  return `<div><div class="pt">Card library</div><div class="ps">Find, filter and sort cards in this set.</div><div class="card"><div class="g2"><div class="fg"><label for="library-search">Search cards</label><input id="library-search" type="text" value="${escapeRevision(state.libraryQuery)}" placeholder="Search term, definition, source"></div><div class="fg"><label for="library-subject">Subject</label><select id="library-subject"><option value="all">All subjects</option>${subjects.map(subject=>`<option${state.librarySubject===subject?' selected':''}>${escapeRevision(subject)}</option>`).join('')}</select></div><div class="fg"><label for="library-topic">Topic</label><select id="library-topic"><option value="all">All topics</option>${topics.map(topic=>`<option${state.libraryTopic===topic?' selected':''}>${escapeRevision(topic)}</option>`).join('')}</select></div><div class="fg"><label for="library-due">Review status</label><select id="library-due"><option value="all"${state.libraryDue==='all'?' selected':''}>All cards</option><option value="due"${state.libraryDue==='due'?' selected':''}>Due now</option><option value="scheduled"${state.libraryDue==='scheduled'?' selected':''}>Scheduled later</option></select></div><div class="fg"><label for="library-sort">Sort by</label><select id="library-sort"><option value="due"${state.librarySort==='due'?' selected':''}>Due date</option><option value="alpha"${state.librarySort==='alpha'?' selected':''}>Front A–Z</option><option value="topic"${state.librarySort==='topic'?' selected':''}>Topic</option></select></div></div><div class="knowledge-meta">${cards.length} matching cards</div>${renderCardList(cards)}</div></div>`;
+  return `<div><div class="pt">Card library</div><div class="ps">Find, filter and sort cards in this set.</div><div class="card"><div class="g2"><div class="fg"><label for="library-search">Search cards</label><input id="library-search" type="text" value="${escapeRevision(state.libraryQuery)}" placeholder="Search term, definition, source"></div><div class="fg"><label for="library-subject">Subject</label><select id="library-subject"><option value="all">All subjects</option>${subjects.map(subject=>`<option${state.librarySubject===subject?' selected':''}>${escapeRevision(subject)}</option>`).join('')}</select></div><div class="fg"><label for="library-topic">Topic</label><select id="library-topic"><option value="all">All topics</option>${topics.map(topic=>`<option${state.libraryTopic===topic?' selected':''}>${escapeRevision(topic)}</option>`).join('')}</select></div><div class="fg"><label for="library-due">Review status</label><select id="library-due"><option value="all"${state.libraryDue==='all'?' selected':''}>All cards</option><option value="due"${state.libraryDue==='due'?' selected':''}>Due now</option><option value="scheduled"${state.libraryDue==='scheduled'?' selected':''}>Scheduled later</option></select></div><div class="fg"><label for="library-sort">Sort by</label><select id="library-sort"><option value="due"${state.librarySort==='due'?' selected':''}>Due date</option><option value="alpha"${state.librarySort==='alpha'?' selected':''}>Front A–Z</option><option value="topic"${state.librarySort==='topic'?' selected':''}>Topic</option></select></div></div><div class="knowledge-meta">${cards.length} matching cards</div><div class="card" style="margin:10px 0"><div class="knowledge-title">Bulk edit</div><div class="knowledge-meta">${state.bulkSelected.length} selected</div><div class="g2"><div class="fg"><label for="bulk-subject">Set subject</label><input id="bulk-subject" type="text" placeholder="Leave blank to keep existing"></div><div class="fg"><label for="bulk-topic">Set topic</label><input id="bulk-topic" type="text" placeholder="Leave blank to keep existing"></div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><label><input id="library-select-all" type="checkbox" ${cards.length&&cards.every(card=>state.bulkSelected.includes(card.id))?'checked':''}> Select all filtered</label><button class="btn bsm bp" onclick="applyBulkEdit()" ${state.bulkSelected.length?'':'disabled'}>Update selected</button><button class="btn bsm br" onclick="deleteBulkSelected()" ${state.bulkSelected.length?'':'disabled'}>Delete selected</button></div></div>${renderBulkCardList(cards)}</div></div>`;
 }
 function bindLibraryEvents(){
   const query=document.getElementById('library-search'),subject=document.getElementById('library-subject'),topic=document.getElementById('library-topic'),due=document.getElementById('library-due'),sort=document.getElementById('library-sort');
@@ -663,6 +744,9 @@ function bindLibraryEvents(){
   if(topic)topic.onchange=()=>{state.libraryTopic=topic.value;renderRevision();};
   if(due)due.onchange=()=>{state.libraryDue=due.value;renderRevision();};
   if(sort)sort.onchange=()=>{state.librarySort=sort.value;renderRevision();};
+  const selectAll=document.getElementById('library-select-all');
+  if(selectAll)selectAll.onchange=()=>{const visible=[...document.querySelectorAll('[data-bulk-card]')].map(input=>input.dataset.bulkCard);state.bulkSelected=selectAll.checked?[...new Set([...state.bulkSelected,...visible])]:state.bulkSelected.filter(id=>!visible.includes(id));renderRevision();};
+  document.querySelectorAll('[data-bulk-card]').forEach(input=>input.onchange=()=>{state.bulkSelected=input.checked?[...new Set([...state.bulkSelected,input.dataset.bulkCard])]:state.bulkSelected.filter(id=>id!==input.dataset.bulkCard);renderRevision();});
 }
 function renderAnalytics(){
   const topics=topicAnalytics();const due=dueSummary();const set=getActiveRevisionSet();
@@ -686,6 +770,9 @@ function renderRevisionSetOverview(){
 function renderOverview(){
   const selected=cardById(state.selected);
   const due=dueSummary();
+  const dailyGoal=Math.max(1,Number(getActiveRevisionSet().dailyGoal)||20);
+  const dailyReviews=dailyReviewCount();
+  const dailyPercent=Math.min(100,Math.round(dailyReviews/dailyGoal*100));
   const reviewed=state.cards.filter(card=>(Number(state.progress[card.id]?.reviews)||0)>0).length;
   const weak=state.cards.some(card=>(Number(state.progress[card.id]?.reviews)||0)>0);
   const hasCards=state.cards.length>0;
@@ -695,6 +782,15 @@ function renderOverview(){
     <div class="pt">Overview</div>
     <div class="ps">${escapeRevision(getActiveRevisionSet().name)} · Your revision activity and next steps.</div>
     ${renderRevisionSetOverview()}
+    <section class="card" style="margin:10px 0">
+      <div class="overview-section-heading"><h2>Daily study goal</h2><span>${dailyReviews}/${dailyGoal} reviews</span></div>
+      <div style="height:8px;background:var(--surface2);border-radius:8px;overflow:hidden"><div style="height:100%;width:${dailyPercent}%;background:var(--teal);border-radius:8px"></div></div>
+      <div style="display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <div class="fg" style="max-width:130px;margin:0"><label for="revision-daily-goal">Reviews per day</label><input id="revision-daily-goal" type="number" min="1" max="200" value="${dailyGoal}"></div>
+        <button class="btn bsm" onclick="updateDailyGoal()">Save goal</button>
+        <span class="knowledge-meta">${dailyPercent>=100?'Daily goal reached.':(dailyGoal-dailyReviews)+' more reviews to reach today\'s goal.'}</span>
+      </div>
+    </section>
     <section class="overview-hero">
       <div class="overview-hero-copy">
         <div class="overview-kicker">NEXT STEP</div>
@@ -788,6 +884,9 @@ function renderSettings(){
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
               <button class="btn bsm" type="button" onclick="switchRevisionSet('${set.id}')">Switch</button>
+              <button class="btn bsm" type="button" onclick="duplicateRevisionSet('${set.id}')">Duplicate</button>
+              <button class="btn bsm" type="button" onclick="moveRevisionSet('${set.id}',-1)" ${state.accountSets.indexOf(set)===0?'disabled':''} aria-label="Move ${escapeRevision(set.name)} up">↑</button>
+              <button class="btn bsm" type="button" onclick="moveRevisionSet('${set.id}',1)" ${state.accountSets.indexOf(set)===state.accountSets.length-1?'disabled':''} aria-label="Move ${escapeRevision(set.name)} down">↓</button>
               ${state.editingSetId===set.id?`<button class="btn bsm bp" type="button" onclick="saveRevisionSetName('${set.id}')">Save name</button><button class="btn bsm" type="button" onclick="state.editingSetId=null;renderRevision()">Cancel</button>`:`<button class="btn bsm" type="button" onclick="renameRevisionSet('${set.id}')">Edit</button>`}
               ${state.confirmDeleteSetId===set.id?`<span class="knowledge-meta" style="align-self:center">Delete this set?</span><button class="btn bsm br" type="button" onclick="confirmDeleteRevisionSet('${set.id}')">Confirm</button><button class="btn bsm" type="button" onclick="cancelDeleteRevisionSet()">Cancel</button>`:`<button class="btn bsm br" type="button" onclick="requestDeleteRevisionSet('${set.id}')">Delete</button>`}
             </div>

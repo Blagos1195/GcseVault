@@ -799,6 +799,41 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.match(html, /app\.js\?v=20261113-multi-set-workspace/);
-  assert.match(html, /revision\.css\?v=20261113-multi-set-workspace/);
+  assert.match(html, /app\.js\?v=20261113-set-management/);
+  assert.match(html, /revision\.css\?v=20261113-set-management/);
+});
+
+
+test("Revision sets can be duplicated with their progress and reordered", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /function duplicateRevisionSet\(setId\)/);
+  assert.match(app, /JSON\.parse\(JSON\.stringify\(source\)\)/);
+  assert.match(app, /copy\.published=false/);
+  assert.match(app, /function moveRevisionSet\(setId,direction\)/);
+  assert.match(app, /state\.accountSets\.splice\(next,0,set\)/);
+  assert.match(app, /onclick="duplicateRevisionSet\('\$\{set\.id\}'\)">Duplicate/);
+  assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',-1\)"/);
+  assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',1\)"/);
+});
+
+
+test("Revision daily study goals are stored and calculated per set", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /dailyGoal: Math\.max\(1, Math\.min\(200, Number\(set && set\.dailyGoal\) \|\| 20\)\)/);
+  assert.match(app, /function dailyReviewCount\(\)/);
+  assert.match(app, /function updateDailyGoal\(\)/);
+  assert.match(app, /getActiveRevisionSet\(\)\.reviewLog/);
+  assert.match(app, /<h2>Daily study goal<\/h2>/);
+  assert.match(app, /onclick="updateDailyGoal\(\)"/);
+});
+
+
+test("Revision library supports safe bulk subject and topic edits and deletion", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("function applyBulkEdit()"));
+  assert.ok(app.includes("function deleteBulkSelected()"));
+  assert.ok(app.includes("data-bulk-card"));
+  assert.ok(app.includes("Select all filtered"));
+  assert.ok(app.includes("This cannot be undone."));
+  assert.ok(app.includes("state.bulkSelected = []"));
 });
