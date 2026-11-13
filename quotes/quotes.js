@@ -1308,12 +1308,10 @@ const PAGES=[
 ];
 
 function buildNav(){
-  const groups={Study:['dashboard','srs','flashcards','fill','quiz','timed','braindump','timeline'],Library:['library'],Progress:['stats','leaderboard','achievements'],Tools:['add','settings']};
-  const options=Object.entries(groups).map(([label,ids])=>{const pages=PAGES.filter(page=>ids.includes(page.id));return pages.length?'<optgroup label="'+label+'">'+pages.map(page=>'<option value="'+page.id+'">'+page.label+'</option>').join('')+'</optgroup>':'';}).join('');
-  document.getElementById('nav').innerHTML='<select id="site-page-select" aria-label="Navigate to a section" onchange="go(this.value)">'+options+'</select>';
-  document.getElementById('site-page-select').value=S.page;
+  const groups={"Study":["dashboard","srs","flashcards","fill","quiz","timed","braindump","timeline"],"Library":["library"],"Progress":["stats","leaderboard","achievements"],"Tools":["add","settings"]};
+  document.getElementById('nav').innerHTML=Object.entries(groups).map(([group,ids])=>{const pages=PAGES.filter(page=>ids.includes(page.id));return pages.length?'<label class="nav-group nav-'+group.toLowerCase()+'"><span>'+group+'</span><select aria-label="'+group+' navigation" onchange="if(this.value)go(this.value)"><option value="" selected>'+group+'</option>'+pages.map(page=>'<option value="'+page.id+'">'+page.label+'</option>').join('')+'</select></label>':'';}).join('');
+  document.querySelectorAll('#nav select').forEach(select=>{if([...select.options].some(option=>option.value===S.page))select.value=S.page;});
 }
-
 function go(page){
   if(S.tc.timer){clearInterval(S.tc.timer);S.tc.timer=null;}
   S.hist.push(S.page);
