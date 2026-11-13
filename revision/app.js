@@ -530,7 +530,7 @@ async function syncRevision(keepalive=false){
       renderRevision();
       return;
     }
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    if(!response.ok){const detail=await response.text();throw new Error(`/revision/sync returned HTTP ${response.status}${detail?`: ${detail.slice(0,180)}`:''}`);}
     const result=await response.json();
     if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     state.syncStatus='synced';
@@ -541,7 +541,7 @@ async function syncRevision(keepalive=false){
   }catch(error){
     if(syncToken===VaultUser.getAccountSession()&&syncUserKey===revisionUserKey()&&revisionActiveScope===syncUserKey){
       state.syncStatus='error';
-      state.accountMessage='Revision sync failed. Your local copy is still saved on this device.';
+      state.accountMessage='Could not reach the Worker at /revision/sync. Your local copy is still saved on this device.';
       window.VaultBugReporter?.capture(error,{detail:'Revision account sync'});
       state.accountMessageType='error';
     }
@@ -584,7 +584,7 @@ async function loadRevision(){
     try{
       const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync?userKey=${encodeURIComponent(requestedUserKey)}`,{headers:{'X-Account-Session':requestedToken}});
       if(requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()||revisionActiveScope!==requestedUserKey)return;
-      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      if(!response.ok){const detail=await response.text();throw new Error(`/revision/sync returned HTTP ${response.status}${detail?`: ${detail.slice(0,180)}`:''}`);}
       const payload=await response.json();
       if(requestedToken!==VaultUser.getAccountSession()||requestedUserKey!==revisionUserKey()||revisionActiveScope!==requestedUserKey)return;
       if(payload.found&&payload.data){
@@ -613,7 +613,7 @@ async function loadRevision(){
       if(requestedToken===VaultUser.getAccountSession()&&requestedUserKey===revisionUserKey()){
         const offline=typeof navigator!=='undefined'&&!navigator.onLine;
         state.syncStatus=offline?'offline':'error';
-        state.accountMessage=offline?'Offline. Your local copy is available and will sync when connection returns.':'Could not load synced revision data. Your local copy has been preserved.';
+        state.accountMessage=offline?'Offline. Your local copy is available and will sync when connection returns.':`Could not load synced revision data from /revision/sync. Your local copy has been preserved.`;
         state.accountMessageType=offline?'success':'error';
         window.VaultBugReporter?.capture(error,{detail:'Revision account data load'});
       }
