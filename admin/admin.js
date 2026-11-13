@@ -224,6 +224,7 @@ let ownerTestResults = {};
 let ownerTestsRunning = false;
 const ownerTestDefinitions = [
   ["health","System health","Checks the D1 database and required KV bindings."],
+  ["migrations","Database migrations","Checks that all migration-managed tables and required account columns exist."],
   ["error","Error reporting","Creates and verifies a synthetic error report, then removes it."],
   ["quote","QuoteVault","Checks isolated pending-quote storage."],
   ["date","DateVault","Checks isolated pending-date storage."],
