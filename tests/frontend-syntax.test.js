@@ -149,7 +149,10 @@ test("Revision sync status reflects successful remote loads", async () => {
   const start = source.indexOf("const productOriginalLoadRevision=loadRevision;");
   const end = source.indexOf("\nwindow.addEventListener('online'", start);
   assert.ok(start >= 0 && end > start);
-  assert.match(source.slice(source.lastIndexOf("updateRevisionSyncStatus();")), /if\(VaultUser\.getAccountSession\(\)\)loadRevision\(\);/);
+  const startup=source.slice(source.lastIndexOf("updateRevisionSyncStatus();"));
+  assert.match(startup, /if\(VaultUser\.getAccountSession\(\)\)await loadRevision\(\);/);
+  assert.match(startup, /await loadRevisionCourseSelection\(\)/);
+  assert.match(startup, /renderRevision\(\)/);
   const context = {
     state: { syncStatus: "local", accountMessage: "" },
     VaultUser: { getAccountSession: () => "account-session" },
@@ -422,7 +425,8 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   assert.match(html, /revision\.css/);
   assert.match(html, /app\.js/);
   assert.match(html, /practice\.js/);
-  assert.match(html, /<button type="button" class="ni/);
+  assert.match(html, /<select id="revision-page-switcher" aria-label="Navigate to a section"/);
+  for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('<optgroup label="' + group + '">'));
   assert.doesNotMatch(html, /maximum-scale/);
   assert.ok(html.trimEnd().endsWith("</html>"));
   assert.equal((html.match(/name="viewport"/g)||[]).length,1);
@@ -432,6 +436,44 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   assert.match(app, /scrollTop = 0/);
 });
 
+
+test("Revision knowledge map includes every card and filters results", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
+  const start = app.indexOf("function renderGraph(){");
+  const end = app.indexOf("\nfunction filterKnowledgeMap", start);
+  assert.ok(start >= 0 && end > start);
+  const context = {
+    state: {
+      cards: Array.from({ length: 30 }, (_, index) => ({
+        id: "card-" + index,
+        subject: index % 2 ? "History" : "Science",
+        topic: index % 3 ? "Topic A" : "Topic B",
+        title: "Card " + index,
+        answer: "Answer " + index,
+        links: []
+      })),
+      selected: null,
+      graphQuery: ""
+    },
+    escapeRevision: value => String(value || ""),
+    linkedCards: () => []
+  };
+  vm.createContext(context);
+  vm.runInContext(app.slice(start, end), context);
+  const allCards = context.renderGraph();
+  assert.equal((allCards.match(/class="map-card/g) || []).length, 30);
+  assert.ok(allCards.includes("Card 29"));
+  context.state.graphQuery = "Card 29";
+  const filtered = context.renderGraph();
+  assert.equal((filtered.match(/class="map-card/g) || []).length, 1);
+  assert.ok(filtered.includes("Card 29"));
+  assert.doesNotMatch(app, /state\.cards\.slice\(0,24\)/);
+  assert.match(app, /function filterKnowledgeMap\(value\)/);
+  assert.match(app, /function renderGraphSelection\(selected\)/);
+  assert.match(css, /\.map-card-grid\{display:grid;grid-template-columns:repeat\(auto-fill/);
+  assert.doesNotMatch(css, /\.graph-wrap\{width:100%;overflow:auto/);
+});
 
 test("Revision product tools provide search, daily planning, resource tracking and sync status", () => {
   const html=fs.readFileSync(new URL("../revision/index.html",import.meta.url),"utf8");
@@ -525,7 +567,8 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.ok(html.includes(script.split("/").pop()));
     assert.ok(html.includes(stylesheet.split("/").pop()));
     assert.doesNotMatch(html, /maximum-scale/);
-    assert.match(app, /<button type="button" class="ni/);
+    assert.match(app, /<select id="site-page-select" aria-label="Navigate to a section"/);
+    assert.match(app, /<optgroup label=/);
     assert.match(app, /aria-current=/);
     assert.match(app, /scrollTop=0/);
     assert.match(app, /class="library-results"/);
@@ -660,7 +703,8 @@ test("central admin can search accounts and moderate already-published content",
   assert.match(admin, /Filter accounts by role/);
   assert.match(admin, /pageSize=50/);
   assert.match(admin, /removePublished/);
-  assert.match(shared, /this\.request\('\/admin\/published'\)/);
+  assert.match(shared, /const paths = \['\/pending', '\/dv\/pending', '\/feedback\/list', '\/revision\/public\/admin-list', '\/admin\/published'\]/);
+  assert.match(shared, /Promise\.allSettled\(paths\.map\(path => this\.request\(path\)\)\)/);
   assert.match(worker, /url\.pathname === "\/admin\/published"/);
   assert.match(worker, /recordModerationAction\("quote", body\.id/);
   assert.match(worker, /recordModerationAction\("date", body\.id/);
@@ -693,7 +737,7 @@ test("central admin workspace includes owner account management controls", () =>
   assert.match(admin, /AdminManager\.setAIAccess/);
   assert.match(admin, /setLeaderboardHidden/);
   assert.match(admin, /AdminManager\.migrateStorage\(\)/);
-  assert.match(shared, /this\.users = this\.role === 'owner' \? \(await this\.request\('\/admin\/users'\)\)/);
+  assert.match(shared, /if \(this\.role === 'owner'\) \{\s*try \{\s*this\.users = \(await this\.request\('\/admin\/users'\)\)\.users \|\| \[\];/);
   assert.match(worker, /if \(actor\.role !== "owner"\) return new Response\("Owner access required"/);
   assert.match(worker, /if \(!user \|\| !\["owner", "admin"\]\.includes\(user\.role\)\) return null/);
 });
@@ -916,7 +960,7 @@ test("GCSE Vault home page provides cross-site public search", () => {
   assert.ok(html.includes("/quotes"));
   assert.ok(html.includes("/dv/quotes"));
   assert.ok(html.includes("/revision/public"));
-  assert.ok(html.includes("Search across GCSE Vault"));
+  assert.ok(html.includes("Search across all study spaces"));
 });
 
 test("admin notification preferences allow push alerts to be disabled", () => {
