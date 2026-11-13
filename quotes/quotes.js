@@ -2689,6 +2689,8 @@ async function saveQuote(privateOnly=false){
   const act=(document.getElementById('a-act')?.value||'').trim();
   const sc=(document.getElementById('a-sc')?.value||'').trim();
   const draftFields={'a-t':t,'a-c':c,'a-w':document.getElementById('a-w').value,'a-act':act,'a-sc':sc,'a-th':document.getElementById('a-th').value,'a-me':document.getElementById('a-me').value,'a-an':document.getElementById('a-an').value,'a-st':document.getElementById('a-st').value,'a-ac':document.getElementById('a-ac').value,'a-no':document.getElementById('a-no').value};
+  const savedDraft=readSubmissionDraft(),currentDraftId=window.qvSubmissionDraftId||'';
+  if(!privateOnly&&savedDraft&&!currentDraftId){toast('Restore or discard your saved draft before submitting another quote.');return;}
   const tempId=getSubmissionRequestId(draftFields);
   const q={
     id:tempId,submissionRequestId:tempId,
@@ -2719,8 +2721,6 @@ async function saveQuote(privateOnly=false){
     return;
   }
   const fbEl=document.getElementById('add-fb');
-  const savedDraft=readSubmissionDraft();
-  if(savedDraft&&!window.qvSubmissionDraftId){toast('Restore or discard your saved draft before submitting another quote.');return;}
   persistSubmissionDraft(tempId,draftFields);
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
