@@ -104,7 +104,16 @@ export default {
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_push_subscriptions (user_key TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, endpoint))").bind().run();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_account_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, target_username TEXT NOT NULL, actor_username TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL)").bind().run();
     }
+
+    async function recordAccountAdminAction(targetUsername, actorUsername, action) {
+      await ensureModerationTables();
+      await env.DB.prepare("INSERT INTO admin_account_audit (target_username, actor_username, action, acted_at) VALUES (?, ?, ?, ?)").bind(
+        String(targetUsername), String(actorUsername), String(action), new Date().toISOString()
+      ).run();
+    }
+
     const pushEncoder = new TextEncoder();
     function pushBase64UrlBytes(value) {
       const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
@@ -187,6 +196,11 @@ export default {
           }
         } catch {}
       }));
+    }
+    async function createIdempotentSubmissionId(site, userKey, requestId) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(site + ":" + userKey + ":" + requestId));
+      const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      return site + "-" + hash.slice(0, 32);
     }
     async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
       await ensureModerationTables();
@@ -277,6 +291,23 @@ export default {
           if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
           return "D1 query passed; all seven required KV bindings are available.";
         },
+        migrations: async () => {
+          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const presentTables = new Set((tableRows.results || []).map(row => row.name));
+          const missingTables = requiredTables.filter(name => !presentTables.has(name));
+          const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
+          const presentColumns = new Set((userColumns.results || []).map(column => column.name));
+          const requiredColumns = ["role", "ai_access"];
+          const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
+          if (missingTables.length || missingColumns.length) {
+            const issues = [];
+            if (missingTables.length) issues.push("missing tables: " + missingTables.join(", "));
+            if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
+            throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
+          }
+          return "All six migration-managed tables and both required users columns are present.";
+        },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
           const error = new Error("GCSE Vault synthetic diagnostic test");
@@ -360,14 +391,36 @@ export default {
           results.push({ name, status: "failed", detail: String(error?.message || error).slice(0, 1200), duration_ms: Date.now() - started });
         }
       }
-      return new Response(JSON.stringify({ results, completed_at: new Date().toISOString() }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const completedAt = new Date().toISOString();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      for (const result of results) {
+        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
+          crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
+        ).run();
+      }
+      return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/test-history" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
+      return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
       ).first();
-      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+      const metadata = env.CF_VERSION_METADATA || {};
+      const deployment = metadata.id ? {
+        versionId: String(metadata.id),
+        tag: metadata.tag ? String(metadata.tag) : null,
+        timestamp: metadata.timestamp ? new Date(metadata.timestamp).toISOString() : null
+      } : null;
+      return new Response(JSON.stringify({ initialized: Boolean(owner), deployment }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -485,6 +538,22 @@ export default {
       return token;
     }
 
+    async function readBoundedJson(req, maxBytes) {
+      const raw = await req.text();
+      if (new TextEncoder().encode(raw).byteLength > maxBytes) return { error: "Request body is too large.", status: 413 };
+      try { return { data: JSON.parse(raw), status: 200 }; }
+      catch { return { error: "Invalid JSON.", status: 400 }; }
+    }
+
+    async function allowRateLimitedAction(prefix, identity, limit, ttl) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const key = prefix + ":" + await hashValue(ip + ":" + String(identity || ""));
+      const count = Number(await env.QUOTEVAULT.get(key) || 0);
+      if (count >= limit) return false;
+      await env.QUOTEVAULT.put(key, String(count + 1), { expirationTtl: ttl });
+      return true;
+    }
+
     async function getAccountSession(req) {
       const token = req.headers.get("X-Account-Session");
       if (!token || token.length !== 64) return null;
@@ -512,8 +581,13 @@ export default {
     }
 
     if (url.pathname === "/account/setup" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-setup", "all", 5, 900))) {
+        return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
@@ -539,6 +613,9 @@ export default {
     }
 
     if (url.pathname === "/account/challenge" && request.method === "GET") {
+      if (!(await allowRateLimitedAction("account-challenge", "lookup", 30, 900))) {
+        return new Response("Too many account lookups. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const username = String(url.searchParams.get("username") || "").trim();
       if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
       const credential = await env.DB.prepare(
@@ -550,7 +627,9 @@ export default {
       });
     }
     if (url.pathname === "/account/login" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const username = String(body.username || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       if (!username || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || username.length > 20) {
@@ -574,8 +653,13 @@ export default {
 
 
     if (url.pathname === "/account/reset" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-reset", "all", 5, 900))) {
+        return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
@@ -734,9 +818,16 @@ export default {
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
-      const { results } = await env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all();
-      return new Response(JSON.stringify({ entries: results }), { headers: { ...cors, "Content-Type": "application/json" } });
+      await ensureModerationTables();
+      const [moderation, accountChanges] = await Promise.all([
+        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all(),
+        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM admin_account_audit ORDER BY acted_at DESC LIMIT 500").all()
+      ]);
+      const entries = [
+        ...(moderation.results || []),
+        ...(accountChanges.results || []).map(item => ({site:"Account",item_id:item.target_username,item_title:"Account permissions changed",submitted_by:item.target_username,moderator:item.actor_username,action:item.action,acted_at:item.acted_at}))
+      ].sort((a,b)=>String(b.acted_at).localeCompare(String(a.acted_at))).slice(0,500);
+      return new Response(JSON.stringify({ entries }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/submissions/notifications" && request.method === "GET") {
       const account = await getAccountSession(request);
@@ -810,13 +901,17 @@ export default {
       const username = String(body.username || "").trim();
       if (!username || typeof body.enabled !== "boolean") return new Response("Invalid AI access request", { status: 400, headers: cors });
       const target = await env.DB.prepare(
-        "SELECT user_key, role FROM users WHERE LOWER(username) = LOWER(?)"
+        "SELECT user_key, role, ai_access FROM users WHERE LOWER(username) = LOWER(?)"
       ).bind(username).first();
       if (!target) return new Response("Account not found", { status: 404, headers: cors });
       if (target.role !== "user") return new Response("AI access is inherited by owners and admins.", { status: 400, headers: cors });
+      const nextAccess = body.enabled ? 1 : 0;
       await env.DB.prepare(
         "UPDATE users SET ai_access = ? WHERE user_key = ? AND role = 'user'"
-      ).bind(body.enabled ? 1 : 0, target.user_key).run();
+      ).bind(nextAccess, target.user_key).run();
+      if (Number(target.ai_access || 0) !== nextAccess) {
+        await recordAccountAdminAction(username, actor.username, `AI access ${nextAccess ? "enabled" : "disabled"}`);
+      }
       return new Response(JSON.stringify({ success: true, username, ai_access: body.enabled }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -912,6 +1007,9 @@ export default {
       await env.DB.prepare(
         "UPDATE users SET role = ? WHERE user_key = ? AND role != 'owner'"
       ).bind(role, target.user_key).run();
+      if (target.role !== role) {
+        await recordAccountAdminAction(username, actor.username, `Role changed from ${target.role} to ${role}`);
+      }
       return new Response(JSON.stringify({ success: true, username, role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -992,16 +1090,32 @@ export default {
 
     // ── QUOTEVAULT SUBMIT ─────────────────────────────────────────────────────
     if (url.pathname === "/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
       }
+      if (!(await allowRateLimitedAction("quote-submit", userKey, 10, 3600))) {
+        return new Response("Too many quote submissions. Try again later.", { status: 429, headers: cors });
+      }
       const submitter = await getAccountSession(request);
+      const requestId = String(data.submissionRequestId || "").trim();
+      if (requestId && !/^[A-Za-z0-9_-]{20,80}$/.test(requestId)) return new Response("Invalid submission request ID.", { status: 400, headers: cors });
       delete data.userKey;
+      delete data.submissionRequestId;
       data.submittedBy = submitter?.username || "Account holder";
       data._submittedByUserKey = userKey;
-      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      const id = requestId ? await createIdempotentSubmissionId("qv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      if (requestId) {
+        const existing = await env.QUOTEVAULT.get(id, "json");
+        if (existing) {
+          if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
+          await createAdminNotification("QuoteVault", id, existing, existing.submittedBy);
+          return new Response(JSON.stringify({ success: true, id }), { headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      }
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.QUOTEVAULT.put(id, JSON.stringify(data));
@@ -1116,16 +1230,32 @@ export default {
     // ── DATEVAULT ROUTES ──────────────────────────────────────────────────────
 
         if (url.pathname === "/dv/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
       }
+      if (!(await allowRateLimitedAction("date-submit", userKey, 10, 3600))) {
+        return new Response("Too many date submissions. Try again later.", { status: 429, headers: cors });
+      }
       const submitter = await getAccountSession(request);
+      const requestId = String(data.submissionRequestId || "").trim();
+      if (requestId && !/^[A-Za-z0-9_-]{20,80}$/.test(requestId)) return new Response("Invalid submission request ID.", { status: 400, headers: cors });
       delete data.userKey;
+      delete data.submissionRequestId;
       data.submittedBy = submitter?.username || "Account holder";
       data._submittedByUserKey = userKey;
-      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      const id = requestId ? await createIdempotentSubmissionId("dv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      if (requestId) {
+        const existing = await env.DV_PENDING.get(id, "json");
+        if (existing) {
+          if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
+          await createAdminNotification("DateVault", id, existing, existing.submittedBy);
+          return new Response(JSON.stringify({ success: true, id }), { headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      }
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.DV_PENDING.put(id, JSON.stringify(data));
@@ -2078,11 +2208,16 @@ export default {
     }
 
     if (url.pathname === "/revision/public" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 262144);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
+      if (!(await allowRateLimitedAction("revision-submit", userKey, 3, 3600))) {
+        return new Response("Too many Revision note publications. Try again later.", { status: 429, headers: cors });
+      }
       const account = await env.DB.prepare("SELECT username FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;

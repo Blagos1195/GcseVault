@@ -2558,6 +2558,7 @@ function rAdd(){
   <div class="pt">Add a Quote</div>
   <div class="ps">Suggest a quote · it goes to an admin queue for approval · visible to you immediately while pending</div>
   <div style="max-width:520px">
+    ${submissionDraftNotice()}
     <div class="fg"><label>Quote text *</label><textarea id="a-t" style="min-height:65px" oninput="liveCheck()" placeholder="Enter the quote exactly as written in the text…"></textarea></div>
     <div id="live-dup" style="margin-bottom:8px"></div>
     <div class="g2">
@@ -2603,6 +2604,55 @@ function rAdd(){
   </div>`;
 }
 
+function readSubmissionDraft(){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return null;
+  try{
+    const draft=JSON.parse(localStorage.getItem('qv_submission_draft:'+userKey)||'null');
+    return draft&&draft.id&&draft.fields?draft:null;
+  }catch{return null;}
+}
+function submissionDraftNotice(){
+  return readSubmissionDraft()?'<div class="qfb" style="margin-bottom:10px">An unsuccessful submission draft is saved on this device. <button class="btn bsm" onclick="restoreSubmissionDraft()">Restore draft</button> <button class="btn bsm br" onclick="discardSubmissionDraft()">Discard</button></div>':'';
+}
+function getSubmissionRequestId(fields){
+  const draft=readSubmissionDraft();
+  const current=window.qvSubmissionDraftId||'';
+  if(draft&&current===draft.id&&JSON.stringify(draft.fields)!==JSON.stringify(fields)){
+    window.qvSubmissionDraftId=window.crypto?.randomUUID?.()||Date.now().toString()+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    toast('This draft was edited and will be submitted as a new item.');
+    return window.qvSubmissionDraftId;
+  }
+  window.qvSubmissionDraftId=current||window.crypto?.randomUUID?.()||Date.now().toString()+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+  return window.qvSubmissionDraftId;
+}
+function persistSubmissionDraft(id,fields){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return;
+  try{localStorage.setItem('qv_submission_draft:'+userKey,JSON.stringify({id,fields,savedAt:new Date().toISOString()}));}catch{}
+}
+function clearSubmissionDraft(id){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return;
+  const draft=readSubmissionDraft();
+  if(draft&&draft.id===id)try{localStorage.removeItem('qv_submission_draft:'+userKey);}catch{}
+}
+function restoreSubmissionDraft(){
+  const draft=readSubmissionDraft();
+  if(!draft)return;
+  Object.entries(draft.fields).forEach(([id,value])=>{const input=document.getElementById(id);if(input)input.value=value;});
+  window.qvSubmissionDraftId=draft.id;
+  const feedback=document.getElementById('add-fb');
+  if(feedback)feedback.innerHTML='<div class="qfb">Draft restored. You can edit it before trying again.</div>';
+  liveCheck();
+}
+function discardSubmissionDraft(){
+  const userKey=VaultUser.getKey();
+  if(userKey)try{localStorage.removeItem('qv_submission_draft:'+userKey);}catch{}
+  window.qvSubmissionDraftId='';
+  render();
+}
+
 function normForComp(s){
   return s.replace(/['']/g,"'").replace(/[""]/g,'"').replace(/\s+/g,' ').trim();
 }
@@ -2638,9 +2688,12 @@ async function saveQuote(privateOnly=false){
   if(!t||!c){toast('Fill in quote text and character');return;}
   const act=(document.getElementById('a-act')?.value||'').trim();
   const sc=(document.getElementById('a-sc')?.value||'').trim();
-  const tempId=Date.now().toString()+'-qv'+Math.random().toString(36).slice(2,6);
+  const draftFields={'a-t':t,'a-c':c,'a-w':document.getElementById('a-w').value,'a-act':act,'a-sc':sc,'a-th':document.getElementById('a-th').value,'a-me':document.getElementById('a-me').value,'a-an':document.getElementById('a-an').value,'a-st':document.getElementById('a-st').value,'a-ac':document.getElementById('a-ac').value,'a-no':document.getElementById('a-no').value};
+  const savedDraft=readSubmissionDraft(),currentDraftId=window.qvSubmissionDraftId||'';
+  if(!privateOnly&&savedDraft&&!currentDraftId){toast('Restore or discard your saved draft before submitting another quote.');return;}
+  const tempId=getSubmissionRequestId(draftFields);
   const q={
-    id:tempId,
+    id:tempId,submissionRequestId:tempId,
     work:document.getElementById('a-w').value,
     char:c,loc:`${act}${sc?', '+sc:''}`.trim()||'Unknown',
     themes:(document.getElementById('a-th').value||'').split(',').map(t=>t.trim()).filter(Boolean),
@@ -2668,6 +2721,7 @@ async function saveQuote(privateOnly=false){
     return;
   }
   const fbEl=document.getElementById('add-fb');
+  persistSubmissionDraft(tempId,draftFields);
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
     const resp=await fetch(WORKER_URL+'/submit',{
@@ -2679,6 +2733,8 @@ async function saveQuote(privateOnly=false){
     const result=await resp.json();
     // Use the worker-assigned ID
     if(result.id)q.id=result.id;
+    clearSubmissionDraft(tempId);
+    window.qvSubmissionDraftId='';
     // Save to pending so it shows up immediately in library & games
     S.pending=S.pending.filter(p=>p.id!==q.id);
     S.pending.push(q);
@@ -2697,7 +2753,7 @@ async function saveQuote(privateOnly=false){
     const newFb=document.getElementById('add-fb');
     if(newFb)newFb.innerHTML=`<div class="qfb" style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);color:var(--purple3)">Submitted for review!<br><em style="font-size:.72rem">"${t.slice(0,60)}"</em><br><span style="font-size:.65rem;color:var(--text3)">Visible in your library now — an admin must approve it to appear for everyone.</span></div>`;
   }catch(e){
-    fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — check your internet connection.<br><span style="font-size:.68rem;color:var(--text3)">${e.message}</span></div>`;
+    fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — check your internet connection.<br><span style="font-size:.68rem;color:var(--text3)">Your draft has been saved on this device. ${e.message}</span></div>`;
   }
 }
 

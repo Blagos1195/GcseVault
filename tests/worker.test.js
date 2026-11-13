@@ -39,7 +39,7 @@ function makeEnv(rows = []) {
                 if (sql.includes("FROM account_credentials")) return null;
                 if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
-                if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
+                if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)") || sql.includes("SELECT user_key, role, ai_access FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user", ai_access: 0 };
                 if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
                 if (sql.includes("SELECT user_key FROM users WHERE user_key")) return { user_key: values[0] };
                 if (sql.includes("SELECT user_key FROM users WHERE role = 'owner'")) return null;
@@ -1050,4 +1050,272 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
   assert.equal(moderation.length, 1);
   assert.equal(moderation[0].action, "approved");
   assert.equal(moderation[0].moderator, "owner");
+});
+
+
+test("owner Test Centre stores run history and restricts history access", async () => {
+  const env = makeEnv();
+  const writes = [];
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("SELECT actor_username")) bound.all = async () => ({ results: [{ actor_username: "owner", test_name: "permissions", status: "passed", detail: "Owner-only access check passed.", duration_ms: 1, completed_at: "2026-11-13T12:00:00.000Z" }] });
+      if (sql.includes("INSERT INTO test_run_history")) bound.run = async () => { writes.push({sql,values}); return {success:true,meta:{changes:1}}; };
+      return bound;
+    };
+    return statement;
+  };
+  const run = await call("/admin/test-run", env, {test:"permissions"}, {"X-Session-Token":"test-session"});
+  assert.equal(run.status,200);
+  assert.ok(writes.some(write=>write.sql.includes("INSERT INTO test_run_history")&&write.values[1]==="owner"&&write.values[2]==="permissions"));
+  const denied = await call("/admin/test-history",env);
+  assert.equal(denied.status,401);
+  const history = await call("/admin/test-history",env,null,{"X-Session-Token":"test-session"});
+  assert.equal(history.status,200);
+  assert.equal((await history.json()).history[0].test_name,"permissions");
+});
+
+test("owner Test Centre verifies migration-managed tables and account columns", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({results:values.map(name=>({name}))});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"},{name:"ai_access"}]});
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.results[0].status,"passed");
+  assert.match(data.results[0].detail,/six migration-managed tables/);
+});
+
+test("Test Centre reports missing migrations without changing the database", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({results:[{name:"account_sessions"}]});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.results[0].status,"failed");
+  assert.match(data.results[0].detail,/missing tables/);
+  assert.match(data.results[0].detail,/ai_access/);
+  assert.equal(env.updates.some(update=>/revision_sync_data|custom_themes|account_credentials|account_sessions|revision_leaderboard|ALTER TABLE/.test(update.sql)),false);
+});
+
+test("admin status exposes Worker version metadata without account information", async () => {
+  const env = makeEnv();
+  env.CF_VERSION_METADATA = {id:"version-123",tag:"production",timestamp:"2026-11-13T12:00:00.000Z"};
+  const response = await call("/admin/status",env);
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.initialized,false);
+  assert.deepEqual(data.deployment,{versionId:"version-123",tag:"production",timestamp:"2026-11-13T12:00:00.000Z"});
+  assert.equal(data.userKey,undefined);
+});
+
+test("admin status handles deployments without version metadata", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/status",env);
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.deployment,null);
+});
+
+
+test("account login rejects oversized request bodies", async () => {
+  const env = makeEnv();
+  const response = await worker.fetch(new Request("https://example.test/account/login", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({username:"student",passwordHash:"a".repeat(5000)})
+  }),env);
+  assert.equal(response.status,413);
+});
+
+test("account setup rate limiting blocks repeated attempts before database access", async () => {
+  const env = makeEnv();
+  env.QUOTEVAULT.get = async () => "5";
+  env.DB.prepare = () => { throw new Error("Database should not be accessed after the rate limit is reached"); };
+  const response = await worker.fetch(new Request("https://example.test/account/setup", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","CF-Connecting-IP":"203.0.113.10"},
+    body:JSON.stringify({userKey:"account-key"})
+  }),env);
+  assert.equal(response.status,429);
+});
+
+test("content submissions enforce size limits and account rate limits", async () => {
+  const oversizedEnv = makeEnv();
+  const oversized = await worker.fetch(new Request("https://example.test/submit", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text:"x".repeat(20000)})
+  }),oversizedEnv);
+  assert.equal(oversized.status,413);
+
+  const limitedEnv = makeEnv();
+  limitedEnv.QUOTEVAULT.get = async key => key.startsWith("quote-submit:") ? "10" : null;
+  limitedEnv.DB.prepare = sql => ({
+    bind: () => ({
+      first: async () => {
+        if (sql.includes("FROM account_credentials")) return {user_key:"student-key"};
+        if (sql.includes("FROM account_sessions s JOIN users")) return {user_key:"student-key",username:"student",role:"user"};
+        return null;
+      }
+    })
+  });
+  const limited = await worker.fetch(new Request("https://example.test/submit", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","X-Account-Session":"a".repeat(64),"CF-Connecting-IP":"203.0.113.11"},
+    body:JSON.stringify({userKey:"student-key",text:"A test quote"})
+  }),limitedEnv);
+  assert.equal(limited.status,429);
+});
+
+
+test("owner account permission changes are written to the admin audit log", async () => {
+  const env = makeEnv();
+  const writes = [];
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
+        if (sql.includes("SELECT user_key, username, role FROM users WHERE user_key")) return { user_key: "admin-key", username: "owner", role: "owner" };
+        if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)") || sql.includes("SELECT user_key, role, ai_access FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user", ai_access: 0 };
+        return null;
+      },
+      all: async () => ({ results: [] }),
+      run: async () => { writes.push({ sql, values }); return { success: true, meta: { changes: 1 } }; }
+    })
+  });
+  const response = await worker.fetch(new Request("https://example.test/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Session-Token": "test-session" },
+    body: JSON.stringify({ username: "student", role: "admin" })
+  }), env);
+  assert.equal(response.status, 200);
+  assert.ok(writes.some(write => write.sql.includes("INSERT INTO admin_account_audit") &&
+    write.values[0] === "student" && write.values[1] === "owner" &&
+    write.values[2] === "Role changed from user to admin"));
+});
+
+
+test("QuoteVault submission retries reuse the same server item and admin notification", async () => {
+  const env = makeEnv();
+  const storage = new Map();
+  const notices = new Set();
+  let puts = 0;
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      if (sql.includes("INSERT OR IGNORE INTO admin_notifications")) bound.run = async () => {
+        const key = values[0];
+        const changes = notices.has(key) ? 0 : 1;
+        notices.add(key);
+        return { meta: { changes } };
+      };
+      return bound;
+    };
+    if (sql.includes("SELECT user_key FROM users WHERE role IN")) statement.all = async () => ({ results: [{ user_key: "owner-key" }] });
+    return statement;
+  };
+  env.QUOTEVAULT.get = async (key, type) => {
+    if (key === "session:test-session") return JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" });
+    const value = storage.get(key);
+    return type === "json" && value ? JSON.parse(value) : value || null;
+  };
+  env.QUOTEVAULT.put = async (key, value) => { if (!key.startsWith("quote-submit:")) puts++; storage.set(key, value); };
+  const body = { userKey: "student-key", submissionRequestId: "8f7e6d5c-4b3a-2910-8f7e-6d5c4b3a2910", text: "A test quote", char: "A character" };
+  const headers = { "X-Account-Session": "a".repeat(64) };
+  const first = await call("/submit", env, body, headers);
+  const second = await call("/submit", env, body, headers);
+  const firstData = await first.json();
+  const secondData = await second.json();
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(firstData.id, secondData.id);
+  assert.equal(puts, 1);
+  assert.equal(notices.size, 1);
+});
+
+test("DateVault submission retries reuse the same server item", async () => {
+  const env = makeEnv();
+  const storage = new Map();
+  let puts = 0;
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      return bound;
+    };
+    if (sql.includes("SELECT user_key FROM users WHERE role IN")) statement.all = async () => ({ results: [] });
+    return statement;
+  };
+  env.QUOTEVAULT.put = async () => {};
+  env.DV_PENDING = {
+    get: async (key, type) => { const value = storage.get(key); return type === "json" && value ? JSON.parse(value) : value || null; },
+    put: async (key, value) => { puts++; storage.set(key, value); }
+  };
+  const body = { userKey: "student-key", submissionRequestId: "9f8e7d6c-5b4a-3921-9f8e-7d6c5b4a3921", event: "A test date" };
+  const headers = { "X-Account-Session": "b".repeat(64) };
+  const first = await call("/dv/submit", env, body, headers);
+  const second = await call("/dv/submit", env, body, headers);
+  const firstData = await first.json();
+  const secondData = await second.json();
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(firstData.id, secondData.id);
+  assert.equal(puts, 1);
+});
+
+test("QuoteVault rejects malformed idempotency request IDs", async () => {
+  const env = makeEnv();
+  env.QUOTEVAULT.put = async () => {};
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/submit", env, {
+    userKey: "student-key",
+    submissionRequestId: "invalid",
+    text: "A test quote"
+  }, { "X-Account-Session": "c".repeat(64) });
+  assert.equal(response.status, 400);
 });

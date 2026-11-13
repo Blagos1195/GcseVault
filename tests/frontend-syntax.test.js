@@ -870,3 +870,79 @@ test("Revision queues sync while online and preserves changes locally while offl
   assert.match(app, /window\.addEventListener\('offline'/);
   assert.match(app, /Offline · saved on this device/);
 });
+
+
+test("admin workspace includes recurring error trends and persisted Test Centre history", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.match(admin, /function renderErrorTrends\(reports\)/);
+  assert.match(admin, /Recurring error trends/);
+  assert.match(admin, /function loadOwnerTestHistory\(\)/);
+  assert.match(admin, /Recent test history/);
+  assert.match(worker, /url\.pathname === "\/admin\/test-history"/);
+  assert.match(shared, /deploymentInfo: null/);
+  assert.match(shared, /Worker deployment:/);
+});
+
+
+test("GCSE Vault home page provides cross-site public search", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("global-search-input"));
+  assert.ok(html.includes("/quotes"));
+  assert.ok(html.includes("/dv/quotes"));
+  assert.ok(html.includes("/revision/public"));
+  assert.ok(html.includes("Search across GCSE Vault"));
+});
+
+test("admin notification preferences allow push alerts to be disabled", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(admin.includes("async function disableAdminPushNotifications()"));
+  assert.ok(admin.includes("method:'DELETE'"));
+  assert.ok(admin.includes("subscription.unsubscribe()"));
+  assert.ok(admin.includes("Disable push notifications"));
+});
+
+test("icon-only navigation and data controls have accessible names", () => {
+  for (const file of ["../quotes/index.html", "../dates/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(html.includes('aria-label="Open navigation menu"'));
+    assert.ok(html.includes('aria-label="Export data"'));
+    assert.ok(html.includes('aria-label="Import data from a JSON file"'));
+  }
+});
+
+test("owner account permission changes are included in the admin history", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_account_audit/);
+  assert.match(worker, /recordAccountAdminAction/);
+  assert.match(worker, /SELECT target_username, actor_username, action, acted_at FROM admin_account_audit/);
+});
+
+
+test("QuoteVault and DateVault preserve failed submissions as recoverable drafts", () => {
+  const quote = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const date = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  for (const app of [quote, date]) {
+    assert.ok(app.includes("function readSubmissionDraft()"));
+    assert.ok(app.includes("function restoreSubmissionDraft()"));
+    assert.ok(app.includes("function discardSubmissionDraft()"));
+    assert.ok(app.includes("persistSubmissionDraft(tempId"));
+    assert.ok(app.includes("Restore draft"));
+  }
+  assert.ok(quote.includes("qv_submission_draft:"));
+  assert.ok(date.includes("dv_submission_draft:"));
+});
+
+
+test("Amount of substance supplement contains its full revision pack", () => {
+  const pack = JSON.parse(fs.readFileSync(new URL("../revision/course-packs/aqa-chemistry-amount-of-substance.json", import.meta.url), "utf8"));
+  assert.equal(pack.type, "revision-course-pack");
+  assert.equal(pack.catalogueId, "aqa-a-level-chemistry");
+  assert.equal(pack.cards.length, 52);
+  assert.equal(pack.resources.length, 9);
+  assert.equal(pack.formulas.length, 12);
+  assert.ok(pack.cards.every(card => card.topicId === "chemistry-02" && card.front && card.back));
+  assert.ok(pack.resources.every(resource => resource.topicId === "chemistry-02" && resource.content.length > 500));
+  assert.ok(pack.formulas.every(formula => formula.topicId === "chemistry-02" && formula.name && formula.expression));
+});
