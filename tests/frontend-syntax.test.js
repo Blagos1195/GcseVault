@@ -87,6 +87,7 @@ test("revoked account sessions are cleared and cannot appear signed in", async (
     removeItem(key) { storage.delete(key); }
   };
   const context = {
+    window: {},
     localStorage,
     fetch: async () => ({ status: 401, ok: false }),
     console
@@ -112,6 +113,7 @@ test("valid account sessions refresh the stored username", async () => {
     removeItem(key) { storage.delete(key); }
   };
   const context = {
+    window: {},
     localStorage,
     fetch: async () => ({ status: 200, ok: true, text: async () => JSON.stringify({ username: "TestUser" }) }),
     console
@@ -133,6 +135,7 @@ test("temporary account session verification failures preserve the stored token"
     removeItem(key) { storage.delete(key); }
   };
   const context = {
+    window: {},
     localStorage,
     fetch: async () => ({ status: 503, ok: false, text: async () => JSON.stringify({ error: "Temporarily unavailable" }) }),
     console
