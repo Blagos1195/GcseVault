@@ -6,7 +6,7 @@
 <title>QuoteVault – GCSE English Literature</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="quotes.css?v=20261114-nav-below-banner-v1">
+<link rel="stylesheet" href="quotes.css?v=20261114-compact-dropdown-nav-v1">
 </head>
 <body>
 <div id="overlay" onclick="closeSB()"></div>
@@ -18,7 +18,8 @@
     <div class="sb-logo-main">QuoteVault</div>
     <div class="sb-logo-sub">GCSE English Lit · AQA</div>
   </a>
-  <div id="nav"></div>
+  <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label>
+
   <a class="sb-link" href="/GcseVault/">⌂ GCSE Vault</a>
   <a class="sb-link" href="/GcseVault/quotes/">QuoteVault</a>
   <a class="sb-link" href="/GcseVault/dates/">DateVault</a>
@@ -37,7 +38,8 @@
   <div id="topbar">
     <button id="hbg" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false" onclick="toggleSB()">☰</button>
     <span class="tb-title" id="tb-title">Dashboard</span>
-    <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label>
+    <div id="nav" aria-label="Page navigation"></div>
+
     <button class="btn bsm" type="button" onclick="exportJSON()" title="Export" aria-label="Export data">⬇</button>
     <label class="btn bsm" title="Import" aria-label="Import data from a JSON file" style="cursor:pointer">⬆<input type="file" accept=".json" aria-label="Choose JSON file to import" style="display:none" onchange="importJSON(event)"></label>
   </div>
