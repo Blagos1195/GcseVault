@@ -636,7 +636,7 @@ function allQ(){
     if(S.hidden.has(q.id))continue;
     out.push(q);
   }
-  return trackedItems(out);
+  return out;
 }
 function allQincHidden(){
   const seen=new Set();const out=[];
@@ -1358,7 +1358,7 @@ function render(){
 // DASHBOARD
 // ════════════════════════════════════════════════
 function rDash(){
-  const qs=allQ();
+  const qs=trackedItems(allQ());
   const topicCounts={};
   qs.forEach(q=>{topicCounts[q.topic]=(topicCounts[q.topic]||0)+1;});
   const todayIdx=new Date().getDate()%qs.length;
@@ -3059,7 +3059,7 @@ async function loadLeaderboard(){
 }
 
 function rStats(){
-  const qs=allQ();
+  const qs=trackedItems(allQ());
   const topicMap={};
   qs.forEach(q=>{if(!topicMap[q.topic])topicMap[q.topic]={total:0,mastered:0};topicMap[q.topic].total++;if(S.mastered.has(q.id))topicMap[q.topic].mastered++;});
   const periodMap={};
@@ -3131,10 +3131,10 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'01',n:'First Date',d:'Mastered your first fact',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=1},
-    {i:'02',n:'Chronologist',d:'Mastered 10 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=10},
-    {i:'03',n:'Historian',d:'Mastered 30 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=30},
-    {i:'04',n:'Scholar',d:'Mastered 60 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=60},
+    {i:'01',n:'First Date',d:'Mastered your first fact',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=1},
+    {i:'02',n:'Chronologist',d:'Mastered 10 dates',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=10},
+    {i:'03',n:'Historian',d:'Mastered 30 dates',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=30},
+    {i:'04',n:'Scholar',d:'Mastered 60 dates',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=60},
     {i:'05',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
     {i:'06',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
     {i:'07',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
