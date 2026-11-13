@@ -92,6 +92,20 @@ footer{margin-top:38px}
     </div>
   </section>
 
+  <section class="global-search" aria-label="Search public revision content">
+    <div class="section-heading"><div><h2>Search GCSE Vault</h2><p>Find public quotes, dates and revision notes.</p></div></div>
+    <input id="global-search-input" type="search" placeholder="Search across all study spaces" autocomplete="off" aria-label="Search public revision content">
+    <div id="global-search-results" class="global-search-results" aria-live="polite"></div>
+  </section>
+  <style>
+  .global-search{margin-top:30px}
+  .global-search input{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);font:inherit}
+  .global-search-results{display:grid;gap:7px;margin-top:8px}
+  .global-search-result{display:flex;justify-content:space-between;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--panel);text-decoration:none}
+  .global-search-result span,.global-search-message{color:var(--muted);font-size:.78rem}
+  .global-search-message{padding:10px}
+  @media(max-width:600px){.global-search-result{flex-direction:column;gap:3px}}
+  </style>
   <div class="section-heading">
     <div><h2>Your study spaces</h2><p>Choose where you want to work.</p></div>
   </div>
@@ -125,6 +139,40 @@ footer{margin-top:38px}
 <script src="/GcseVault/worker-config.js?v=20261113-worker-config"></script>
 <script src="/GcseVault/shared.js?v=20261113-admin-refresh"></script>
 <script src="/GcseVault/progress/progress.js?v=20261113-root-dashboard"></script>
+<script>
+const globalSearchInput=document.getElementById("global-search-input");
+const globalSearchResults=document.getElementById("global-search-results");
+let globalSearchIndexPromise=null;
+function loadGlobalSearchIndex(){
+  if(globalSearchIndexPromise)return globalSearchIndexPromise;
+  globalSearchIndexPromise=Promise.all([
+    fetch(VaultUser.WORKER_URL+"/quotes").then(response=>response.ok?response.json():{items:[]}),
+    fetch(VaultUser.WORKER_URL+"/dv/quotes").then(response=>response.ok?response.json():{items:[]}),
+    fetch(VaultUser.WORKER_URL+"/revision/public").then(response=>response.ok?response.json():{notes:[]})
+  ]).then(([quotes,dates,notes])=>[
+    ...(quotes.items||[]).map(item=>({type:"QuoteVault",title:item.text||"Untitled quote",detail:[item.char,item.work,item.loc].filter(Boolean).join(" · "),url:"/GcseVault/quotes/"})),
+    ...(dates.items||[]).map(item=>({type:"DateVault",title:item.event||"Untitled date",detail:[item.year,item.topic].filter(Boolean).join(" · "),url:"/GcseVault/dates/"})),
+    ...(notes.notes||[]).map(item=>({type:"Revision",title:item.title||"Untitled notes",detail:[item.subject,item.level,(item.cards?.length||0)+" cards"].filter(Boolean).join(" · "),url:"/GcseVault/revision/"}))
+  ]).catch(()=>{globalSearchIndexPromise=null;throw new Error("Search is temporarily unavailable.");});
+  return globalSearchIndexPromise;
+}
+async function runGlobalSearch(query){
+  const term=query.trim().toLowerCase();
+  if(!term){globalSearchResults.innerHTML="";return;}
+  globalSearchResults.innerHTML='<div class="global-search-message">Searching public content…</div>';
+  try{
+    const index=await loadGlobalSearchIndex();
+    const matches=index.filter(item=>(item.title+" "+item.detail+" "+item.type).toLowerCase().includes(term)).slice(0,12);
+    globalSearchResults.innerHTML=matches.map(item=>'<a class="global-search-result" href="'+item.url+'"><strong>'+UI.escapeHTML(item.title)+'</strong><span>'+UI.escapeHTML(item.type+" · "+item.detail)+'</span></a>').join("")||'<div class="global-search-message">No matching public content found.</div>';
+  }catch(error){globalSearchResults.textContent=error.message;}
+}
+let globalSearchTimer;
+globalSearchInput.addEventListener("input",event=>{
+  clearTimeout(globalSearchTimer);
+  const query=event.target.value;
+  globalSearchTimer=setTimeout(()=>runGlobalSearch(query),220);
+});
+</script>
 <script src="/GcseVault/offline.js?v=20261113-offline-shell-v2"></script>
 </body>
 </html>
