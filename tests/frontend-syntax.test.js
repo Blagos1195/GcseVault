@@ -476,7 +476,7 @@ test("Revision knowledge map includes every card and filters results", () => {
   assert.doesNotMatch(app, /state\.cards\.slice\(0,24\)/);
   assert.match(app, /function filterKnowledgeMap\(value\)/);
   assert.match(app, /function renderGraphSelection\(selected\)/);
-  assert.match(allCards, /Grouped by subject and topic/);
+  assert.match(allCards, /Grouped into subject and topic clusters/);
   assert.match(allCards, /id="knowledge-map-viewport"/);
   assert.match(allCards, /aria-label="Zoom in"/);
   assert.match(allCards, /aria-label="Zoom out"/);
