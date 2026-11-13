@@ -2762,7 +2762,7 @@ function checkDupFact(){
   else if(score>.5)el.innerHTML=`<div class="qfb" style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)">Most similar (${Math.round(score*100)}%):<br>${quote.year} — ${quote.event}</div>`;
   else el.innerHTML=`<div class="qfb qok">✓ No duplicate — looks new!</div>`;
 }
-async function saveFact(){
+async function saveFact(privateOnly=false){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const yr=(document.getElementById('a-yr')?.value||'').trim();
   const ev=(document.getElementById('a-ev')?.value||'').trim();
