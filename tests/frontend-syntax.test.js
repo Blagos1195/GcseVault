@@ -842,7 +842,7 @@ test("Revision library supports safe bulk subject and topic edits and deletion",
 test("Revision queues sync while online and preserves changes locally while offline", () => {
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const start = app.indexOf("function syncRevisionSoon(){");
-  const end = app.indexOf("\\nwindow.addEventListener('pagehide'", start);
+  const end = app.indexOf("\nwindow.addEventListener('pagehide'", start);
   assert.ok(start >= 0 && end > start);
   let scheduled = 0;
   const context = {
