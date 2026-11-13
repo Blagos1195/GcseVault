@@ -633,8 +633,10 @@ function dueCount(){return allQ().filter(q=>isDue(qSRS(q.id))).length;}
 // ════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════
+const QV_PAGES = new Set('dashboard,library,srs,flashcards,fill,quiz,timed,braindump,add,stats,achievements,settings,leaderboard'.split(','));
+const QV_SAVED_PAGE = localStorage.getItem('qv_last_page');
 const S = {
-  page:'dashboard',
+  page:QV_PAGES.has(QV_SAVED_PAGE)?QV_SAVED_PAGE:'dashboard',
   wf:'All',tf:'All',search:'',
   flt:{works:new Set(['All']),themes:new Set(['All']),search:''},
   mastered:new Set(JSON.parse(localStorage.getItem('qv_m')||'[]')),
@@ -1645,6 +1647,7 @@ function backBtn(){return S.hist.length?`<button class="bback" onclick="goBack()
 // RENDER ROUTER
 // ════════════════════════════════════════════════
 function render(){
+  if(QV_PAGES.has(S.page))localStorage.setItem('qv_last_page',S.page);
   const el=document.getElementById('page');
   const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,fill:rFill,quiz:rQuiz,timed:rTimed,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,leaderboard:rLeaderboard};
   el.innerHTML=(map[S.page]||rDash)();
