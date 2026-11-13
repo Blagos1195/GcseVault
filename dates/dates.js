@@ -551,8 +551,10 @@ function dueCount(){return allQ().filter(q=>isDue(qSRS(q.id))).length;}
 // ════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════
+const DV_PAGES = new Set('dashboard,library,srs,flashcards,quiz,timed,timeline,braindump,add,stats,achievements,settings,leaderboard'.split(','));
+const DV_SAVED_PAGE = localStorage.getItem('dv_last_page');
 const S = {
-  page:'dashboard',
+  page:DV_PAGES.has(DV_SAVED_PAGE)?DV_SAVED_PAGE:'dashboard',
   tf:'All',sf:'All',pf:'All',search:'',
   mastered:new Set(JSON.parse(localStorage.getItem('dv_m')||'[]')),
   learning:new Set(JSON.parse(localStorage.getItem('dv_l')||'[]')),
@@ -1339,6 +1341,7 @@ function bestMatch(inp,pool){
 // RENDER ROUTER
 // ════════════════════════════════════════════════
 function render(){
+  if(DV_PAGES.has(S.page))localStorage.setItem('dv_last_page',S.page);
   const el=document.getElementById('page');
   const map={dashboard:rDash,library:rLib,srs:rSRS,flashcards:rFC,quiz:rQuiz,timed:rTimed,timeline:rTimeline,braindump:rDump,add:rAdd,stats:rStats,achievements:rAch,settings:rSett,leaderboard:rLeaderboard};
   el.innerHTML=(map[S.page]||rDash)();
