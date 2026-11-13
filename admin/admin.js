@@ -333,6 +333,7 @@ async function deleteFeedback(id){
     await AdminManager.refresh();
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
+AdminManager.checkStatus();
 if(AdminManager.getToken()){
   AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
   if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(false),30000);
