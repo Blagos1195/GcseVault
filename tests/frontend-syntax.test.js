@@ -981,3 +981,21 @@ test("the progress dashboard only requests account-scoped summary totals", () =>
   assert.match(worker, /verifyPasswordAccountAccess\(session\.user_key, request\)/);
   assert.ok(!script.includes("revision_sync_data"));
 });
+
+
+test("learning-tool mobile navigation exposes state and supports Escape", () => {
+  for (const file of ["../quotes/index.html", "../dates/index.html", "../revision/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(html.includes('aria-controls="sidebar"'));
+    assert.ok(html.includes('aria-expanded="false"'));
+  }
+  for (const file of ["../quotes/quotes.js", "../dates/dates.js", "../revision/app.js"]) {
+    const script = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(script.includes("event.key==='Escape'") || script.includes("event.key === 'Escape'"));
+    assert.ok(script.includes("aria-expanded"));
+  }
+  for (const file of ["../quotes/quotes.css", "../dates/dates.css", "../revision/revision.css"]) {
+    const css = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(css.includes("button:focus-visible,a:focus-visible"));
+  }
+});
