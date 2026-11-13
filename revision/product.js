@@ -163,5 +163,4 @@ renderSettings=function(){
  return productOriginalSettings()+'<div class="card" style="margin-top:10px"><div class="sec" style="margin-top:0">Data backup</div><div class="ps">Export a complete copy of this revision set, including cards, review history, subject catalogues, practice attempts, mistakes, formulas and resources. Keep a copy somewhere safe.</div><div class="overview-selected-actions"><button class="btn" type="button" onclick="exportRevisionSet(\'json\')">Export full backup (JSON)</button><button class="btn" type="button" onclick="exportRevisionSet(\'csv\')">Export flashcards (CSV)</button><label class="btn" for="revision-backup-import">Import backup as a new set</label><input id="revision-backup-import" type="file" accept=".json,.csv,application/json,text/csv" hidden onchange="importRevisionFile(this)"></div></div>';
 };
 updateRevisionSyncStatus();
-loadRevisionCourseSelection().then(()=>{if(!document.getElementById('revision-course-selection'))renderRevision();});
-if(VaultUser.getAccountSession())loadRevision();
+(async()=>{if(VaultUser.getAccountSession())await loadRevision();await loadRevisionCourseSelection();if(!document.getElementById('revision-course-selection'))renderRevision();})();
