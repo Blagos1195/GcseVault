@@ -395,6 +395,25 @@ test("Atomic structure resource pack is self-contained and contains course mater
   assert.ok(practice.includes("if(!catalogue&&c.catalogue&&c.catalogue.id===catalogueId"));
 });
 
+test("AQA Physics waves resource pack is self-contained and contains course materials", () => {
+  const pack = JSON.parse(fs.readFileSync(new URL("../revision/resources/aqa-a-level-physics-waves.json", import.meta.url), "utf8"));
+  const topicIds = new Set(pack.catalogue.topics.map(topic => topic.id));
+  const cardIds = new Set(pack.cards.map(card => card.id));
+  assert.equal(pack.type, "revision-course-pack");
+  assert.equal(pack.catalogueId, "aqa-a-level-physics");
+  assert.equal(pack.catalogue.id, pack.catalogueId);
+  assert.equal(pack.qualification, "A-level Physics (7408)");
+  assert.equal(pack.topic, "Waves");
+  assert.ok(pack.cards.length >= 65);
+  assert.ok(pack.resources.length >= 8);
+  assert.ok(pack.formulas.length >= 8);
+  assert.ok(pack.cards.every(card => topicIds.has(card.topicId) && card.front && card.back));
+  assert.ok(pack.cards.every(card => (card.links || []).every(id => cardIds.has(id))));
+  assert.ok(pack.resources.every(resource => topicIds.has(resource.topicId) && resource.content.length > 400));
+  assert.ok(pack.formulas.every(formula => topicIds.has(formula.topicId) && formula.name && formula.expression));
+  assert.ok(!JSON.stringify(pack).includes("http://") && !JSON.stringify(pack).includes("https://"));
+});
+
 test("AQA Physics particles resource pack is self-contained and contains course materials", () => {
   const pack = JSON.parse(fs.readFileSync(new URL("../revision/resources/aqa-a-level-physics-particles.json", import.meta.url), "utf8"));
   const topicIds = new Set(pack.catalogue.topics.map(topic => topic.id));
