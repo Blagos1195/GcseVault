@@ -288,6 +288,28 @@ const VaultUser = {
     return value;
   },
 
+  async getCourseSelections() {
+    const token = this.getAccountSession();
+    if (!token) return null;
+    const response = await fetch(`${this.WORKER_URL}/account/course-selections`, { headers: { 'X-Account-Session': token } });
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not load course selections.');
+    return data.selections || {};
+  },
+
+  async saveCourseSelections(site, selections) {
+    const token = this.getAccountSession();
+    if (!token) throw new Error('Sign in to sync course selections across devices.');
+    const response = await fetch(`${this.WORKER_URL}/account/course-selections`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Account-Session': token },
+      body: JSON.stringify({ site, selections })
+    });
+    const data = await this.readResponse(response);
+    if (!response.ok) throw new Error(data.error || data.message || 'Could not save course selections.');
+    return data.selections || [];
+  },
+
   async validateAccountSession() {
     const token = this.getAccountSession();
     if (!token) return false;
