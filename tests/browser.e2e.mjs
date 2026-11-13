@@ -114,17 +114,10 @@ test("the main learning tools remain available after the device goes offline", a
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
     await context.setOffline(true);
-    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"]]) {
-      const offlinePage = await context.newPage();
-      await offlinePage.goto(base + path, { waitUntil: "domcontentloaded" });
-      assert.ok((await offlinePage.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
-      await offlinePage.close();
+    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/", "GCSE Vault"]]) {
+      await page.goto(base + path, { waitUntil: "domcontentloaded", timeout: 10000 });
+      assert.ok((await page.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
     }
-    await context.newPage().then(async offlinePage => {
-      await offlinePage.goto(base + "/", { waitUntil: "domcontentloaded" });
-      assert.ok((await offlinePage.locator("body").innerText()).includes("GCSE Vault"));
-      await offlinePage.close();
-    });
   } finally {
     await context.close();
     await browser.close();
