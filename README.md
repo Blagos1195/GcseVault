@@ -6,7 +6,7 @@ GCSE Vault is a static GCSE revision site backed by a Cloudflare Worker. It brin
 
 | Path | Purpose |
 |---|---|
-| `index.html` | Main site landing page |
+| `index.html` | Main GCSE Vault dashboard, with synced progress, global search and links to each study area |
 | `quotes/` | QuoteVault: English Literature revision |
 | `dates/` | DateVault: History revision |
 | `revision/` | Revision workspace, flashcards, course materials and exam practice |
