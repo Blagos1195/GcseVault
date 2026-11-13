@@ -34,6 +34,11 @@ async function checkAdminPushSubscription(){
   }catch{}
 }
 async function enableAdminPushNotifications(){
+  if(window.GCSE_VAULT_DISABLE_PUSH){
+    AdminManager.error='Push notifications are disabled in the staging environment.';
+    renderAdmin();
+    return;
+  }
   if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
     AdminManager.error='This browser does not support Web Push notifications.';
     renderAdmin();

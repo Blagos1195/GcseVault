@@ -1,4 +1,4 @@
-const CACHE_NAME = "gcse-vault-shell-v2";
+const CACHE_NAME = "gcse-vault-shell-v3";
 const SHELL_FILES = [
   "",
   "quotes/",
@@ -10,6 +10,7 @@ const SHELL_FILES = [
   "progress/",
   "shared.js",
   "offline.js",
+  "worker-config.js",
   "progress/progress.js",
   "progress/progress.css",
   "quotes/quotes.js",
