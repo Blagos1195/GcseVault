@@ -1288,7 +1288,10 @@ const AdminManager = {
     } catch (error) {
       throw new Error(`Could not reach Worker endpoint ${path}: ${error.message || 'Network request failed'}`);
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status} at ${path}`);
+    if (!response.ok) {
+      const detail = (await response.text()).trim();
+      throw new Error(`HTTP ${response.status} at ${path}${detail ? `: ${detail.slice(0, 240)}` : ''}`);
+    }
     try {
       return await response.json();
     } catch {
