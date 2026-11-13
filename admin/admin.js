@@ -298,6 +298,9 @@ function renderAdmin(){
   }else if(tab==="history"){
     content=renderApprovalHistory();
   }
+  else if(tab==="tests"&&AdminManager.role==="owner"){
+    content=renderOwnerTestCentre();
+  }
   app.innerHTML=`<div class="toolbar"><div><h1>Admin workspace</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
   <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${publishedCount}</strong> published</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
   <nav class="admin-tabs" aria-label="Admin sections">${tabButton("review","To review",pendingCount)}${tabButton("published","Published",publishedCount)}${tabButton("feedback","Feedback",feedback.length)}${tabButton("notifications","Notifications",unread)}${AdminManager.role==="owner"?tabButton("users","Users",(AdminManager.users||[]).length):""}${tabButton("history","History",moderationLog.length)}${AdminManager.role==="owner"?tabButton("tests","Test Centre",0):""}</nav>
