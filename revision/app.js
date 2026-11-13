@@ -556,7 +556,9 @@ async function checkRevisionSubmissionNotifications(){
     if(!notice)return;
     window._activeRevisionNotice=notice;
     const approved=notice.status==='approved';
-    openModal(`<div><h2>Submission update</h2><p>${approved?'Your public revision notes were approved. Choose whether to keep your original cards or replace them with the edited version.':'Your public revision notes were not approved. Your private revision cards can remain in your account.'}</p><div class="actions">${approved?'<button class="btn" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;replace&quot;)">Use edited version</button>':'<button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my notes in my account</button>'}</div></div>`);
+    const title=String(notice.title||'Untitled revision notes').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const message=approved?`Your revision notes “${title}” were approved. Choose whether to keep your original cards or use the edited version.`:`Your revision notes “${title}” were not approved. Your private cards remain in your account.`;
+    openModal(`<div><h2>Submission update</h2><p>${message}</p><div class="actions">${approved?'<button class="btn" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;replace&quot;)">Use edited version</button>':'<button class="btn bg" onclick="resolveRevisionSubmissionNotification(&quot;keep&quot;)">Keep my notes in my account</button>'}</div></div>`);
   }catch(error){}
 }
 async function resolveRevisionSubmissionNotification(choice){
