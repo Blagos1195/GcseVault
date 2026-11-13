@@ -241,3 +241,7 @@ details.knowledge-item>summary{cursor:pointer;list-style-position:inside}
 
 .ni{appearance:none;width:calc(100% - 16px);border:0;background:transparent;font-family:inherit;text-align:left}
 .ni:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+
+#revision-set-switcher{max-width:180px;min-width:110px;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--text);font:inherit;font-size:.74rem}
+#revision-set-switcher:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+@media(max-width:520px){#revision-set-switcher{max-width:112px;min-width:88px;font-size:.68rem;padding:5px 4px}.tb-title{display:none}}
