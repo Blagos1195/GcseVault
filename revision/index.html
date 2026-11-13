@@ -10,19 +10,22 @@
 <script src="/GcseVault/worker-config.js?v=20261113-staging-config"></script>
 <script src="../shared.js?v=20261110-theme-sync"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="revision.css?v=20261114-hover-nav-v2"><link rel="stylesheet" href="product.css?v=20261110-product-tools">
+<link rel="stylesheet" href="revision.css?v=20261114-two-row-header-v1"><link rel="stylesheet" href="product.css?v=20261110-product-tools">
 </head>
 <body>
 
 <div id="app">
 
 
-  <header id="topbar"><div class="revision-search-row"><button id="revision-mobile-menu" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">☰</button><a class="revision-brand" href="/GcseVault/revision/" aria-label="Revision homepage">Revision</a><nav id="revision-nav" aria-label="Revision sections">
+  <header id="topbar"><div class="revision-header">
+  <div class="revision-header-top"><button id="revision-mobile-menu" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">☰</button><a class="revision-brand" href="/GcseVault/revision/" aria-label="Revision homepage">Revision</a><label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label></div>
+  <div class="revision-header-bottom"><nav id="revision-nav" aria-label="Revision sections">
       <details class="revision-nav-menu"><summary><span>Study</span><strong id="revision-nav-study-current">Overview</strong><span class="revision-nav-chevron">⌄</span></summary><div class="revision-nav-options"><button type="button" data-view="overview">Overview</button><button type="button" data-view="cards">Flashcards</button></div></details>
       <details class="revision-nav-menu"><summary><span>Library</span><strong id="revision-nav-library-current">Library</strong><span class="revision-nav-chevron">⌄</span></summary><div class="revision-nav-options"><button type="button" data-view="library">Library</button><button type="button" data-view="resources">Course materials</button><button type="button" data-view="public">Public notes</button></div></details>
       <details class="revision-nav-menu"><summary><span>Progress</span><strong id="revision-nav-progress-current">Progress</strong><span class="revision-nav-chevron">⌄</span></summary><div class="revision-nav-options"><button type="button" data-view="analytics">Progress</button><button type="button" data-view="leaderboard">Leaderboard</button></div></details>
       <details class="revision-nav-menu"><summary><span>Tools</span><strong id="revision-nav-tools-current">Tools</strong><span class="revision-nav-chevron">⌄</span></summary><div class="revision-nav-options"><button type="button" data-view="create">New card</button><button type="button" data-view="graph">Knowledge map</button><button type="button" data-view="settings">Settings</button><button type="button" data-view="ai">AI tools</button></div></details>
-    </nav><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select><label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label><div class="revision-toolbar"><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></div></div></header>
+    </nav><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select><div class="revision-toolbar"><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></div></div>
+</div></header>
   <aside id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sb-logo"><div class="sb-logo-main">Revision</div><div class="sb-logo-sub">Study workspace</div></div>
     
@@ -35,7 +38,7 @@
 </div>
 <div id="overlay"></div><div id="modal-bg"><div id="modal"></div></div><div id="toast"></div>
 
-<script src="app.js?v=20261114-hover-nav-v2"></script>
+<script src="app.js?v=20261114-two-row-header-v1"></script>
 <script src="practice.js?v=20261110-product-quality"></script><script src="product.js?v=20261110-product-tools"></script>
 <script src="/GcseVault/offline.js?v=20261113-offline-shell-v1"></script>
 </body>
