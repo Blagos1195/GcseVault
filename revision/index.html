@@ -10,11 +10,14 @@
 <script src="/GcseVault/worker-config.js?v=20261113-staging-config"></script>
 <script src="../shared.js?v=20261110-theme-sync"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="revision.css?v=20261114-knowledge-map-v1"><link rel="stylesheet" href="product.css?v=20261110-product-tools">
+<link rel="stylesheet" href="revision.css?v=20261114-top-navigation-v2"><link rel="stylesheet" href="product.css?v=20261110-product-tools">
 </head>
 <body>
 
 <div id="app">
+
+
+  <header id="topbar"><div class="revision-search-row"><div class="revision-brand">Revision</div><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select></div><div class="revision-toolbar"><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></div></header>
   <aside id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sb-logo"><div class="sb-logo-main">Revision</div><div class="sb-logo-sub">Study workspace</div></div>
     <nav id="revision-nav" aria-label="Revision sections">
@@ -25,14 +28,13 @@
     </nav>
     <a class="sb-link" href="/GcseVault/">GCSE Vault</a>
   </aside>
-  <header id="topbar"><div class="revision-search-row"><div class="revision-brand">Revision</div><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select></div><div class="revision-toolbar"><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></div></header>
   <main id="main">
     <section id="page"></section>
   </main>
 </div>
 <div id="overlay"></div><div id="modal-bg"><div id="modal"></div></div><div id="toast"></div>
 
-<script src="app.js?v=20261114-knowledge-map-v1"></script>
+<script src="app.js?v=20261114-top-navigation-v2"></script>
 <script src="practice.js?v=20261110-product-quality"></script><script src="product.js?v=20261110-product-tools"></script>
 <script src="/GcseVault/offline.js?v=20261113-offline-shell-v1"></script>
 </body>
