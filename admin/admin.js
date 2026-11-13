@@ -218,10 +218,20 @@ function feedbackDetails(item){
 }
 function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
-  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
+  AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);loadOwnerTestHistory();checkAdminPushSubscription();});
 }
 let ownerTestResults = {};
+let ownerTestHistory = [];
 let ownerTestsRunning = false;
+async function loadOwnerTestHistory(){
+  if(!AdminManager.getToken()||AdminManager.role!=="owner")return;
+  try{
+    const response=await fetch(VaultUser.WORKER_URL+"/admin/test-history",{headers:{"X-Session-Token":AdminManager.getToken()}});
+    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    ownerTestHistory=(await response.json()).history||[];
+    renderAdmin();
+  }catch(error){AdminManager.error=error.message;renderAdmin();}
+}
 const ownerTestDefinitions = [
   ["health","System health","Checks the D1 database and required KV bindings."],
   ["error","Error reporting","Creates and verifies a synthetic error report, then removes it."],
@@ -244,6 +254,8 @@ async function runOwnerTest(test){
     if(!response.ok)throw new Error(`HTTP ${response.status}: ${raw||response.statusText}`);
     const data=JSON.parse(raw);
     for(const result of data.results||[])ownerTestResults[result.name]=result;
+    const historyResponse=await fetch(VaultUser.WORKER_URL+"/admin/test-history",{headers:{"X-Session-Token":AdminManager.getToken()}});
+    if(historyResponse.ok)ownerTestHistory=(await historyResponse.json()).history||[];
   }catch(error){
     if(test==="all")ownerTestResults={...ownerTestResults,system:{status:"failed",detail:error.message}};
     else ownerTestResults={...ownerTestResults,[test]:{status:"failed",detail:error.message}};
@@ -255,7 +267,7 @@ async function runOwnerTest(test){
 function renderOwnerTestCentre(){
   const passed=Object.values(ownerTestResults).filter(result=>result.status==="passed").length;
   const failed=Object.values(ownerTestResults).filter(result=>result.status==="failed").length;
-  return `<section class="panel owner-test-centre"><div class="toolbar"><div><h2>System Test Centre</h2><p class="sub">Run isolated checks against the production Worker and storage bindings.</p></div><button class="primary" onclick="runOwnerTest('all')" ${ownerTestsRunning?'disabled':''}>${ownerTestsRunning?'Running tests…':'Run all tests'}</button></div><div class="test-safety-note">Tests use temporary, specially named records and clean them up automatically. They do not publish content, alter real submissions or send test push notifications.</div><div class="test-summary"><strong>${passed} passed</strong><strong>${failed} failed</strong><span>${Object.keys(ownerTestResults).length} of ${ownerTestDefinitions.length} run</span></div><div class="test-list">${ownerTestDefinitions.map(([id,title,description])=>{const result=ownerTestResults[id];const status=result?.status||"not-run";return `<article class="test-row"><div class="test-copy"><div class="test-heading"><strong>${title}</strong><span class="test-status ${status}">${status==="not-run"?"Not run":status==="running"?"Running":status==="passed"?"Passed":"Failed"}</span></div><p>${description}</p>${result?`<div class="test-detail">${esc(result.detail||"")}${result.duration_ms!==undefined?` <span>${result.duration_ms} ms</span>`:""}</div>`:""}</div><button onclick="runOwnerTest('${id}')" ${ownerTestsRunning?'disabled':''}>Run</button></article>`}).join("")}</div><p class="sub">These are integration smoke tests for the Worker bindings and storage operations. They do not yet simulate a real user account submitting and moderating content end to end.</p></section>`;
+  return `<section class="panel owner-test-centre"><div class="toolbar"><div><h2>System Test Centre</h2><p class="sub">Run isolated checks against the production Worker and storage bindings.</p></div><button class="primary" onclick="runOwnerTest('all')" ${ownerTestsRunning?'disabled':''}>${ownerTestsRunning?'Running tests…':'Run all tests'}</button></div><div class="test-safety-note">Tests use temporary, specially named records and clean them up automatically. They do not publish content, alter real submissions or send test push notifications.</div><div class="test-summary"><strong>${passed} passed</strong><strong>${failed} failed</strong><span>${Object.keys(ownerTestResults).length} of ${ownerTestDefinitions.length} run</span></div><div class="test-list">${ownerTestDefinitions.map(([id,title,description])=>{const result=ownerTestResults[id];const status=result?.status||"not-run";return `<article class="test-row"><div class="test-copy"><div class="test-heading"><strong>${title}</strong><span class="test-status ${status}">${status==="not-run"?"Not run":status==="running"?"Running":status==="passed"?"Passed":"Failed"}</span></div><p>${description}</p>${result?`<div class="test-detail">${esc(result.detail||"")}${result.duration_ms!==undefined?` <span>${result.duration_ms} ms</span>`:""}</div>`:""}</div><button onclick="runOwnerTest('${id}')" ${ownerTestsRunning?'disabled':''}>Run</button></article>`}).join("")}</div><p class="sub">These are integration smoke tests for the Worker bindings and storage operations. They do not yet simulate a real user account submitting and moderating content end to end.</p><h3>Recent test history</h3><div class="queue">${ownerTestHistory.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item.test_name)}</span><span class="test-status ${esc(item.status)}">${esc(item.status)}</span><span>${esc(item.actor_username)}</span><span>${esc(item.completed_at)}</span></div><p>${esc(item.detail)}</p><p class="sub">${Number(item.duration_ms)||0} ms</p></div></article>`).join('')||'<div class="empty">No previous test runs recorded.</div>'}</div></section>`;
 }
 function renderAdmin(){
   const token=AdminManager.getToken();
@@ -334,7 +346,7 @@ async function deleteFeedback(id){
   }catch(error){AdminManager.error=error.message;renderAdmin();}
 }
 if(AdminManager.getToken()){
-  AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
+  AdminManager.refresh().then(()=>{loadModerationLog();loadAdminNotifications(false);loadOwnerTestHistory();checkAdminPushSubscription();});
   if(!adminNotificationPoll)adminNotificationPoll=setInterval(()=>loadAdminNotifications(false),30000);
 }else AdminManager.checkStatus();
 
