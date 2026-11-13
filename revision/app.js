@@ -59,6 +59,7 @@ const state = {
   progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {})),
   accountSets: initialRevisionSets,
   activeSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
+  publishSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
   view: 'overview', selected: null, studyIndex: 0, revealed: false,
   xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
@@ -194,6 +195,7 @@ function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
   state.activeSetId = selected.id;
+  state.publishSetId = selected.id;
   state.cards = Array.isArray(selected.cards) ? selected.cards : [];
   state.progress = selected.progress && typeof selected.progress === 'object' ? selected.progress : {};
   state.xp = Number(selected.xp) || 0;
@@ -259,7 +261,8 @@ function saveRevisionSetName(setId){
   renderRevision();
 }
 function publishRevisionSet(setId){
-  const target = state.accountSets.find(set => set.id === setId) || getActiveRevisionSet();
+  const target = state.accountSets.find(set => set.id === setId);
+  if (!target) { state.setMessage = 'Choose a revision set to publish.'; renderRevision(); return; }
   if (!target) return;
   if (!revisionUserKey() || !revisionUsername()) {
     state.accountMessage = 'Link your shared account before publishing a set.';
@@ -274,6 +277,13 @@ function publishRevisionSet(setId){
     .then(() => { target.published = true; state.setMessage = `“${target.name}” submitted for review.`; saveRevision(); renderRevision(); })
     .catch(error => { state.setMessage = error.message || 'Could not publish this set.'; renderRevision(); });
 }
+function selectRevisionSetToPublish(setId){if(state.accountSets.some(set=>set.id===setId)){state.publishSetId=setId;renderRevision();}}
+function publishSelectedRevisionSet(){publishRevisionSet(state.publishSetId||state.activeSetId);}
+function renderPublishSetControl(){
+  const selected=state.accountSets.some(set=>set.id===state.publishSetId)?state.publishSetId:state.activeSetId;
+  return `<div class="fg" style="margin-top:12px"><label for="revision-publish-set">Pick a set to publish</label><select id="revision-publish-set" onchange="state.publishSetId=this.value">${state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}" ${set.id===selected?'selected':''}>${escapeRevision(set.name)} · ${(set.cards||[]).length} cards</option>`).join('')}</select><div style="margin-top:8px"><button class="btn bp" type="button" onclick="publishSelectedRevisionSet()">Publish selected set</button></div></div>`;
+}
+function promptNewRevisionSet(){const name=(prompt('Name your new revision set:','New set')||'').trim();if(name)addRevisionSet(name);}
 function requestDeleteRevisionSet(setId){state.confirmDeleteSetId=setId;renderRevision();}
 function cancelDeleteRevisionSet(){state.confirmDeleteSetId=null;renderRevision();}
 function confirmDeleteRevisionSet(setId){state.confirmDeleteSetId=null;deleteRevisionSet(setId);}
@@ -661,6 +671,9 @@ function renderConnectionReview(){
   return `<div style="max-width:680px;margin:0 auto"><div class="pt">Review the connection</div><div class="ps">Explain how these two ideas are related before revealing the link.</div><div class="card" style="text-align:center;padding:24px"><div class="g2"><div class="scard"><div class="knowledge-title">${escapeRevision(card.title)}</div></div><div class="scard"><div class="knowledge-title">${escapeRevision(other.title)}</div></div></div>${state.connectionRevealed?`<div class="qfb qok">${escapeRevision(card.answer)} ${escapeRevision(other.answer)}</div>`:'<div class="ps" style="margin-top:16px">Think through the relationship between these ideas.</div>'}<div style="display:flex;gap:7px;justify-content:center;margin-top:14px;flex-wrap:wrap">${state.connectionRevealed?`<button class="btn br" onclick="rateConnection(0)">Again</button><button class="btn" onclick="rateConnection(1)">Hard</button><button class="btn bp" onclick="rateConnection(2)">Good</button><button class="btn bg" onclick="rateConnection(3)">Easy</button>`:`<button class="btn bp" onclick="state.connectionRevealed=true;renderRevision()">Reveal connection</button>`}<button class="btn" onclick="state.view='overview';renderRevision()">Back</button></div></div></div>`;
 }
 function renderSessionSummary(){return `<div class="card" style="margin-top:10px"><div class="knowledge-title">Study session</div><div class="knowledge-meta">${state.studyQueue.length} cards remaining · ${state.sessionReviewed} reviewed this session</div></div>`;}
+function renderRevisionSetOverview(){
+  return `<section class="card" style="margin:12px 0"><div class="overview-section-heading"><h2>Your revision sets</h2><span>${state.accountSets.length} set${state.accountSets.length===1?'':'s'}</span></div><div class="knowledge-meta" style="margin-bottom:10px">Keep different subjects, courses or revision projects separate. Each set has its own cards and progress.</div><div class="g2">${state.accountSets.map(set=>{const cards=Array.isArray(set.cards)?set.cards:[];const progress=set.progress||{};const reviewed=cards.filter(card=>Number(progress[card.id]?.reviews)>0).length;const due=cards.filter(card=>!progress[card.id]?.due||Number(progress[card.id].due)<=Date.now()).length;const active=set.id===state.activeSetId;return `<div class="scard" style="text-align:left;border:1px solid ${active?'var(--purple)':'var(--border2)'};min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><strong>${escapeRevision(set.name||'Revision set')}</strong><span class="tag ${active?'tp':'tg'}">${active?'Active':'Saved'}</span></div><div class="knowledge-meta" style="margin-top:7px">${cards.length} cards · ${due} due · ${reviewed} reviewed · ${Number(set.xp)||0} XP</div>${!active?`<button class="btn bsm" style="margin-top:9px" type="button" onclick="switchRevisionSet('${escapeRevision(set.id)}')">Open set</button>`:`<div class="knowledge-meta" style="margin-top:9px">You are revising this set</div>`}</div>`;}).join('')}</div><button class="btn bp" style="margin-top:10px" type="button" onclick="promptNewRevisionSet()">＋ Create a revision set</button><button class="btn" style="margin:10px 0 0 6px" type="button" onclick="state.view='settings';renderRevision()">Manage sets</button></section>`;
+}
 function renderOverview(){
   const selected=cardById(state.selected);
   const due=dueSummary();
@@ -672,6 +685,7 @@ function renderOverview(){
   return `<div class="overview">
     <div class="pt">Overview</div>
     <div class="ps">${escapeRevision(getActiveRevisionSet().name)} · Your revision activity and next steps.</div>
+    ${renderRevisionSetOverview()}
     <section class="overview-hero">
       <div class="overview-hero-copy">
         <div class="overview-kicker">NEXT STEP</div>
@@ -766,7 +780,6 @@ function renderSettings(){
             <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
               <button class="btn bsm" type="button" onclick="switchRevisionSet('${set.id}')">Switch</button>
               ${state.editingSetId===set.id?`<button class="btn bsm bp" type="button" onclick="saveRevisionSetName('${set.id}')">Save name</button><button class="btn bsm" type="button" onclick="state.editingSetId=null;renderRevision()">Cancel</button>`:`<button class="btn bsm" type="button" onclick="renameRevisionSet('${set.id}')">Edit</button>`}
-              <button class="btn bsm" type="button" onclick="publishRevisionSet('${set.id}')">Publish</button>
               ${state.confirmDeleteSetId===set.id?`<span class="knowledge-meta" style="align-self:center">Delete this set?</span><button class="btn bsm br" type="button" onclick="confirmDeleteRevisionSet('${set.id}')">Confirm</button><button class="btn bsm" type="button" onclick="cancelDeleteRevisionSet()">Cancel</button>`:`<button class="btn bsm br" type="button" onclick="requestDeleteRevisionSet('${set.id}')">Delete</button>`}
             </div>
           </div>
@@ -778,6 +791,7 @@ function renderSettings(){
         <button class="btn" type="button" onclick="exportRevisionSet('csv')">Export CSV</button>
         <label class="btn" for="revision-import-file">Import JSON / CSV</label><input id="revision-import-file" type="file" accept=".json,.csv,text/csv,application/json" hidden onchange="importRevisionFile(this)">
       </div>
+      ${renderPublishSetControl()}
     </div>
     <div class="card" style="margin-top:10px">
       <div class="sec" style="margin-top:0">Notes</div>
@@ -791,7 +805,7 @@ function renderSettings(){
     </div>
   </div>`;
 }
-function renderPublicNotes(){return `<div style="max-width:850px;margin:0 auto"><div class="pt">Public notes</div><div class="ps">Browse shared study notes. Public notes are copied into your workspace only when you choose to import them.</div><div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap"><button class="btn bp" onclick="publishRevisionNotes()">☁ Publish my notes</button><button class="btn" onclick="loadPublicNotes()">Refresh</button></div><div class="knowledge-list">${state.publicNotes.length?state.publicNotes.map(note=>`<div class="card"><div class="tag tg">${escapeRevision(note.subject)}${note.level?' · '+escapeRevision(note.level):''}</div><div class="knowledge-title" style="margin-top:6px">${escapeRevision(note.title)}</div><div class="knowledge-meta">${note.cards?.length||0} cards · ${escapeRevision(note.updatedAt||'')}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn bsm" onclick="importPublicNote('${note.id}')">＋ Import copy</button>${note.owned?`<button class="btn bsm br" onclick="deletePublicNote('${note.id}')">Delete</button>`:''}</div></div>`).join(''):'<div class="ps">No public notes have been published yet.</div>'}</div></div>`;}
+function renderPublicNotes(){return `<div style="max-width:850px;margin:0 auto"><div class="pt">Public notes</div><div class="ps">Browse shared study notes. Public notes are copied into your workspace only when you choose to import them.</div><div class="card" style="margin:10px 0"><div class="sec" style="margin-top:0">Share a revision set</div><div class="knowledge-meta">Choose exactly which set to submit for admin review. Your other sets remain private.</div>${renderPublishSetControl()}</div><div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap"><button class="btn" onclick="loadPublicNotes()">Refresh</button></div><div class="knowledge-list">${state.publicNotes.length?state.publicNotes.map(note=>`<div class="card"><div class="tag tg">${escapeRevision(note.subject)}${note.level?' · '+escapeRevision(note.level):''}</div><div class="knowledge-title" style="margin-top:6px">${escapeRevision(note.title)}</div><div class="knowledge-meta">${note.cards?.length||0} cards · ${escapeRevision(note.updatedAt||'')}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn bsm" onclick="importPublicNote('${note.id}')">＋ Import copy</button>${note.owned?`<button class="btn bsm br" onclick="deletePublicNote('${note.id}')">Delete</button>`:''}</div></div>`).join(''):'<div class="ps">No public notes have been published yet.</div>'}</div></div>`;}
 function renderLeaderboard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Revision leaderboard</div><div class="ps">Earn 10 XP each time you successfully review a card.</div><div class="card"><div id="revision-leaderboard-list" class="knowledge-list"><div class="ps">Loading leaderboard...</div></div></div></div>`;}
 function normalizeAIResult(raw, additionalIds=[]){
   let payload = raw;
@@ -897,7 +911,7 @@ function selectRevisionCard(id){state.selected=id;state.view=state.view==='cards
 function startTopic(topic){const decoded=decodeURIComponent(topic);const index=state.cards.findIndex(card=>card.topic===decoded);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
 function startStudy(id){const index=state.cards.findIndex(card=>card.id===id);if(index>=0){state.studyIndex=index;state.revealed=false;state.view='cards';renderRevision();}}
 async function loadRevisionLeaderboard(){try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/leaderboard`);const payload=await response.json();const target=document.getElementById('revision-leaderboard-list');if(!target)return;target.innerHTML=(payload.users||[]).map((user,index)=>`<div class="knowledge-item"><span class="knowledge-dot"></span><div><div class="knowledge-title">${index+1}. ${escapeRevision(user.username)}</div><div class="knowledge-meta">${user.xp||0} XP · ${user.streak||0} day streak</div></div></div>`).join('')||'<div class="ps">No revision accounts yet.</div>';}catch(error){const target=document.getElementById('revision-leaderboard-list');if(target)target.innerHTML='<div class="ps">Leaderboard unavailable.</div>';}}
-async function publishRevisionNotes(){if(!revisionUserKey()||!revisionUsername()||!VaultUser.getAccountSession()){VaultUser.showAccountDialog();state.view='settings';renderRevision();return;}const title=(prompt('Name this public note set:','My revision notes')||'').trim();if(!title)return;try{const response=await fetch(`${ThemeManager.WORKER_URL}/revision/public`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),note:{title,subject:'General',level:'',cards:state.cards}})});if(!response.ok)throw new Error();alert('Submitted for admin approval. It will appear publicly after review.');}catch(error){alert('Could not submit notes.');}}
+async function publishRevisionNotes(){publishSelectedRevisionSet();}
 async function importPublicNote(id){const note=state.publicNotes.find(item=>item.id===id);if(!note)return;const existing=new Set(state.cards.map(card=>String(card.title).toLowerCase()));const imported=(note.cards||[]).filter(card=>!existing.has(String(card.title||'').toLowerCase())).map(card=>({...card,id:'import'+Date.now()+Math.random().toString(36).slice(2,6),links:[]}));state.cards.push(...imported);saveRevision();state.selected=imported[0]?.id||state.selected;state.view='overview';renderRevision();}
 async function deletePublicNote(id){if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}if(!confirm('Delete this public note set?'))return;try{await fetch(`${ThemeManager.WORKER_URL}/revision/public/delete`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userKey:revisionUserKey(),id})});await loadPublicNotes();}catch(error){alert('Could not delete public notes.');}}
 async function lockRevisionAI(){await RevisionAIManager.logout();state.aiResult=null;AdminManager.error='';renderRevision();}
