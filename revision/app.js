@@ -786,7 +786,8 @@ function renderConnectionReview(){
 function renderSessionSummary(){return `<div class="card" style="margin-top:10px"><div class="knowledge-title">Study session</div><div class="knowledge-meta">${state.studyQueue.length} cards remaining · ${state.sessionReviewed} reviewed this session</div></div>`;}
 let revisionCourseSelection = null;
 async function loadRevisionCourseSelection(){
-  try{const saved=await VaultUser.getCourseSelections();if(Array.isArray(saved?.revision))revisionCourseSelection=saved.revision;}catch(error){console.error('Revision course selection sync failed:',error);}
+  try{const local=JSON.parse(localStorage.getItem('revision_course_selection')||'null');if(Array.isArray(local))revisionCourseSelection=local;}catch{}
+  try{const saved=await VaultUser.getCourseSelections();if(Array.isArray(saved?.revision)){revisionCourseSelection=saved.revision;localStorage.setItem('revision_course_selection',JSON.stringify(revisionCourseSelection));}else if(revisionCourseSelection&&VaultUser.getAccountSession())await VaultUser.saveCourseSelections('revision',revisionCourseSelection);}catch(error){console.error('Revision course selection sync failed:',error);}
   if(!Array.isArray(revisionCourseSelection)){revisionCourseSelection=state.accountSets.map(set=>set.id);showRevisionCourseSelection(true);}else state.accountSets.forEach(set=>set.courseIncluded=revisionCourseSelection.includes(set.id));
 }
 function showRevisionCourseSelection(){
@@ -798,7 +799,7 @@ function showRevisionCourseSelection(){
 async function saveRevisionCourseSelection(){
   const selected=[...document.querySelectorAll('[data-revision-course]:checked')].map(input=>input.value);
   if(!selected.length){state.setMessage='Select at least one revision set.';state.setMessageType='error';return;}
-  revisionCourseSelection=selected;state.accountSets.forEach(set=>set.courseIncluded=selected.includes(set.id));
+  revisionCourseSelection=selected;localStorage.setItem('revision_course_selection',JSON.stringify(selected));state.accountSets.forEach(set=>set.courseIncluded=selected.includes(set.id));
   try{await VaultUser.saveCourseSelections('revision',selected);}catch(error){state.setMessage='Could not sync course selections. They remain selected on this device.';state.setMessageType='error';}
   document.getElementById('revision-course-selection')?.remove();saveRevision();renderRevision();
 }
