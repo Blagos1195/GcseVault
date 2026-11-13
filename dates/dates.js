@@ -809,6 +809,20 @@ async function resolveSubmissionNotification(choice){
   }catch(error){toast(error.message,4000);}
 }
 
+function mergeRemoteMasteredIds(remoteIds){
+  let added=0;
+  (Array.isArray(remoteIds)?remoteIds:[]).forEach(id=>{
+    const numId=+id;
+    const key=Number.isFinite(numId)&&String(numId)===String(id)?numId:id;
+    if(!S.mastered.has(key)&&!S.mastered.has(String(key))){
+      S.mastered.add(key);
+      S.masteryPts[key]=100;
+      added++;
+    }
+  });
+  return added;
+}
+
 async function syncFromWorker(){
   const k=getUserKey();
   if(!k)return;
@@ -848,17 +862,8 @@ async function syncFromWorker(){
     }
     // Merge mastered IDs
     const remoteMastered=Array.isArray(u.dv_mastered_ids)?u.dv_mastered_ids:[];
-    if(remoteMastered.length>S.mastered.size){
-      let added=0;
-      remoteMastered.forEach(id=>{
-        const numId=+id;
-        const key=Number.isFinite(numId)&&String(numId)===String(id)?numId:id;
-        if(!S.mastered.has(key)&&!S.mastered.has(String(key))){
-          S.mastered.add(key);S.masteryPts[key]=100;added++;
-        }
-      });
-      if(added>0){save();toast(`☁️ Synced ${added} mastered date${added===1?'':'s'} from cloud`,3000);}
-    }
+    const added=mergeRemoteMasteredIds(remoteMastered);
+    if(added>0){save();toast(`☁️ Synced ${added} mastered date${added===1?'':'s'} from cloud`,3000);}
     // Sync pending submissions from other devices
     const remotePending=Array.isArray(u.dv_pending_data)?u.dv_pending_data:[];
     const remoteIds=new Set(remotePending.map(item=>String(item.id)));
