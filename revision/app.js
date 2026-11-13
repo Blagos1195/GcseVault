@@ -812,6 +812,7 @@ function renderGraph(){
     const target=byId.get(link.id);
     if(target&&String(node.card.id).localeCompare(String(link.id))<0)edges.push([node,target]);
   }));
+  const nodeIndex=new Map(nodes.map((node,index)=>[node.card.id,index]));
   const iterations=150;
   for(let step=0;step<iterations;step++){
     const cooling=1-step/iterations;
@@ -835,7 +836,7 @@ function renderGraph(){
       fx[i]-=radialX/radial*radialForce;fy[i]-=radialY/radial*radialForce;
     }
     edges.forEach(([a,b])=>{
-      const ai=nodes.indexOf(a),bi=nodes.indexOf(b);
+      const ai=nodeIndex.get(a.card.id),bi=nodeIndex.get(b.card.id);
       const dx=b.x-a.x,dy=b.y-a.y,distance=Math.max(1,Math.hypot(dx,dy));
       const force=(distance-205)*.009;
       const x=dx/distance*force,y=dy/distance*force;
@@ -863,7 +864,7 @@ function renderGraph(){
   }).join('');
   const subjectLabels=groups.map(group=>{
     const anchor=subjectAnchors.get(group.subject);
-    return '<div class="graph-subject" style="left:'+(anchor.x-minX-72)+'px;top:'+(anchor.y-minY-18)+'px">'+escapeRevision(group.subject)+'</div>';
+    return '<div class="graph-subject" style="left:'+(anchor.x-minX-72)+'px;top:'+(anchor.y-minY-76)+'px">'+escapeRevision(group.subject)+'</div>';
   }).join('');
   const topicLabels=Array.from(topicAnchors.values()).map(anchor=>'<div class="graph-topic" style="left:'+(anchor.x-minX-65)+'px;top:'+(anchor.y-minY-14)+'px">'+escapeRevision(anchor.topic)+'</div>').join('');
   const cardNodes=nodes.map(node=>{
