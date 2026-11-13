@@ -1280,11 +1280,20 @@ const AdminManager = {
 
   async request(path) {
     const token = this.getToken();
-    const response = await fetch(`${WORKER_API}${path}`, {
-      headers: { 'X-Session-Token': token }
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+    let response;
+    try {
+      response = await fetch(`${WORKER_API}${path}`, {
+        headers: { 'X-Session-Token': token }
+      });
+    } catch (error) {
+      throw new Error(`Could not reach Worker endpoint ${path}: ${error.message || 'Network request failed'}`);
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status} at ${path}`);
+    try {
+      return await response.json();
+    } catch {
+      throw new Error(`Worker endpoint ${path} returned an invalid response.`);
+    }
   },
 
   async migrateStorage() {
@@ -1376,13 +1385,15 @@ const AdminManager = {
       const session = await this.request('/auth/session');
       this.role = session.role;
       this.username = session.username;
-      const [quotes, dates, feedback, publicRevision, published] = await Promise.all([
-        this.request('/pending'),
-        this.request('/dv/pending'),
-        this.request('/feedback/list'),
-        this.request('/revision/public/admin-list'),
-        this.request('/admin/published')
-      ]);
+      const paths = ['/pending', '/dv/pending', '/feedback/list', '/revision/public/admin-list', '/admin/published'];
+      const results = await Promise.allSettled(paths.map(path => this.request(path)));
+      const data = Object.fromEntries(paths.map((path, index) => [path, results[index].status === 'fulfilled' ? results[index].value : null]));
+      const failures = results.flatMap(result => result.status === 'rejected' ? [result.reason.message] : []);
+      const quotes = data['/pending'] || {};
+      const dates = data['/dv/pending'] || {};
+      const feedback = data['/feedback/list'] || {};
+      const publicRevision = data['/revision/public/admin-list'] || {};
+      const published = data['/admin/published'] || {};
       this.items = [
         ...(quotes.items || []).map((item) => ({ ...item, _source: 'QuoteVault', _kind: 'quote', _pending: true })),
         ...(dates.items || []).map((item) => ({ ...item, _source: 'DateVault', _kind: 'date', _pending: true })),
@@ -1391,11 +1402,19 @@ const AdminManager = {
         ...(feedback.items || []).map((item) => ({ ...item, _source: 'Feedback', _kind: 'feedback' })),
         ...(publicRevision.notes || []).map((item) => ({ ...item, _source: 'Public Revision note', _kind: 'revision-note', _pending: Boolean(item.pending) }))
       ].sort((a, b) => String(b.submittedAt || b.timestamp || '').localeCompare(String(a.submittedAt || a.timestamp || '')));
-      this.users = this.role === 'owner' ? (await this.request('/admin/users')).users || [] : [];
+      this.users = [];
+      if (this.role === 'owner') {
+        try {
+          this.users = (await this.request('/admin/users')).users || [];
+        } catch (error) {
+          failures.push(error.message);
+        }
+      }
+      this.error = failures.length ? `Some admin data could not be loaded: ${failures.join('; ')}. Select Refresh to retry.` : '';
     } catch (error) {
       this.error = error.message;
-      if (error.message !== 'HTTP 401') window.VaultBugReporter?.capture(error, { detail: 'Admin queue refresh' });
-      if (error.message === 'HTTP 401') {
+      if (!error.message.startsWith('HTTP 401')) window.VaultBugReporter?.capture(error, { detail: 'Admin queue refresh' });
+      if (error.message.startsWith('HTTP 401')) {
         this.token = null;
         this.role = null;
         this.username = null;
