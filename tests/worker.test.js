@@ -910,6 +910,7 @@ test("progress summary is account-scoped and returns aggregates without study co
         if (sql.includes("FROM account_credentials")) return { user_key: "account-key" };
         if (sql.includes("SELECT schedules_json, updated_at FROM review_schedules")) return { schedules_json: JSON.stringify(schedules[values[1]] || {}), updated_at: "2026-11-13T10:00:00.000Z" };
         if (sql.includes("SELECT data_json, updated_at FROM revision_sync_data")) return { data_json: JSON.stringify(revisionData), updated_at: "2026-11-13T11:00:00.000Z" };
+        if (sql.includes("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp")) return { username: "student", qv_mastered: 7, dv_mastered: 5, qv_xp: 1200, dv_xp: 600, streak: 4, max_streak: 9, updated_at: "2026-11-13T12:00:00.000Z" };
         return null;
       },
       all: async () => ({ results: [] }),
@@ -922,6 +923,11 @@ test("progress summary is account-scoped and returns aggregates without study co
   const data = await response.json();
   assert.equal(response.status, 200);
   assert.equal(data.account.username, "student");
+  assert.equal(data.account.streak, 4);
+  assert.equal(data.quoteVault.mastered, 7);
+  assert.equal(data.quoteVault.xp, 1200);
+  assert.equal(data.dateVault.mastered, 5);
+  assert.equal(data.dateVault.xp, 600);
   assert.equal(data.quoteVault.scheduled, 2);
   assert.equal(data.quoteVault.due, 1);
   assert.equal(data.dateVault.scheduled, 1);

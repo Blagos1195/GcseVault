@@ -978,6 +978,7 @@ test("the progress dashboard only requests account-scoped summary totals", () =>
   assert.ok(page.includes("QuoteVault"));
   assert.ok(page.includes("DateVault"));
   assert.ok(page.includes("Revision"));
+  for (const id of ["qv-mastered", "qv-xp", "dv-mastered", "dv-xp", "revision-reviewed"]) assert.ok(page.includes(`id="${id}"`));
   assert.match(worker, /url\.pathname === "\/account\/progress-summary"/);
   assert.match(worker, /verifyPasswordAccountAccess\(session\.user_key, request\)/);
   assert.ok(!script.includes("revision_sync_data"));

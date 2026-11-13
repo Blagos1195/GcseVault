@@ -49,8 +49,8 @@ async function mockWorker(page) {
     if (pathname === "/admin/status") body = { initialized: true, deployment: null };
     if (pathname === "/account/progress-summary") body = {
       account: { username: "student" },
-      quoteVault: { scheduled: 8, due: 3, updatedAt: "2026-11-13T10:00:00.000Z" },
-      dateVault: { scheduled: 5, due: 2, updatedAt: "2026-11-13T10:00:00.000Z" },
+      quoteVault: { scheduled: 8, due: 3, mastered: 6, xp: 900, updatedAt: "2026-11-13T10:00:00.000Z" },
+      dateVault: { scheduled: 5, due: 2, mastered: 4, xp: 650, updatedAt: "2026-11-13T10:00:00.000Z" },
       revision: { sets: 2, cards: 20, reviewed: 12, due: 8, xp: 340, updatedAt: "2026-11-13T11:00:00.000Z" }
     };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -85,6 +85,8 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           await page.getByText("Signed in as student").waitFor({ timeout: 5000 });
           assert.equal(await page.locator("#revision-reviewed").innerText(), "12");
           assert.equal(await page.locator("#qv-due").innerText(), "3");
+          assert.equal(await page.locator("#qv-mastered").innerText(), "6");
+          assert.equal(await page.locator("#dv-xp").innerText(), "650");
         }
         if (path === "/" && viewport.width === 390) {
           const search = page.locator("#global-search-input");
