@@ -287,3 +287,43 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #sidebar #nav{width:100%;max-width:none;min-width:0;flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px clamp(18px,3vw,42px)}
  #main{height:auto;min-height:0;flex:1}
 }
+
+#app{display:flex;flex-direction:column}
+#sidebar{width:100%;min-width:0;height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto;align-items:center;gap:0;padding:0 clamp(16px,3vw,42px);border:0;border-bottom:1px solid var(--border);overflow:visible;background:var(--bg2);z-index:30}
+#sidebar .sb-logo{grid-column:1;grid-row:1;padding:9px 0;border:0}
+#sidebar .sb-logo-main{font-size:1.05rem}
+#sidebar .sb-logo-sub{font-size:.58rem}
+.site-switcher{grid-column:2;grid-row:1;display:flex;align-items:center;gap:0}
+.site-switcher span{display:none}
+.site-switcher select{min-width:130px;max-width:170px;padding:5px 26px 5px 9px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px}
+#sidebar>.sb-link,#sidebar .sb-foot{display:none!important}
+#main{height:auto;min-height:0;flex:1;overflow:hidden}
+#topbar{height:auto;min-height:0;flex:0 0 auto;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:7px;padding:7px clamp(16px,3vw,42px);background:var(--bg2);border-bottom:1px solid var(--border)}
+#hbg{display:none!important}
+.tb-title{flex:0 0 auto;font-size:.9rem;font-weight:650;color:var(--text);margin-right:5px}
+#nav{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0;flex:0 1 auto}
+.nav-menu{position:relative;min-width:0}
+.nav-menu summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:32px;padding:5px 10px;border:1px solid var(--border2);border-radius:7px;background:var(--bg3);color:var(--text);cursor:pointer;user-select:none;font-size:.78rem}
+.nav-menu summary::-webkit-details-marker{display:none}
+.nav-menu summary:hover,.nav-menu[open] summary{background:var(--bg4);border-color:var(--border3)}
+.nav-menu-name{font-weight:650}
+.nav-menu-current{color:var(--text2);font-size:.75rem}
+.nav-chevron{width:7px;height:7px;border-right:1.5px solid var(--text2);border-bottom:1.5px solid var(--text2);transform:rotate(45deg);margin:-4px 1px 0 3px;transition:transform .15s}
+.nav-menu[open] .nav-chevron{transform:rotate(225deg);margin-top:4px}
+.nav-options{position:absolute;top:calc(100% + 5px);left:0;min-width:190px;padding:4px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.35);z-index:300}
+.nav-option{display:block;width:100%;padding:8px 10px;border:0;border-radius:5px;background:transparent;color:var(--text2);text-align:left;font:inherit;font-size:.78rem;cursor:pointer}
+.nav-option:hover,.nav-option.active{background:var(--bg3);color:var(--text)}
+#topbar>.btn{margin-left:auto}
+#page{min-height:0}
+@media(max-width:760px){
+ #sidebar{padding:0 12px}
+ #sidebar .sb-logo{padding:8px 0}
+ .site-switcher select{min-width:110px;max-width:130px;font-size:.72rem}
+ #topbar{padding:7px 12px;gap:5px}
+ .tb-title{width:100%;margin:0 0 2px}
+ #nav{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+ .nav-menu summary{min-height:34px;padding:5px 8px;justify-content:space-between}
+ .nav-menu-current{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .nav-options{min-width:100%;max-height:55vh;overflow-y:auto}
+ #topbar>.btn{margin-left:0}
+}
