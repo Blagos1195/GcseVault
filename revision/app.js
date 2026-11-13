@@ -1211,7 +1211,7 @@ const revisionQuickCreate = document.getElementById('new-card');
 if (revisionQuickCreate) {
   revisionQuickCreate.addEventListener('click', () => {
     state.view = 'create';
-    loadRevisionCourseSelection().then(()=>{if(!document.getElementById('revision-course-selection'))renderRevision();});
+    renderRevision();
   });
 }
 
