@@ -1087,7 +1087,7 @@ window.closeModal=closeModal;
 function renderRevision(){
   const setSwitcher=document.getElementById('revision-set-switcher');
   if(setSwitcher){setSwitcher.innerHTML=state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}">${escapeRevision(set.name)} · ${(set.cards||[]).length}</option>`).join('');setSwitcher.value=state.activeSetId;setSwitcher.title=`Current set: ${getActiveRevisionSet().name}`;}
-  const pageSwitcher=document.getElementById('revision-page-switcher');if(pageSwitcher)pageSwitcher.value=state.view;
+  document.querySelectorAll('#revision-nav select').forEach(select=>{select.value=[...select.options].some(option=>option.value===state.view)?state.view:'';});
   document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   document.getElementById('sidebar-stats').textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
   document.getElementById('sidebar-progress').textContent=`${state.xp} XP · ${state.cards.filter(card=>Number(state.progress[card.id]?.reviews)>0).length} reviewed`;
