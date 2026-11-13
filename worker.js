@@ -384,7 +384,6 @@ export default {
       const { results } = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").all();
       return new Response(JSON.stringify({ history: results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
-    }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
