@@ -819,6 +819,55 @@
         "a40",
         "a41"
       ]
+    },
+    {
+      "id": "a43",
+      "topicId": "chemistry-01",
+      "front": "What are the electron configurations of chromium and copper, and why are they exceptions?",
+      "back": "Chromium (Z = 24): [Ar] 3d⁵ 4s¹. Copper (Z = 29): [Ar] 3d¹⁰ 4s¹. These arrangements have a half-filled 3d subshell or a full 3d subshell, which are relatively stable.",
+      "difficulty": 4,
+      "links": [
+        "a26",
+        "a29",
+        "a30"
+      ]
+    },
+    {
+      "id": "a44",
+      "topicId": "chemistry-01",
+      "front": "Why are 4s electrons removed before 3d electrons when transition metals form positive ions?",
+      "back": "Although 4s fills before 3d in neutral atoms, once 3d is occupied the 4s electrons are at higher energy and are removed first when forming cations.",
+      "difficulty": 4,
+      "links": [
+        "a26",
+        "a30",
+        "a31"
+      ]
+    },
+    {
+      "id": "a45",
+      "topicId": "chemistry-01",
+      "front": "How can successive ionisation energies of a Period 3 element reveal its outer-shell electron count?",
+      "back": "Find the very large jump. The number of electrons removed before that jump is the number in the outer shell. For example, magnesium has a large jump after removal of its second electron, consistent with 3s².",
+      "difficulty": 4,
+      "links": [
+        "a36",
+        "a38",
+        "a39"
+      ]
+    },
+    {
+      "id": "a46",
+      "topicId": "chemistry-01",
+      "front": "What do successive ionisation energies show about the electron configuration of Group 2 elements?",
+      "back": "Group 2 elements have two outer-shell electrons. Their successive ionisation energies show a large jump after the second electron is removed, because the third electron would come from an inner shell.",
+      "difficulty": 4,
+      "links": [
+        "a35",
+        "a36",
+        "a38",
+        "a45"
+      ]
     }
   ],
   "resources": [
@@ -869,6 +918,12 @@
       "kind": "exam-guidance",
       "title": "Atomic structure: exam technique and common traps",
       "content": "## What exam questions commonly require\n- Calculate protons, neutrons and electrons for atoms and ions from A, Z and charge.\n- Explain why isotopes are chemically similar but have different masses.\n- Describe the stages of a time-of-flight mass spectrometer in the correct order.\n- Interpret isotope peaks and calculate relative atomic mass using a weighted mean.\n- Write electron configurations for atoms and ions up to Z = 36.\n- Define first ionisation energy precisely, including gaseous atoms and one mole.\n- Write equations for first and successive ionisation energies with state symbols.\n- Interpret successive ionisation energy data to infer shells and subshells.\n\n## Precision checklist\nUse **gaseous atoms** in the first-ionisation-energy definition. Include state symbols in ionisation equations. Distinguish mass number from relative atomic mass. When explaining a trend, identify the particle being removed and compare nuclear charge, shielding and distance. For anomalies, name the subshell or paired-electron effect rather than saying only that the trend is unusual.\n\n## Calculation checklist\nShow the weighted-mean expression, include all isotopes, check percentage abundances total 100%, and round only at the end. For particle counts, calculate neutrons using A − Z and adjust electron count for the charge."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "worked-examples",
+      "title": "Electron configuration exceptions and ionisation-energy patterns",
+      "content": "## Chromium and copper\nThe simple filling order predicts [Ar] 4s² 3d⁴ for chromium and [Ar] 4s² 3d⁹ for copper. Their observed configurations are different:\n- Chromium (Z = 24): [Ar] 3d⁵ 4s¹.\n- Copper (Z = 29): [Ar] 3d¹⁰ 4s¹.\n\nA half-filled 3d subshell and a completely filled 3d subshell are relatively stable arrangements. Learn these two exceptions rather than forcing the simple filling pattern.\n\n## Successive ionisation energy patterns\nA very large jump indicates that the next electron is being removed from a shell closer to the nucleus. For magnesium, the large jump after the second ionisation energy is evidence for two outer-shell electrons. For aluminium, the large jump after the third is evidence for three. The same reasoning applies to Group 2 elements: a large jump after the second electron supports the outer configuration ns².\n\n## Using the data in an explanation\n1. Identify where the large jump occurs.\n2. Count the electrons removed before it.\n3. State that the next electron is in an inner shell and is more strongly attracted to the nucleus.\n4. Link the number removed to the outer-shell configuration.\n\nSmaller differences between ionisation energies can help distinguish subshells. Across Period 3, the Mg-to-Al dip supports the higher energy of 3p relative to 3s; the P-to-S dip supports the effect of repulsion between paired 3p electrons."
     }
   ],
   "formulas": [
