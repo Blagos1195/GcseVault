@@ -391,7 +391,7 @@ test("Atomic structure resource pack is self-contained and contains course mater
   assert.ok(pack.cards.every(card => (card.links || []).every(id => cardIds.has(id))));
   assert.ok(pack.resources.every(resource => topicIds.has(resource.topicId) && resource.content.length > 500));
   assert.ok(pack.formulas.every(formula => topicIds.has(formula.topicId) && formula.name && formula.expression));
-  assert.doesNotMatch(JSON.stringify(pack), /https?:\\/\\//i);
+  assert.ok(!JSON.stringify(pack).includes("http://") && !JSON.stringify(pack).includes("https://"));
   assert.match(practice, /if\\(!catalogue&&c\\.catalogue&&c\\.catalogue\\.id===catalogueId/);
 });
 
