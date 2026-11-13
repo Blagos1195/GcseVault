@@ -185,6 +185,26 @@ async function changeAccountRole(select){
   select.disabled=true;
   await AdminManager.setRole(username,role);
 }
+function renderErrorTrends(reports){
+  const groups=new Map();
+  const now=new Date();
+  const days=Array.from({length:7},(_,index)=>{const date=new Date(now);date.setHours(0,0,0,0);date.setDate(date.getDate()-(6-index));return{key:date.toISOString().slice(0,10),label:date.toLocaleDateString(undefined,{weekday:'short'}),count:0};});
+  reports.filter(item=>item.fingerprint||item.errorName).forEach(item=>{
+    const key=String(item.fingerprint||[item.sourceApplication,item.errorName,item.errorLocation].join(':'));
+    if(!groups.has(key))groups.set(key,{key,errorName:item.errorName||'Error',source:item.sourceApplication||'Unknown app',location:item.errorLocation||'Unknown location',count:0,lastSeen:'',description:item.description||'',days:days.map(day=>({...day}))});
+    const group=groups.get(key);
+    group.count++;
+    const timestamp=item.timestamp||item.submittedAt||'';
+    if(timestamp&&(!group.lastSeen||timestamp>group.lastSeen))group.lastSeen=timestamp;
+    const date=new Date(timestamp);
+    if(!Number.isNaN(date.getTime())){
+      const day=group.days.find(entry=>entry.key===date.toISOString().slice(0,10));
+      if(day)day.count++;
+    }
+  });
+  const sorted=[...groups.values()].sort((a,b)=>b.count-a.count||String(b.lastSeen).localeCompare(String(a.lastSeen)));
+  return \`<section class="panel" style="margin-bottom:14px"><h2>Recurring error trends</h2><p class="sub">Reports grouped by fingerprint from the currently retained error reports. Counts cover the reports still available to the admin workspace.</p><div class="queue">\${sorted.map(group=>{const max=Math.max(1,...group.days.map(day=>day.count));return \`<article class="item"><div><div class="meta"><span class="tag">\${esc(group.errorName)}</span><span>\${esc(group.source)}</span><span>\${group.count} report\${group.count===1?'':'s'}</span><span>Last seen \${esc(group.lastSeen||'Unknown')}</span></div><h2>\${esc(group.location)}</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:58px;max-width:320px">\${group.days.map(day=>\`<div style="display:flex;flex-direction:column;align-items:center;justify-content:end;gap:3px;height:100%"><div title="\${day.count} reports on \${day.key}" style="width:100%;max-width:24px;height:\${Math.max(3,day.count/max*34)}px;background:var(--teal);border-radius:3px 3px 0 0"></div><span class="sub">\${day.label}</span></div>\`).join('')}</div><p class="sub">\${esc(group.description.slice(0,220))}</p></div></article>\`}).join('')||'<div class="empty">No error reports with fingerprints are currently retained.</div>'}</div></section>\`;
+}
 function renderApprovalHistory(){
   return `<section class="panel" style="margin-top:18px"><h2>Moderation history</h2><p class="sub">Who reviewed, approved, denied or removed each submission, and when.</p><div class="queue">${moderationLog.map(entry=>`<article class="item"><div class="meta"><span class="tag">${esc(entry.site)}</span><span>${esc(entry.action)} by ${esc(entry.moderator)}</span><span>${esc(entry.acted_at)}</span></div><h2>${esc(entry.item_title)}</h2><p>Submitted by ${esc(entry.submitted_by)} · Record ${esc(entry.item_id)}</p></article>`).join('')||'<div class="empty">No approvals recorded yet.</div>'}</div></section>`;
 }
@@ -290,7 +310,7 @@ function renderAdmin(){
   if(tab==="review"||tab==="published"||tab==="feedback"){
     const selected=tab==="review"?pendingFiltered:tab==="published"?publishedFiltered:feedbackFiltered;
     const title=tab==="review"?"Awaiting review":tab==="published"?"Published content":"Feedback";
-    content=`<div class="toolbar"><div><h2>${title}</h2><p class="sub">${selected.length} ${selected.length===1?'item':'items'}</p></div></div><div class="filters"><input aria-label="Search submissions" placeholder="Search content or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?'selected':''}>All types</option><option value="quote" ${kind==="quote"?'selected':''}>QuoteVault</option><option value="date" ${kind==="date"?'selected':''}>DateVault</option><option value="revision-note" ${kind==="revision-note"?'selected':''}>Revision notes</option><option value="feedback" ${kind==="feedback"?'selected':''}>Feedback</option></select></div><section class="queue">${selected.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":item._kind==="feedback"?"Feedback":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">Nothing in this section matches your filters.</div>'}</section>`;
+    content=`<div class="toolbar"><div><h2>${title}</h2><p class="sub">${selected.length} ${selected.length===1?'item':'items'}</p></div></div>${tab==="feedback"?renderErrorTrends(feedbackFiltered):""}<div class="filters"><input aria-label="Search submissions" placeholder="Search content or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?'selected':''}>All types</option><option value="quote" ${kind==="quote"?'selected':''}>QuoteVault</option><option value="date" ${kind==="date"?'selected':''}>DateVault</option><option value="revision-note" ${kind==="revision-note"?'selected':''}>Revision notes</option><option value="feedback" ${kind==="feedback"?'selected':''}>Feedback</option></select></div><section class="queue">${selected.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":item._kind==="feedback"?"Feedback":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">Nothing in this section matches your filters.</div>'}</section>`;
   }else if(tab==="notifications"){
     content=renderAdminNotifications();
   }else if(tab==="users"){
