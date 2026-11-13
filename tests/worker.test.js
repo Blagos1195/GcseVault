@@ -1051,3 +1051,92 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
   assert.equal(moderation[0].action, "approved");
   assert.equal(moderation[0].moderator, "owner");
 });
+
+
+test("owner Test Centre stores run history and restricts history access", async () => {
+  const env = makeEnv();
+  const writes = [];
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("SELECT actor_username")) bound.all = async () => ({ results: [{ actor_username: "owner", test_name: "permissions", status: "passed", detail: "Owner-only access check passed.", duration_ms: 1, completed_at: "2026-11-13T12:00:00.000Z" }] });
+      if (sql.includes("INSERT INTO test_run_history")) bound.run = async () => { writes.push({sql,values}); return {success:true,meta:{changes:1}}; };
+      return bound;
+    };
+    return statement;
+  };
+  const run = await call("/admin/test-run", env, {test:"permissions"}, {"X-Session-Token":"test-session"});
+  assert.equal(run.status,200);
+  assert.ok(writes.some(write=>write.sql.includes("INSERT INTO test_run_history")&&write.values[1]==="owner"&&write.values[2]==="permissions"));
+  const denied = await call("/admin/test-history",env);
+  assert.equal(denied.status,401);
+  const history = await call("/admin/test-history",env,null,{"X-Session-Token":"test-session"});
+  assert.equal(history.status,200);
+  assert.equal((await history.json()).history[0].test_name,"permissions");
+});
+
+test("owner Test Centre verifies migration-managed tables and account columns", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({results:values.map(name=>({name}))});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"},{name:"ai_access"}]});
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.results[0].status,"passed");
+  assert.match(data.results[0].detail,/six migration-managed tables/);
+});
+
+test("Test Centre reports missing migrations without changing the database", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({results:[{name:"account_sessions"}]});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.results[0].status,"failed");
+  assert.match(data.results[0].detail,/missing tables/);
+  assert.match(data.results[0].detail,/ai_access/);
+  assert.equal(env.updates.length,0);
+});
+
+test("admin status exposes Worker version metadata without account information", async () => {
+  const env = makeEnv();
+  env.CF_VERSION_METADATA = {id:"version-123",tag:"production",timestamp:"2026-11-13T12:00:00.000Z"};
+  const response = await call("/admin/status",env);
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.initialized,false);
+  assert.deepEqual(data.deployment,{versionId:"version-123",tag:"production",timestamp:"2026-11-13T12:00:00.000Z"});
+  assert.equal(data.userKey,undefined);
+});
+
+test("admin status handles deployments without version metadata", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/status",env);
+  const data = await response.json();
+  assert.equal(response.status,200);
+  assert.equal(data.deployment,null);
+});
