@@ -39,7 +39,7 @@ function makeEnv(rows = []) {
                 if (sql.includes("FROM account_credentials")) return null;
                 if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
-                if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user" };
+                if (sql.includes("FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user", ai_access: 0 };
                 if (sql.includes("SELECT user_key FROM users WHERE role IN")) return null;
                 if (sql.includes("SELECT user_key FROM users WHERE user_key")) return { user_key: values[0] };
                 if (sql.includes("SELECT user_key FROM users WHERE role = 'owner'")) return null;
