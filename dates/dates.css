@@ -210,3 +210,23 @@ body{line-height:1.5}
 .ni{appearance:none;width:calc(100% - 10px);border:0;background:transparent;font-family:inherit;text-align:left}
 
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--purple2);outline-offset:2px}
+
+
+#app{display:flex;flex-direction:column}
+#sidebar{width:100%;min-width:0;height:auto;min-height:66px;flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:18px;padding:9px 24px;border-right:0;border-bottom:1px solid var(--border);overflow:visible;z-index:30}
+.sb-logo{padding:0;border:0;flex:0 0 auto}
+.sb-logo-main{font-size:1.08rem}
+.sb-logo-sub{font-size:.62rem}
+#nav{display:flex;align-items:center;min-width:180px;max-width:260px;flex:0 1 230px}
+#site-page-select{height:38px;padding:7px 34px 7px 12px;border:1px solid var(--border2);border-radius:9px;background:var(--bg3);font-size:.86rem;font-weight:600;color:var(--text)}
+#sidebar>.sb-link,#sidebar>div[style]{display:none!important}
+#sidebar .sb-foot{display:none}
+#main{height:calc(100vh - 66px)}
+#topbar{height:54px;min-height:54px;padding:0 24px}
+.tb-title{font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:650;color:var(--text)}
+#hbg{display:none!important}
+#page{padding:24px clamp(16px,3vw,42px) 64px;max-width:1600px;width:100%;margin:0 auto}
+.card{padding:15px 17px;border-radius:12px}
+.scard{padding:12px 14px}
+.sec{margin-top:20px;margin-bottom:9px}
+@media(max-width:700px){#sidebar{min-height:60px;padding:8px 14px;gap:12px}#main{height:calc(100dvh - 60px)}#nav{min-width:0;flex:1}#site-page-select{width:100%;font-size:.8rem}#topbar{height:48px;min-height:48px;padding:0 14px}#page{padding:17px 14px 80px}}
