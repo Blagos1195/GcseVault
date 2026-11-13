@@ -2649,6 +2649,20 @@ async function saveQuote(){
     _submittedByMe:true,
     _status:'pending',
   };
+  if(privateOnly){
+    q._status='approved-private';
+    S.custom=S.custom.filter(item=>String(item.id)!==String(q.id));
+    S.custom.push(q);
+    save();
+    await lbUpdate();
+    toast('Quote saved to your personal library.');
+    ['a-t','a-c','a-act','a-sc','a-th','a-me','a-an','a-no'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    const liveDup=document.getElementById('live-dup');if(liveDup)liveDup.innerHTML='';
+    buildNav();render();
+    const newFb=document.getElementById('add-fb');
+    if(newFb)newFb.innerHTML='<div class="qfb qok">Saved privately. Only you can see this quote.</div>';
+    return;
+  }
   const fbEl=document.getElementById('add-fb');
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
