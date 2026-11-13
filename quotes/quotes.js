@@ -2627,7 +2627,7 @@ function checkDup(){
   else el.innerHTML=`<div class="qfb qok">✓ No duplicate found — looks new!</div>`;
 }
 
-async function saveQuote(){
+async function saveQuote(privateOnly=false){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   const t=(document.getElementById('a-t')?.value||'').trim();
   const c=(document.getElementById('a-c')?.value||'').trim();
