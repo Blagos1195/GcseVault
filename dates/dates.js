@@ -1153,6 +1153,18 @@ function buildNav(){
     const current=pages.find(page=>page.id===S.page);
     return '<details class="nav-menu"><summary><span class="nav-menu-name">'+group+'</span><span class="nav-menu-current">'+(current?current.label:'Browse')+'</span><span class="nav-chevron" aria-hidden="true"></span></summary><div class="nav-options">'+pages.map(page=>'<button type="button" class="nav-option'+(page.id===S.page?' active':'')+'" onclick="go(\''+page.id+'\')">'+page.label+'</button>').join('')+'</div></details>';
   }).join('');
+  document.querySelectorAll('#nav .nav-menu').forEach(menu=>{
+    menu.addEventListener('pointerenter',event=>{
+      if(event.pointerType!=='touch')menu.open=true;
+    });
+    menu.addEventListener('pointerleave',event=>{
+      if(event.pointerType!=='touch'&&!menu.matches(':focus-within'))menu.open=false;
+    });
+    menu.addEventListener('focusin',()=>menu.open=true);
+    menu.addEventListener('focusout',event=>{
+      if(!menu.contains(event.relatedTarget))menu.open=false;
+    });
+  });
 }
 function go(page){
   if(S.tc.timer){clearInterval(S.tc.timer);S.tc.timer=null;}
