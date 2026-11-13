@@ -125,8 +125,16 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/revision/") {
-          const menu = page.locator('select[aria-label="Tools navigation"]');
-          await menu.selectOption("graph");
+          const menu = page.locator("#revision-nav .revision-nav-menu").filter({ has: page.locator("summary", { hasText: "Tools" }) });
+          const trigger = menu.locator("summary");
+          if (viewport.width >= 761) {
+            await trigger.hover();
+            await menu.locator(".revision-nav-options").waitFor({ state: "visible" });
+            assert.equal(await menu.evaluate(element => element.open), true, "Revision Tools menu did not open on hover");
+          } else {
+            await trigger.click();
+          }
+          await menu.locator('[data-view="graph"]').click();
           await page.locator("#page").getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
           await page.locator("#knowledge-map-search").waitFor({ timeout: 5000 });
           assert.ok(await page.locator("#knowledge-map-content").count());
