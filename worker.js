@@ -188,6 +188,11 @@ export default {
         } catch {}
       }));
     }
+    async function createIdempotentSubmissionId(site, userKey, requestId) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(site + ":" + userKey + ":" + requestId));
+      const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      return site + "-" + hash.slice(0, 32);
+    }
     async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
       await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "New submission").slice(0, 300);
@@ -989,10 +994,21 @@ export default {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
       }
       const submitter = await getAccountSession(request);
+      const requestId = String(data.submissionRequestId || "").trim();
+      if (requestId && !/^[A-Za-z0-9_-]{20,80}$/.test(requestId)) return new Response("Invalid submission request ID.", { status: 400, headers: cors });
       delete data.userKey;
+      delete data.submissionRequestId;
       data.submittedBy = submitter?.username || "Account holder";
       data._submittedByUserKey = userKey;
-      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      const id = requestId ? await createIdempotentSubmissionId("qv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      if (requestId) {
+        const existing = await env.QUOTEVAULT.get(id, "json");
+        if (existing) {
+          if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
+          await createAdminNotification("QuoteVault", id, existing, existing.submittedBy);
+          return new Response(JSON.stringify({ success: true, id }), { headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      }
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.QUOTEVAULT.put(id, JSON.stringify(data));
@@ -1113,10 +1129,21 @@ export default {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
       }
       const submitter = await getAccountSession(request);
+      const requestId = String(data.submissionRequestId || "").trim();
+      if (requestId && !/^[A-Za-z0-9_-]{20,80}$/.test(requestId)) return new Response("Invalid submission request ID.", { status: 400, headers: cors });
       delete data.userKey;
+      delete data.submissionRequestId;
       data.submittedBy = submitter?.username || "Account holder";
       data._submittedByUserKey = userKey;
-      const id = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      const id = requestId ? await createIdempotentSubmissionId("dv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+      if (requestId) {
+        const existing = await env.DV_PENDING.get(id, "json");
+        if (existing) {
+          if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
+          await createAdminNotification("DateVault", id, existing, existing.submittedBy);
+          return new Response(JSON.stringify({ success: true, id }), { headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      }
       data.id = id;
       data.submittedAt = new Date().toISOString();
       await env.DV_PENDING.put(id, JSON.stringify(data));
