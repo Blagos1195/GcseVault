@@ -21,6 +21,7 @@ function normalizeRevisionSet(set, fallbackId){
     xp: Number(set && set.xp) || 0,
     streak: Number(set && set.streak) || 0,
     lastReview: set && set.lastReview ? String(set.lastReview) : '',
+    dailyGoal: Math.max(1, Math.min(200, Number(set && set.dailyGoal) || 20)),
     published: Boolean(set && set.published),
     syllabus: Array.isArray(set && set.syllabus) ? set.syllabus : [],
     syllabusDone: set && set.syllabusDone && typeof set.syllabusDone === 'object' ? set.syllabusDone : {},
@@ -661,9 +662,26 @@ function renderConnectionReview(){
   return `<div style="max-width:680px;margin:0 auto"><div class="pt">Review the connection</div><div class="ps">Explain how these two ideas are related before revealing the link.</div><div class="card" style="text-align:center;padding:24px"><div class="g2"><div class="scard"><div class="knowledge-title">${escapeRevision(card.title)}</div></div><div class="scard"><div class="knowledge-title">${escapeRevision(other.title)}</div></div></div>${state.connectionRevealed?`<div class="qfb qok">${escapeRevision(card.answer)} ${escapeRevision(other.answer)}</div>`:'<div class="ps" style="margin-top:16px">Think through the relationship between these ideas.</div>'}<div style="display:flex;gap:7px;justify-content:center;margin-top:14px;flex-wrap:wrap">${state.connectionRevealed?`<button class="btn br" onclick="rateConnection(0)">Again</button><button class="btn" onclick="rateConnection(1)">Hard</button><button class="btn bp" onclick="rateConnection(2)">Good</button><button class="btn bg" onclick="rateConnection(3)">Easy</button>`:`<button class="btn bp" onclick="state.connectionRevealed=true;renderRevision()">Reveal connection</button>`}<button class="btn" onclick="state.view='overview';renderRevision()">Back</button></div></div></div>`;
 }
 function renderSessionSummary(){return `<div class="card" style="margin-top:10px"><div class="knowledge-title">Study session</div><div class="knowledge-meta">${state.studyQueue.length} cards remaining · ${state.sessionReviewed} reviewed this session</div></div>`;}
+function dailyReviewCount(){
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  const start=now.getTime();
+  return (getActiveRevisionSet().reviewLog||[]).filter(entry=>Number(entry.at)>=start&&Number(entry.at)<start+86400000).length;
+}
+function updateDailyGoal(){
+  const input=document.getElementById('revision-daily-goal');
+  const value=Number(input?.value);
+  if(!Number.isFinite(value)||value<1)return;
+  getActiveRevisionSet().dailyGoal=Math.max(1,Math.min(200,Math.round(value)));
+  saveRevision();
+  renderRevision();
+}
 function renderOverview(){
   const selected=cardById(state.selected);
   const due=dueSummary();
+  const dailyGoal=Math.max(1,Number(getActiveRevisionSet().dailyGoal)||20);
+  const dailyReviews=dailyReviewCount();
+  const dailyPercent=Math.min(100,Math.round(dailyReviews/dailyGoal*100));
   const reviewed=state.cards.filter(card=>(Number(state.progress[card.id]?.reviews)||0)>0).length;
   const weak=state.cards.some(card=>(Number(state.progress[card.id]?.reviews)||0)>0);
   const hasCards=state.cards.length>0;
@@ -671,7 +689,16 @@ function renderOverview(){
   const heroText=!hasCards?'Import a course pack or add a few cards to start tracking what you know.':due.due?'Work through the cards due today. Your review schedule updates as you go.':'Nothing is due right now. Use the time to revisit difficult cards or study a topic.';
   return `<div class="overview">
     <div class="pt">Overview</div>
-    <div class="ps">${escapeRevision(getActiveRevisionSet().name)} · Your revision activity and next steps.</div>
+    <div class="ps">\${escapeRevision(getActiveRevisionSet().name)} · Your revision activity and next steps.</div>
+    <section class="card" style="margin:10px 0">
+      <div class="overview-section-heading"><h2>Daily study goal</h2><span>\${dailyReviews}/\${dailyGoal} reviews</span></div>
+      <div style="height:8px;background:var(--surface2);border-radius:8px;overflow:hidden"><div style="height:100%;width:\${dailyPercent}%;background:var(--teal);border-radius:8px"></div></div>
+      <div style="display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <div class="fg" style="max-width:130px;margin:0"><label for="revision-daily-goal">Reviews per day</label><input id="revision-daily-goal" type="number" min="1" max="200" value="\${dailyGoal}"></div>
+        <button class="btn bsm" onclick="updateDailyGoal()">Save goal</button>
+        <span class="knowledge-meta">\${dailyPercent>=100?'Daily goal reached.':(dailyGoal-dailyReviews)+' more reviews to reach today\\'s goal.'}</span>
+      </div>
+    </section>
     <section class="overview-hero">
       <div class="overview-hero-copy">
         <div class="overview-kicker">NEXT STEP</div>
