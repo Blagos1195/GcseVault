@@ -677,7 +677,48 @@ function allQincHidden(){
   }
   return out;
 }
-function allQ(){return allQincHidden().filter(q=>!S.hidden.has(q.id));}
+let courseSelection = null;
+function courseOptions(){return [...new Set(allQincHidden().map(item=>String(item.work||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));}
+function trackedItems(items){return courseSelection===null?items:items.filter(item=>courseSelection.includes(String(item.work||'')));}
+async function saveCourseSelection(){
+ const selected=[...document.querySelectorAll('[data-course-option]:checked')].map(input=>input.value);
+ if(!selected.length){toast('Select at least one texts.');return;}
+ courseSelection=selected;
+ localStorage.setItem('quotes_course_selection',JSON.stringify(selected));
+ try{if(VaultUser.getAccountSession())await VaultUser.saveCourseSelections('quotes',selected);}
+ catch(error){toast('Saved on this device, but account sync failed.');console.error(error);}
+ document.getElementById('course-selection-overlay')?.remove();
+ render();updateSB();
+}
+function showCourseSelection(){
+ const options=courseOptions();
+ if(!options.length)return;
+ const selected=new Set(courseSelection||options);
+ const overlay=document.createElement('div');
+ overlay.id='course-selection-overlay';
+ overlay.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:18px;overflow:auto';
+ overlay.innerHTML=`<section class="card" style="width:min(560px,100%);max-height:90vh;overflow:auto;padding:22px">
+ <div class="pt">What texts are you studying?</div>
+ <div class="ps">Only selected texts count towards your tracked progress. You can change this later in Settings.</div>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:18px 0">${options.map((option,index)=>`<label style="display:flex;gap:9px;align-items:center;padding:10px;border:1px solid var(--border2);border-radius:9px"><input type="checkbox" data-course-option value="${UI.escapeHTML(option)}" ${selected.has(option)?'checked':''}><span>${UI.escapeHTML(option)}</span></label>`).join('')}</div>
+ <button class="btn bp" style="width:100%" onclick="saveCourseSelection()">Save my texts</button>
+ </section>`;
+ document.body.appendChild(overlay);
+}
+async function loadCourseSelection(){
+ const local=localStorage.getItem('quotes_course_selection');
+ courseSelection=local?(()=>{try{return JSON.parse(local)}catch{return null}})():null;
+ if(VaultUser.getAccountSession()){
+  try{
+   const saved=await VaultUser.getCourseSelections();
+   if(Array.isArray(saved?.quotes)){courseSelection=saved.quotes;localStorage.setItem('quotes_course_selection',JSON.stringify(courseSelection));}
+   else if(courseSelection)await VaultUser.saveCourseSelections('quotes',courseSelection);
+  }catch(error){console.error('Course selection sync failed:',error);}
+ }
+ if(!Array.isArray(courseSelection))showCourseSelection();
+}
+function editCourseSelection(){showCourseSelection();}
+function allQ(){return trackedItems(allQincHidden().filter(q=>!S.hidden.has(q.id)));}
 function getQ(id){return allQincHidden().find(q=>q.id===id);}
 function qSRS(id){return S.srsData[id]||{};}
 function setQSRS(id,srs){S.srsData[id]={...srs,updatedAt:new Date().toISOString()};save();}
@@ -2968,6 +3009,7 @@ function rAch(){
 // ════════════════════════════════════════════════
 function rSett(){
   const cur=(S.settings&&S.settings.theme)||'default';
+  const courseSettings=`<div class="card" style="margin-bottom:12px"><div class="sec">Your course</div><div class="ps">Choose which ${label.toLowerCase()} count towards your tracked progress.</div><button class="btn" onclick="editCourseSelection()">Choose ${label.toLowerCase()}</button></div>`;
   const all=getAllThemes();
   const builtinKeys=Object.keys(THEMES);
   const customKeys=Object.keys(getCustomThemes());
@@ -3008,7 +3050,7 @@ function rSett(){
   const builtinCards=builtinKeys.map(k=>themeCard(k,THEMES[k],false)).join('');
   const customCards=customKeys.map(k=>themeCard(k,all[k],true)).join('');
 
-  return`<div>
+  return`<div>${courseSettings}
   ${backBtn()}
   <div class="pt">Settings</div>
   <div class="ps">Customise QuoteVault</div>
@@ -3219,7 +3261,7 @@ async function startup(){
   if(getUserKey()){
     await loadServerCustomThemes();
   }
-  initTheme();buildNav();updateSB();validateStreak();render();
+  initTheme();buildNav();updateSB();validateStreak();await loadCourseSelection();render();
   if(getUserKey())await syncFromWorker();
   await syncReviewSchedules();
 }
