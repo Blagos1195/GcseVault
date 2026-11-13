@@ -936,3 +936,31 @@ test("QuoteVault and DateVault preserve failed submissions as recoverable drafts
 
 
 
+
+
+test("offline support registers on every site application and caches only static assets", () => {
+  const worker = fs.readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  const registration = fs.readFileSync(new URL("../offline.js", import.meta.url), "utf8");
+  for (const file of ["../index.html", "../quotes/index.html", "../dates/index.html", "../revision/index.html", "../admin/index.html", "../admin/editor.html", "../feedback/index.html"]) {
+    assert.ok(fs.readFileSync(new URL(file, import.meta.url), "utf8").includes("/GcseVault/offline.js"));
+  }
+  for (const asset of ["quotes/", "dates/", "revision/", "admin/", "feedback/", "shared.js", "quotes/quotes.js", "dates/dates.js", "revision/app.js", "revision/practice.js", "revision/product.js"]) {
+    assert.ok(worker.includes(JSON.stringify(asset)));
+  }
+  assert.ok(worker.includes('request.method !== "GET"'));
+  assert.ok(worker.includes('url.origin !== self.location.origin'));
+  assert.ok(worker.includes("cachedPaths.has(url.pathname)"));
+  assert.ok(worker.includes("request.mode === \"navigate\""));
+  assert.ok(registration.includes('navigator.serviceWorker.register(workerUrl, { scope })'));
+});
+
+
+test("the admin push worker also keeps its static workspace available offline", () => {
+  const worker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
+  for (const asset of ["./", "editor.html", "admin.js", "admin.css", "editor.js", "../shared.js", "../offline.js"]) {
+    assert.ok(worker.includes(JSON.stringify(asset)));
+  }
+  assert.ok(worker.includes('request.method !== "GET"'));
+  assert.ok(worker.includes("self.registration.showNotification"));
+  assert.ok(worker.includes("self.addEventListener(\"fetch\""));
+});

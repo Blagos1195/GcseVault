@@ -94,3 +94,36 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
     await new Promise(resolveClose => server.close(resolveClose));
   }
 });
+
+
+test("the main learning tools remain available after the device goes offline", async () => {
+  const server = createStaticServer();
+  await new Promise((resolveListen, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}/GcseVault`;
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ serviceWorkers: "allow" });
+  try {
+    const page = await context.newPage();
+    await mockWorker(page);
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await page.goto(base + "/admin/", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => navigator.serviceWorker.register("/GcseVault/admin/push-sw.js", { scope: "/GcseVault/admin/" }));
+    await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.endsWith("/admin/push-sw.js"), null, { timeout: 15000 });
+    await context.setOffline(true);
+    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/", "GCSE Vault"], ["/admin/", "Admin"]]) {
+      await page.goto(base + path, { waitUntil: "domcontentloaded", timeout: 10000 });
+      assert.ok((await page.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
+    }
+  } finally {
+    await context.close();
+    await browser.close();
+    await new Promise(resolveClose => server.close(resolveClose));
+  }
+});
