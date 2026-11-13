@@ -999,3 +999,38 @@ test("learning-tool mobile navigation exposes state and supports Escape", () => 
     assert.ok(css.includes("button:focus-visible,a:focus-visible"));
   }
 });
+
+
+test("all pages load an environment-specific Worker URL before shared account code", () => {
+  for (const file of ["../index.html", "../quotes/index.html", "../dates/index.html", "../revision/index.html", "../admin/index.html", "../admin/editor.html", "../feedback/index.html", "../progress/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(html.includes("/GcseVault/worker-config.js"));
+    assert.ok(html.indexOf("worker-config.js") < html.indexOf("shared.js"));
+  }
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.ok(shared.includes("window.GCSE_VAULT_WORKER_URL"));
+  const worker = fs.readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+  assert.ok(worker.includes('"worker-config.js"'));
+});
+
+test("staging deployment provisions isolated resources and never reuses production IDs", () => {
+  const script = fs.readFileSync(new URL("../scripts/deploy-staging.mjs", import.meta.url), "utf8");
+  const workflow = fs.readFileSync(new URL("../.github/workflows/staging.yml", import.meta.url), "utf8");
+  const docs = fs.readFileSync(new URL("../docs/staging.md", import.meta.url), "utf8");
+  for (const value of ["gcsevault-staging", "quotevault-api-staging", "STAGING_ADMIN_KEY", "CLOUDFLARE_API_TOKEN", "d1", "kv", "pages", "worker-config.js"]) {
+    assert.ok(script.toLowerCase().includes(value.toLowerCase()));
+  }
+  assert.ok(workflow.includes("workflow_dispatch"));
+  assert.ok(workflow.includes("node scripts/deploy-staging.mjs"));
+  assert.ok(docs.includes("separate D1 and KV"));
+  for (const productionId of ["5670b9d5-b36e-48bf-aeb2-1a7e1490095c", "fc3ecee85b1546c88669259c7f75a810", "44dfb59a13014d128df3a0220cbad36b"]) {
+    assert.ok(!script.includes(productionId));
+  }
+});
+
+test("staging can disable admin push subscriptions without changing production defaults", () => {
+  const config = fs.readFileSync(new URL("../worker-config.js", import.meta.url), "utf8");
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(config.includes("GCSE_VAULT_DISABLE_PUSH"));
+  assert.ok(admin.includes("Push notifications are disabled in the staging environment."));
+});
