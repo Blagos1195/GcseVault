@@ -2701,6 +2701,7 @@ function rAdd(){
   <div class="pt">Add a Date/Fact</div>
   <div class="ps">Suggest a fact · goes to admin queue for approval · visible to you immediately while pending</div>
   <div style="max-width:520px">
+    ${submissionDraftNotice()}
     <div class="fg"><label>Year / Date *</label><input type="text" id="a-yr" placeholder="e.g. 1929 or November 1938"></div>
     <div class="fg"><label>Event *</label><input type="text" id="a-ev" placeholder="Brief name of the event" oninput="liveDupCheck()"></div>
     <div id="live-dup" style="margin-bottom:8px"></div>
@@ -2740,6 +2741,44 @@ function rAdd(){
   </div>`).join('')}`:''}
   </div>`;
 }
+function readSubmissionDraft(){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return null;
+  try{
+    const draft=JSON.parse(localStorage.getItem('dv_submission_draft:'+userKey)||'null');
+    return draft&&draft.id&&draft.fields?draft:null;
+  }catch{return null;}
+}
+function submissionDraftNotice(){
+  return readSubmissionDraft()?'<div class="qfb" style="margin-bottom:10px">An unsuccessful submission draft is saved on this device. <button class="btn bsm" onclick="restoreSubmissionDraft()">Restore draft</button> <button class="btn bsm br" onclick="discardSubmissionDraft()">Discard</button></div>':'';
+}
+function persistSubmissionDraft(id,fields){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return;
+  try{localStorage.setItem('dv_submission_draft:'+userKey,JSON.stringify({id,fields,savedAt:new Date().toISOString()}));}catch{}
+}
+function clearSubmissionDraft(id){
+  const userKey=VaultUser.getKey();
+  if(!userKey)return;
+  const draft=readSubmissionDraft();
+  if(draft&&draft.id===id)try{localStorage.removeItem('dv_submission_draft:'+userKey);}catch{}
+}
+function restoreSubmissionDraft(){
+  const draft=readSubmissionDraft();
+  if(!draft)return;
+  Object.entries(draft.fields).forEach(([id,value])=>{const input=document.getElementById(id);if(input)input.value=value;});
+  window.dvSubmissionDraftId=draft.id;
+  const feedback=document.getElementById('add-fb');
+  if(feedback)feedback.innerHTML='<div class="qfb">Draft restored. You can edit it before trying again.</div>';
+  liveDupCheck();
+}
+function discardSubmissionDraft(){
+  const userKey=VaultUser.getKey();
+  if(userKey)try{localStorage.removeItem('dv_submission_draft:'+userKey);}catch{}
+  window.dvSubmissionDraftId='';
+  render();
+}
+
 function liveDupCheck(){
   const ev=(document.getElementById('a-ev')?.value||'').trim();
   if(ev.length<5){document.getElementById('live-dup').innerHTML='';return;}
@@ -2764,7 +2803,7 @@ async function saveFact(){
   const ev=(document.getElementById('a-ev')?.value||'').trim();
   const sig=(document.getElementById('a-sig')?.value||'').trim();
   if(!yr||!ev||!sig){toast('Fill in year, event, and significance');return;}
-  const tempId=Date.now().toString()+'-dv'+Math.random().toString(36).slice(2,6);
+  const tempId=window.dvSubmissionDraftId||Date.now().toString()+'-dv'+Math.random().toString(36).slice(2,6);
   const q={id:tempId,year:yr,event:ev,significance:sig,
     topic:document.getElementById('a-to').value,period:document.getElementById('a-pe').value,
     section:document.getElementById('a-sec').value,category:document.getElementById('a-cat').value,
@@ -2772,12 +2811,17 @@ async function saveFact(){
     yearNum:parseInt(yr.match(/\d+/)?.[0])||0,submittedAt:new Date().toISOString(),
     _submittedByMe:true,_status:'pending'};
   const fbEl=document.getElementById('add-fb');
+  const savedDraft=readSubmissionDraft();
+  if(savedDraft&&!window.dvSubmissionDraftId){toast('Restore or discard your saved draft before submitting another date.');return;}
+  persistSubmissionDraft(tempId,{'a-yr':yr,'a-ev':ev,'a-sig':sig,'a-to':q.topic,'a-pe':q.period,'a-sec':q.section,'a-cat':q.category,'a-st':String(q.stars),'a-no':q.note});
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
     const resp=await fetch(WORKER_URL+'/dv/submit',{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':VaultUser.getAccountSession()},body:JSON.stringify({...q,userKey:VaultUser.getKey()})});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const result=await resp.json();
     if(result.id)q.id=result.id;
+    clearSubmissionDraft(tempId);
+    window.dvSubmissionDraftId='';
     S.pending=S.pending.filter(p=>p.id!==q.id);
     S.pending.push(q);
     save();
@@ -2787,7 +2831,7 @@ async function saveFact(){
     ['a-yr','a-ev','a-sig','a-pe','a-sec','a-no'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     document.getElementById('live-dup').innerHTML='';
     buildNav();render();
-  }catch(e){fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — ${e.message}</div>`;}
+  }catch(e){fbEl.innerHTML=`<div class="qfb qwr">Not quite: Submission failed — your draft has been saved on this device. ${e.message}</div>`;}
 }
 
 async function deletePendingFact(id){
