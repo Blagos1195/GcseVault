@@ -434,3 +434,12 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .graph-node small{font-size:.64rem;color:var(--text3)}
 .graph-node:hover,.graph-node.active{border-color:var(--purple2);background:#26213b}
 @media(max-width:760px){.graph-viewport{height:58vh;min-height:340px}.graph-help{width:100%;margin-left:0}.graph-controls{gap:7px}}
+
+.graph-subject{min-height:38px;padding:0 14px;border-bottom:2px solid var(--gold3);font-size:1.05rem}
+.graph-topic-group{position:absolute;border:1px solid var(--border2);border-radius:12px;background:rgba(255,255,255,.018);pointer-events:none}
+.graph-topic{min-height:28px;padding:0 2px;color:var(--text2);font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.graph-node{transform:none;max-width:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:10px 12px;border:1px solid var(--border2);border-radius:9px;background:var(--bg3);color:var(--text);font-size:inherit;text-align:left;white-space:normal;overflow-wrap:anywhere;cursor:pointer;z-index:1;box-shadow:0 3px 12px rgba(0,0,0,.12);user-select:none}
+.graph-node span{font-size:.62rem;color:var(--purple3);text-transform:uppercase;letter-spacing:.05em}
+.graph-node strong{font-size:.8rem;line-height:1.3;font-weight:650}
+.graph-node small{font-size:.64rem;color:var(--text3)}
+.graph-node:hover,.graph-node.active{border-color:var(--purple2);background:#26213b}
