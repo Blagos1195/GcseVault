@@ -784,3 +784,18 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("QuoteVault and DateVault preserve failed submissions as recoverable drafts", () => {
+  const quote = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
+  const date = fs.readFileSync(new URL("../dates/dates.js", import.meta.url), "utf8");
+  for (const app of [quote, date]) {
+    assert.ok(app.includes("function readSubmissionDraft()"));
+    assert.ok(app.includes("function restoreSubmissionDraft()"));
+    assert.ok(app.includes("function discardSubmissionDraft()"));
+    assert.ok(app.includes("persistSubmissionDraft(tempId"));
+    assert.ok(app.includes("Restore draft"));
+  }
+  assert.ok(quote.includes("qv_submission_draft:"));
+  assert.ok(date.includes("dv_submission_draft:"));
+});
