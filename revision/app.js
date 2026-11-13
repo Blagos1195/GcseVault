@@ -387,7 +387,16 @@ let revisionSyncQueued=false;
 let revisionRemoteUpdatedAt=null;
 let revisionConflictData=null;
 let revisionSyncConflict=false;
-function syncRevisionSoon(){clearTimeout(revisionSyncTimer);if(revisionActiveScope===revisionUserKey()&&revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);}
+function syncRevisionSoon(){
+  clearTimeout(revisionSyncTimer);
+  if(!navigator.onLine){
+    state.syncStatus='offline';
+    state.accountMessage='Offline. Changes are saved on this device and will sync when you reconnect.';
+    state.accountMessageType='success';
+    return;
+  }
+  if(revisionActiveScope===revisionUserKey()&&revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)revisionSyncTimer=setTimeout(syncRevision,700);
+}
 window.addEventListener('pagehide',()=>{clearTimeout(revisionSyncTimer);if(revisionActiveScope===revisionUserKey()&&revisionUserKey()&&revisionUsername()&&VaultUser.getAccountSession()&&!revisionSyncConflict)syncRevision(true);});
 function applyRevisionRemoteData(data){
   const remoteSets = Array.isArray(data.accountSets) && data.accountSets.length
@@ -532,8 +541,8 @@ async function loadRevision(){
       }
     }catch(error){
       if(requestedToken===VaultUser.getAccountSession()&&requestedUserKey===revisionUserKey()){
-        state.syncStatus='error';
-        state.accountMessage='Could not load synced revision data. Your local copy has been preserved.';
+        state.syncStatus=navigator.onLine?'error':'offline';
+        state.accountMessage=navigator.onLine?'Could not load synced revision data. Your local copy has been preserved.':'Offline. Your local copy is available and will sync when connection returns.';
         state.accountMessageType='error';
         window.VaultBugReporter?.capture(error,{detail:'Revision account data load'});
       }
@@ -615,6 +624,16 @@ async function applyRevisionTheme(key){
   state.themeMessage=result.synced?`${label} theme synced to your shared account.`:result.error?`${label} applied here, but could not sync: ${result.error.message}`:`${label} applied on this device. Sign in to sync it across devices.`;
   renderRevision();
 }
+window.addEventListener('offline',()=>{
+  state.syncStatus='offline';
+  state.accountMessage='Offline. Changes are saved on this device and will sync when you reconnect.';
+  state.accountMessageType='success';
+  renderRevision();
+});
+window.addEventListener('online',()=>{
+  if(revisionUserKey()&&VaultUser.getAccountSession())syncRevision();
+  else{state.syncStatus='local';renderRevision();}
+});
 function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}
 function renderGraph(){
   const cards=state.cards.slice(0,24), width=600, height=300, center={x:50,y:50};
@@ -717,7 +736,7 @@ function renderSettings(){
   const activeSet = getActiveRevisionSet();
   const themes = ThemeManager.getAllThemes('global');
   const selectedTheme = localStorage.getItem('vt_theme') || 'default';
-  const syncLabel = state.syncStatus==='syncing' ? 'Syncing changes…' : state.syncStatus==='synced' ? 'All changes synced' : state.syncStatus==='error' ? 'Sync needs attention' : state.syncStatus==='conflict' ? 'Sync conflict needs a decision' : 'Saved on this device';
+  const syncLabel = state.syncStatus==='syncing' ? 'Syncing changes…' : state.syncStatus==='synced' ? 'All changes synced' : state.syncStatus==='offline' ? 'Offline · saved on this device' : state.syncStatus==='error' ? 'Sync needs attention' : state.syncStatus==='conflict' ? 'Sync conflict needs a decision' : 'Saved on this device';
   const syncStatus = `<div class="knowledge-meta" role="status">${syncLabel}</div>`;
   const accountStatus = (state.accountMessage ? `<div class="qfb ${state.accountMessageType==='error'?'qwr':'qok'}" role="status">${escapeRevision(state.accountMessage)}</div>` : '') + syncStatus;
   const themeStatus = state.themeMessage ? `<div class="knowledge-meta" role="status" style="margin-top:8px">${escapeRevision(state.themeMessage)}</div>` : '';
