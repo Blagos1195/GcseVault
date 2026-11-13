@@ -13,7 +13,7 @@
 <div id="modal-bg" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
 
 <div id="app">
-<div id="sidebar">
+<div id="sidebar" role="navigation" aria-label="Main navigation">
   <div class="sb-logo">
     <div class="sb-logo-main">QuoteVault</div>
     <div class="sb-logo-sub">GCSE English Lit · AQA</div>
@@ -35,7 +35,7 @@
 
 <div id="main">
   <div id="topbar">
-    <button id="hbg" type="button" aria-label="Open navigation menu" onclick="toggleSB()">☰</button>
+    <button id="hbg" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false" onclick="toggleSB()">☰</button>
     <span class="tb-title" id="tb-title">Dashboard</span>
     <button class="btn bsm" type="button" onclick="exportJSON()" title="Export" aria-label="Export data">⬇</button>
     <label class="btn bsm" title="Import" aria-label="Import data from a JSON file" style="cursor:pointer">⬆<input type="file" accept=".json" aria-label="Choose JSON file to import" style="display:none" onchange="importJSON(event)"></label>
