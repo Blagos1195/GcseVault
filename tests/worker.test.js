@@ -890,6 +890,48 @@ test("review schedule routes authenticate and always scope writes to the signed-
 });
 
 
+test("progress summary is account-scoped and returns aggregates without study content", async () => {
+  const env = makeEnv();
+  const token = "a".repeat(64);
+  const schedules = {
+    qv: { quote1: { due: "2026-11-12" }, quote2: { due: "2026-11-20" } },
+    dv: { date1: { due: "2026-11-13" } }
+  };
+  const revisionData = {
+    accountSets: [
+      { id: "set-a", cards: [{ id: "card-a" }, { id: "card-b" }], progress: { "card-a": { reviews: 2, due: Date.now() + 86400000 } }, xp: 120 },
+      { id: "set-b", cards: [{ id: "card-c" }], progress: { "card-c": { reviews: 1, due: Date.now() - 1000 } }, xp: 40 }
+    ]
+  };
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
+        if (sql.includes("FROM account_credentials")) return { user_key: "account-key" };
+        if (sql.includes("SELECT schedules_json, updated_at FROM review_schedules")) return { schedules_json: JSON.stringify(schedules[values[1]] || {}), updated_at: "2026-11-13T10:00:00.000Z" };
+        if (sql.includes("SELECT data_json, updated_at FROM revision_sync_data")) return { data_json: JSON.stringify(revisionData), updated_at: "2026-11-13T11:00:00.000Z" };
+        return null;
+      },
+      all: async () => ({ results: [] }),
+      run: async () => ({ success: true, meta: { changes: 0 } })
+    })
+  });
+  const denied = await call("/account/progress-summary", env);
+  assert.equal(denied.status, 401);
+  const response = await call("/account/progress-summary", env, null, { "X-Account-Session": token });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.account.username, "student");
+  assert.equal(data.quoteVault.scheduled, 2);
+  assert.equal(data.dateVault.scheduled, 1);
+  assert.equal(data.revision.sets, 2);
+  assert.equal(data.revision.cards, 3);
+  assert.equal(data.revision.reviewed, 2);
+  assert.equal(data.revision.xp, 160);
+  assert.equal("accountSets" in data, false);
+  assert.equal("cards" in data, false);
+});
+
 test("submission approval replaces existing private copies instead of duplicating them", async () => {
   const env = makeEnv();
   const updates = [];
