@@ -47,6 +47,12 @@ async function mockWorker(page) {
     if (pathname === "/quotes" || pathname === "/dv/quotes") body = { items: [] };
     if (pathname === "/revision/public") body = { notes: [] };
     if (pathname === "/admin/status") body = { initialized: true, deployment: null };
+    if (pathname === "/account/progress-summary") body = {
+      account: { username: "student" },
+      quoteVault: { scheduled: 8, due: 3, updatedAt: "2026-11-13T10:00:00.000Z" },
+      dateVault: { scheduled: 5, due: 2, updatedAt: "2026-11-13T10:00:00.000Z" },
+      revision: { sets: 2, cards: 20, reviewed: 12, due: 8, xp: 340, updatedAt: "2026-11-13T11:00:00.000Z" }
+    };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   await page.route("https://fonts.googleapis.com/**", route => route.abort());
@@ -66,13 +72,20 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
   try {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       const context = await browser.newContext({ viewport });
-      for (const path of ["/", "/quotes/", "/dates/", "/revision/"]) {
+      for (const path of ["/", "/quotes/", "/dates/", "/revision/", "/progress/"]) {
         const page = await context.newPage();
         page.on("pageerror", error => failures.push(viewport.width + "px " + path + ": " + error.message));
         await mockWorker(page);
         const response = await page.goto(base + path, { waitUntil: "domcontentloaded" });
         assert.ok(response && response.ok(), "Failed to load " + path + " at " + viewport.width + "px");
         assert.ok((await page.locator("body").innerText()).trim().length > 0, "Empty page at " + path);
+        if (path === "/progress/") {
+          await page.evaluate(() => localStorage.setItem("vault_account_session", "e2e-session"));
+          await page.reload({ waitUntil: "domcontentloaded" });
+          await page.getByText("Signed in as student").waitFor({ timeout: 5000 });
+          assert.equal(await page.locator("#revision-reviewed").innerText(), "12");
+          assert.equal(await page.locator("#qv-due").innerText(), "3");
+        }
         if (path === "/" && viewport.width === 390) {
           const search = page.locator("#global-search-input");
           if (await search.count()) {
@@ -117,7 +130,7 @@ test("the main learning tools remain available after the device goes offline", a
     await page.evaluate(() => navigator.serviceWorker.register("/GcseVault/admin/push-sw.js", { scope: "/GcseVault/admin/" }));
     await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.endsWith("/admin/push-sw.js"), null, { timeout: 15000 });
     await context.setOffline(true);
-    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/", "GCSE Vault"], ["/admin/", "Admin"]]) {
+    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/progress/", "Your progress"], ["/", "GCSE Vault"], ["/admin/", "Admin"]]) {
       await page.goto(base + path, { waitUntil: "domcontentloaded", timeout: 10000 });
       assert.ok((await page.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
     }
