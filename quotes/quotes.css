@@ -375,9 +375,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #topbar>.btn{margin-left:0}
 }
 
-.nav-menu summary{border-color:color-mix(in srgb,var(--purple2) 42%,var(--border2));background:color-mix(in srgb,var(--purple) 13%,var(--bg3))}
-.nav-menu summary:hover,.nav-menu[open] summary,.nav-menu:hover summary,.nav-menu:focus-within summary{border-color:var(--purple2);background:color-mix(in srgb,var(--purple) 22%,var(--bg3))}
-.nav-menu-name{color:var(--purple3)}
+.nav-menu summary{border-color:var(--border2);background:var(--bg3)}
+.nav-menu summary:hover,.nav-menu[open] summary,.nav-menu:hover summary,.nav-menu:focus-within summary{border-color:var(--gold3);background:var(--bg4)}
+.nav-menu-name{color:var(--gold2)}
 .nav-menu-current{color:var(--text)}
 .nav-options{display:none}
 .nav-menu[open]>.nav-options,.nav-menu:hover>.nav-options,.nav-menu:focus-within>.nav-options{display:block}
@@ -404,6 +404,6 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 }
 @media(max-width:760px){
  #topbar #nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:5px}
- .nav-menu summary{background:color-mix(in srgb,var(--purple) 13%,var(--bg3));border-color:color-mix(in srgb,var(--purple2) 42%,var(--border2))}
- .nav-menu-name{color:var(--purple3)}
+ .nav-menu summary{background:var(--bg3);border-color:var(--border2)}
+ .nav-menu-name{color:var(--gold2)}
 }
