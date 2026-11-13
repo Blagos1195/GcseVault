@@ -378,6 +378,12 @@ export default {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-reset", userKey, 5, 900))) {
+        return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
+      if (!(await allowRateLimitedAction("account-setup", userKey, 5, 900))) {
+        return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
       const account = await env.DB.prepare(
         "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
@@ -485,6 +491,22 @@ export default {
       return token;
     }
 
+    async function readBoundedJson(req, maxBytes) {
+      const raw = await req.text();
+      if (new TextEncoder().encode(raw).byteLength > maxBytes) return { error: "Request body is too large.", status: 413 };
+      try { return { data: JSON.parse(raw), status: 200 }; }
+      catch { return { error: "Invalid JSON.", status: 400 }; }
+    }
+
+    async function allowRateLimitedAction(prefix, identity, limit, ttl) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const key = prefix + ":" + await hashValue(ip + ":" + String(identity || ""));
+      const count = Number(await env.QUOTEVAULT.get(key) || 0);
+      if (count >= limit) return false;
+      await env.QUOTEVAULT.put(key, String(count + 1), { expirationTtl: ttl });
+      return true;
+    }
+
     async function getAccountSession(req) {
       const token = req.headers.get("X-Account-Session");
       if (!token || token.length !== 64) return null;
@@ -512,7 +534,9 @@ export default {
     }
 
     if (url.pathname === "/account/setup" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
@@ -539,6 +563,9 @@ export default {
     }
 
     if (url.pathname === "/account/challenge" && request.method === "GET") {
+      if (!(await allowRateLimitedAction("account-challenge", "lookup", 30, 900))) {
+        return new Response("Too many account lookups. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const username = String(url.searchParams.get("username") || "").trim();
       if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
       const credential = await env.DB.prepare(
@@ -550,7 +577,9 @@ export default {
       });
     }
     if (url.pathname === "/account/login" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const username = String(body.username || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       if (!username || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || username.length > 20) {
@@ -574,7 +603,9 @@ export default {
 
 
     if (url.pathname === "/account/reset" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
