@@ -60,6 +60,27 @@ async function enableAdminPushNotifications(){
     renderAdmin();
   }
 }
+async function disableAdminPushNotifications(){
+  try{
+    const registration=await navigator.serviceWorker?.getRegistration('./');
+    const subscription=await registration?.pushManager?.getSubscription();
+    if(subscription){
+      const response=await fetch(VaultUser.WORKER_URL+'/admin/push/subscribe',{
+        method:'DELETE',
+        headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},
+        body:JSON.stringify({endpoint:subscription.endpoint})
+      });
+      if(!response.ok)throw new Error(await response.text()||'Could not remove the push subscription.');
+      await subscription.unsubscribe();
+    }
+    adminPushEnabled=false;
+    AdminManager.error='';
+    renderAdmin();
+  }catch(error){
+    AdminManager.error=error.message||'Could not disable push notifications.';
+    renderAdmin();
+  }
+}
 async function markAdminNotificationRead(id){
   try{
     const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/read`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids:[id]})});
@@ -109,7 +130,7 @@ function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
   const read=adminNotifications.length-unread;
   const pushLabel=adminPushEnabled?'Push notifications enabled':'Enable push notifications';
-  return `<section class="panel"><div class="toolbar"><div><h2>Notifications</h2><p class="sub">${unread} unread · ${read} read</p></div><div class="actions"><button onclick="enableAdminPushNotifications()">${pushLabel}</button><button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button><button class="danger" onclick="clearReadAdminNotifications()" ${read?'':'disabled'}>Clear read</button></div></div><div class="queue">${adminNotifications.map(item=>`<article class="item ${item.read_at?'notification-read':''}"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span class="tag">${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div><div class="item-actions">${item.read_at?'':`<button onclick="markAdminNotificationRead('${esc(item.id)}')">Mark read</button>`}<button class="danger" onclick="deleteAdminNotification('${esc(item.id)}')">Delete</button></div></article>`).join('')||'<div class="empty">No submission notifications.</div>'}</div></section>`;
+  return `<section class="panel"><div class="toolbar"><div><h2>Notifications</h2><p class="sub">${unread} unread · ${read} read</p></div><div class="actions">${adminPushEnabled?`<button onclick="disableAdminPushNotifications()">Disable push notifications</button>`:`<button onclick="enableAdminPushNotifications()">${pushLabel}</button>`}<button onclick="markAdminNotificationsRead()" ${unread?'':'disabled'}>Mark all read</button><button class="danger" onclick="clearReadAdminNotifications()" ${read?'':'disabled'}>Clear read</button></div></div><div class="queue">${adminNotifications.map(item=>`<article class="item ${item.read_at?'notification-read':''}"><div><div class="meta"><span class="tag">${esc(item.site)}</span><span>${esc(item.submitter)}</span><span>${esc(item.created_at)}</span><span class="tag">${item.read_at?'Read':'Unread'}</span></div><h2>${esc(item.title)}</h2><p>Submission ID: ${esc(item.item_id)}</p></div><div class="item-actions">${item.read_at?'':`<button onclick="markAdminNotificationRead('${esc(item.id)}')">Mark read</button>`}<button class="danger" onclick="deleteAdminNotification('${esc(item.id)}')">Delete</button></div></article>`).join('')||'<div class="empty">No submission notifications.</div>'}</div></section>`;
 }
 async function loadModerationLog(){
   if(!AdminManager.getToken())return;
