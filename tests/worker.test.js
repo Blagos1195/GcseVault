@@ -92,6 +92,29 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("admin status exposes Worker version metadata without exposing account data", async () => {
+  const env = makeEnv();
+  env.CF_VERSION_METADATA = { id: "version-123", tag: "production", timestamp: "2026-11-13T12:00:00.000Z" };
+  const response = await call("/admin/status", env);
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.initialized, false);
+  assert.deepEqual(data.deployment, {
+    versionId: "version-123",
+    tag: "production",
+    timestamp: "2026-11-13T12:00:00.000Z"
+  });
+  assert.equal(data.userKey, undefined);
+});
+
+test("admin status handles deployments without version metadata", async () => {
+  const env = makeEnv();
+  const response = await call("/admin/status", env);
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.deployment, null);
+});
+
 test("admin push subscriptions require an admin session and are stored per account", async () => {
   const env = makeEnv();
   const denied = await call("/admin/push/subscribe", env, {
