@@ -6,7 +6,7 @@
 <title>QuoteVault – GCSE English Literature</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="quotes.css?v=20261114-hover-nav-v2">
+<link rel="stylesheet" href="quotes.css?v=20261114-single-row-hover-v3">
 </head>
 <body>
 <div id="overlay" onclick="closeSB()"></div>
@@ -37,8 +37,13 @@
 <div id="main">
   <div id="topbar">
     <button id="hbg" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false" onclick="toggleSB()">☰</button>
+    <a class="sb-logo" href="/GcseVault/quotes/" aria-label="QuoteVault homepage">
+    <div class="sb-logo-main">QuoteVault</div>
+    <div class="sb-logo-sub">GCSE English Lit · AQA</div>
+  </a>
     <span class="tb-title" id="tb-title">Dashboard</span>
     <div id="nav" aria-label="Page navigation"></div>
+    <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label>
 
     <button class="btn bsm" type="button" onclick="exportJSON()" title="Export" aria-label="Export data">⬇</button>
     <label class="btn bsm" title="Import" aria-label="Import data from a JSON file" style="cursor:pointer">⬆<input type="file" accept=".json" aria-label="Choose JSON file to import" style="display:none" onchange="importJSON(event)"></label>
