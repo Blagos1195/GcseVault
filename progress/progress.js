@@ -21,8 +21,12 @@ function renderProgressSummary(data){
   const revision=data.revision||{};
   setProgressValue("qv-due",quote.due||0);
   setProgressValue("qv-scheduled",quote.scheduled||0);
+  setProgressValue("qv-mastered",quote.mastered||0);
+  setProgressValue("qv-xp",quote.xp||0);
   setProgressValue("dv-due",date.due||0);
   setProgressValue("dv-scheduled",date.scheduled||0);
+  setProgressValue("dv-mastered",date.mastered||0);
+  setProgressValue("dv-xp",date.xp||0);
   setProgressValue("revision-reviewed",revision.reviewed||0);
   setProgressValue("revision-total",revision.cards||0);
   setProgressValue("revision-sets",revision.sets||0);
@@ -30,7 +34,7 @@ function renderProgressSummary(data){
   setProgressValue("revision-xp",revision.xp||0);
   document.getElementById("revision-bar").style.width=(revision.cards?Math.min(100,(revision.reviewed/revision.cards)*100):0)+"%";
   const username=data.account?.username||VaultUser.getUsername()||"Signed-in account";
-  progressAccount.textContent="Signed in as "+username;
+  progressAccount.textContent="Signed in as "+username+(data.account?.streak? " · "+data.account.streak+" day streak":"");
   progressAccount.hidden=false;
   progressStatus.hidden=true;
   progressDashboard.hidden=false;
