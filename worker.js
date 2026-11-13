@@ -252,7 +252,7 @@ export default {
       do {
         const page = await binding.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:")) continue;
+          if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:") || key.name.startsWith("test-centre:")) continue;
           const value = await binding.get(key.name, "json");
           if (value) items.push(sanitizeSubmission(value));
         }
@@ -698,7 +698,7 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       await ensureModerationTables();
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
       return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
@@ -1794,7 +1794,7 @@ export default {
         const page = await env.FEEDBACK.list(cursor ? { cursor } : {});
         for (const key of page.keys) {
           const value = await env.FEEDBACK.get(key.name, "json");
-          if (value) items.push(value);
+          if (value && value.testRecord !== true) items.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
