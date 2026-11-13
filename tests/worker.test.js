@@ -92,6 +92,30 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("account login rejects oversized request bodies", async () => {
+  const env = makeEnv();
+  const response = await worker.fetch(new Request("https://example.test/account/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "student", passwordHash: "a".repeat(5000) })
+  }), env);
+  assert.equal(response.status, 413);
+});
+
+test("account setup rate limiting blocks repeated attempts before database access", async () => {
+  const env = makeEnv();
+  env.QUOTEVAULT.get = async () => "5";
+  env.DB.prepare = () => {
+    throw new Error("Database should not be accessed after the rate limit is reached");
+  };
+  const response = await worker.fetch(new Request("https://example.test/account/setup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.10" },
+    body: JSON.stringify({ userKey: "account-key" })
+  }), env);
+  assert.equal(response.status, 429);
+});
+
 test("admin push subscriptions require an admin session and are stored per account", async () => {
   const env = makeEnv();
   const denied = await call("/admin/push/subscribe", env, {
