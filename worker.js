@@ -13,6 +13,7 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
+    try {
     const ADMIN_KEY = env.ADMIN_KEY;
 
     async function getSessionUser(reqUrl, req) {
@@ -2449,6 +2450,14 @@ export default {
     }
 
     return new Response("Not found", { status: 404, headers: cors });
+    } catch (error) {
+      const requestId = crypto.randomUUID();
+      console.error("Worker request failed", requestId, error);
+      return new Response(JSON.stringify({ error: "The API request failed. Please try again.", requestId }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json", "X-Request-Id": requestId }
+      });
+    }
   }
 };
 
