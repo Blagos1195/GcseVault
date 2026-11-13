@@ -884,3 +884,37 @@ test("admin workspace includes recurring error trends and persisted Test Centre 
   assert.match(shared, /deploymentInfo: null/);
   assert.match(shared, /Worker deployment:/);
 });
+
+
+test("GCSE Vault home page provides cross-site public search", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("global-search-input"));
+  assert.ok(html.includes("/quotes"));
+  assert.ok(html.includes("/dv/quotes"));
+  assert.ok(html.includes("/revision/public"));
+  assert.ok(html.includes("Search across GCSE Vault"));
+});
+
+test("admin notification preferences allow push alerts to be disabled", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(admin.includes("async function disableAdminPushNotifications()"));
+  assert.ok(admin.includes("method:'DELETE'"));
+  assert.ok(admin.includes("subscription.unsubscribe()"));
+  assert.ok(admin.includes("Disable push notifications"));
+});
+
+test("icon-only navigation and data controls have accessible names", () => {
+  for (const file of ["../quotes/index.html", "../dates/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(html.includes('aria-label="Open navigation menu"'));
+    assert.ok(html.includes('aria-label="Export data"'));
+    assert.ok(html.includes('aria-label="Import data from a JSON file"'));
+  }
+});
+
+test("owner account permission changes are included in the admin history", () => {
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_account_audit/);
+  assert.match(worker, /recordAccountAdminAction/);
+  assert.match(worker, /SELECT target_username, actor_username, action, acted_at FROM admin_account_audit/);
+});
