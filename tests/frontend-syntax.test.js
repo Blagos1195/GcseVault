@@ -575,7 +575,8 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.match(html, /id="nav"/);
     assert.match(app, /function buildNav\(\)/);
     assert.match(app, /function go\(page\)/);
-    assert.match(app, /const PAGES = \[/);
+    assert.match(app, /const [QD]V_PAGES = new Set\(/);
+    assert.match(app, /_SAVED_PAGE = localStorage\.getItem\(/);
     assert.match(app, /scrollTop=0/);
     assert.match(app, /class="library-results"/);
     assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
