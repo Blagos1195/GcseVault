@@ -241,6 +241,27 @@ test("QuoteVault due count respects scheduled review dates", () => {
   assert.equal(context.__dueCount(), 1);
 });
 
+test("QuoteVault and DateVault merge remote mastery IDs even when local totals are larger", () => {
+  for (const path of ["quotes/quotes.js", "dates/dates.js"]) {
+    const source = fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+    const start = source.indexOf("function mergeRemoteMasteredIds(remoteIds){");
+    const end = source.indexOf("\n}", start) + 2;
+    assert.ok(start >= 0 && end > start);
+    const context = {
+      S: { mastered: new Set(["1", "2", "3"]), masteryPts: {} }
+    };
+    vm.runInNewContext(
+      `${source.slice(start, end)}\nglobalThis.__merge = mergeRemoteMasteredIds;`,
+      context
+    );
+    assert.equal(context.__merge(["2", "4"]), 1);
+    assert.deepEqual([...context.S.mastered].map(String).sort(), ["1", "2", "3", "4"]);
+    assert.equal(context.S.masteryPts[4], 100);
+    assert.equal(context.__merge(["1", "2", "3", "4"]), 0);
+    assert.equal(context.__merge(null), 0);
+  }
+});
+
 test("QuoteVault timed challenge skip renders the next prompt", () => {
   const source = fs.readFileSync(new URL("../quotes/quotes.js", import.meta.url), "utf8");
   const renderStart = source.indexOf("function rTimed(){");
