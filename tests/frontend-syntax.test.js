@@ -784,3 +784,12 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("Revision has a per-set daily review goal and overview progress", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("dailyGoal: Math.max(1, Math.min(200, Number(set && set.dailyGoal) || 20))"));
+  assert.ok(app.includes("function dailyReviewCount()"));
+  assert.ok(app.includes("function updateDailyGoal()"));
+  assert.ok(app.includes("revision-daily-goal"));
+});
