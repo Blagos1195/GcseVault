@@ -2884,7 +2884,7 @@ function rStats(){
 
   <div class="g4" style="margin-bottom:11px">
     <div class="scard"><div class="snum" style="color:var(--gold)">${qs.length}</div><div class="slbl">Total Quotes</div></div>
-    <div class="scard"><div class="snum" style="color:var(--teal)">${S.mastered.size}</div><div class="slbl">Mastered</div></div>
+    <div class="scard"><div class="snum" style="color:var(--teal)">${[...S.mastered].filter(id=>qs.some(q=>q.id===id)).length}</div><div class="slbl">Mastered</div></div>
     <div class="scard"><div class="snum" style="color:var(--purple3)">${S.xp}</div><div class="slbl">Total XP</div></div>
     <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak </div></div>
   </div>
@@ -2974,11 +2974,11 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'01',n:'First Blood',d:'Mastered your first quote',e:S.mastered.size>=1},
-    {i:'02',n:'Card Shark',d:'Mastered 5 quotes',e:S.mastered.size>=5},
-    {i:'03',n:'Bibliophile',d:'Mastered 20 quotes',e:S.mastered.size>=20},
-    {i:'04',n:'Scholar',d:'Mastered 40 quotes',e:S.mastered.size>=40},
-    {i:'05',n:'Grand Master',d:'Mastered 80 quotes',e:S.mastered.size>=80},
+    {i:'01',n:'First Blood',d:'Mastered your first quote',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=1},
+    {i:'02',n:'Card Shark',d:'Mastered 5 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=5},
+    {i:'03',n:'Bibliophile',d:'Mastered 20 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=20},
+    {i:'04',n:'Scholar',d:'Mastered 40 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=40},
+    {i:'05',n:'Grand Master',d:'Mastered 80 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=80},
     {i:'06',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
     {i:'07',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
     {i:'08',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
