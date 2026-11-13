@@ -870,3 +870,17 @@ test("Revision queues sync while online and preserves changes locally while offl
   assert.match(app, /window\.addEventListener\('offline'/);
   assert.match(app, /Offline · saved on this device/);
 });
+
+
+test("admin workspace includes recurring error trends and persisted Test Centre history", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
+  assert.match(admin, /function renderErrorTrends\(reports\)/);
+  assert.match(admin, /Recurring error trends/);
+  assert.match(admin, /function loadOwnerTestHistory\(\)/);
+  assert.match(admin, /Recent test history/);
+  assert.match(worker, /url\.pathname === "\/admin\/test-history"/);
+  assert.match(shared, /deploymentInfo: null/);
+  assert.match(shared, /Worker deployment:/);
+});
