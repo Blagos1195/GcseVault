@@ -784,3 +784,12 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("admin notification preferences allow push alerts to be disabled", () => {
+  const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
+  assert.ok(admin.includes("async function disableAdminPushNotifications()"));
+  assert.ok(admin.includes("method:'DELETE'"));
+  assert.ok(admin.includes("subscription.unsubscribe()"));
+  assert.ok(admin.includes("Disable push notifications"));
+});
