@@ -61,7 +61,14 @@ function practiceImport(input){
     saveRevision();state.setMessage='Imported '+topics.length+' topics for '+c.subject+'.';renderRevision();return;
    }
    if(c.type!=='revision-course-pack'||c.version!==1||!c.subject||!c.examBoard||!Array.isArray(c.cards)||!Array.isArray(c.resources)||c.cards.length>1000||c.resources.length>500||((c.formulas||[]).length>500))throw new Error('Unsupported course pack format.');
-   const subject=String(c.subject).slice(0,100),catalogueId=String(c.catalogueId||normalizeTopic(c.examBoard+' '+subject).replace(/\s+/g,'-')).slice(0,100),catalogue=p.catalogues[catalogueId];
+   const subject=String(c.subject).slice(0,100),catalogueId=String(c.catalogueId||normalizeTopic(c.examBoard+' '+subject).replace(/\s+/g,'-')).slice(0,100);
+   let catalogue=p.catalogues[catalogueId];
+   if(!catalogue&&c.catalogue&&c.catalogue.id===catalogueId&&c.catalogue.subject===subject&&c.catalogue.examBoard===c.examBoard&&Array.isArray(c.catalogue.topics)){
+    const ids=new Set();
+    const topics=c.catalogue.topics.map(topic=>{const id=String(topic.id||'').trim(),name=String(topic.name||'').trim();if(!id||!name||ids.has(id)||!Array.isArray(topic.subtopics))throw new Error('The embedded subject catalogue is invalid.');ids.add(id);return{id,name,year:String(topic.year||''),area:String(topic.area||''),subtopics:topic.subtopics.map(String).slice(0,100)};});
+    catalogue={id:catalogueId,subject,examBoard:String(c.examBoard).slice(0,80),qualification:String(c.catalogue.qualification||c.qualification||'').slice(0,100),source:String(c.catalogue.source||'').slice(0,300),optionalModule:c.catalogue.optionalModule||null,topics,updatedAt:Date.now()};
+    p.catalogues[catalogueId]=catalogue;
+   }
    if(!catalogue)throw new Error('Import the matching subject catalogue first.');
    const topicById=new Map(catalogue.topics.map(t=>[t.id,t]));
    const normal=value=>String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
