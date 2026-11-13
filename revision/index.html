@@ -14,7 +14,7 @@
 <body>
 
 <div id="app">
-  <aside id="sidebar">
+  <aside id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="sb-logo"><div class="sb-logo-main">Revision</div><div class="sb-logo-sub">Study workspace</div></div>
     <div class="sb-sec">Workspace</div>
     <button type="button" class="ni active" data-view="overview">Overview</button>
@@ -38,7 +38,7 @@
     <div class="sb-foot"><div id="sidebar-stats">0 cards · 0 links</div><div class="sb-xp" id="sidebar-progress">0 reviewed</div></div>
   </aside>
   <main id="main">
-    <header id="topbar"><button id="hbg" aria-label="Open menu">☰</button><span class="tb-title">Revision workspace</span><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></header>
+    <header id="topbar"><button id="hbg" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">☰</button><span class="tb-title">Revision workspace</span><select id="revision-set-switcher" aria-label="Current revision set" onchange="switchRevisionSet(this.value)"></select><div class="global-search"><input id="revision-search" type="search" placeholder="Search cards, topics, notes…" autocomplete="off" aria-label="Search revision content" oninput="searchRevision(this.value)"><div id="revision-search-results" class="search-results" hidden></div></div><span id="sync-status" class="sync-status" role="status">Saved on this device</span><button class="btn bsm" id="new-card">＋ New card</button></header>
     <section id="page"></section>
   </main>
 </div>
