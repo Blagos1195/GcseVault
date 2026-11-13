@@ -933,3 +933,26 @@ test("review schedule routes authenticate and always scope writes to the signed-
   assert.equal(saved.status, 200);
   assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
 });
+
+
+test("QuoteVault rejects malformed idempotency request IDs", async () => {
+  const env = makeEnv();
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/submit", env, {
+    userKey: "student-key",
+    submissionRequestId: "invalid",
+    text: "A test quote"
+  }, { "X-Account-Session": "c".repeat(64) });
+  assert.equal(response.status, 400);
+});
