@@ -20,6 +20,7 @@ const SHELL_FILES = [
   "revision/product.css",
   "admin/admin.js",
   "admin/admin.css",
+  "admin/push-sw.js",
   "admin/editor.js",
   "revision/catalogues/aqa-a-level-chemistry.json",
   "revision/catalogues/aqa-a-level-physics-core.json",
