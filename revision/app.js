@@ -709,12 +709,47 @@ async function applyRevisionTheme(key){
 }
 function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}
 function renderGraph(){
-  const cards=state.cards.slice(0,24),columns=4,cellWidth=230,cellHeight=112,gap=18;
-  const rows=Math.max(1,Math.ceil(cards.length/columns)),width=columns*cellWidth+(columns-1)*gap,height=rows*cellHeight;
-  const positions=cards.map((card,index)=>({x:(index%columns)*(cellWidth+gap),y:Math.floor(index/columns)*cellHeight,card}));
-  const byId=new Map(positions.map(node=>[node.card.id,node]));
-  const lines=positions.flatMap(node=>linkedCards(node.card).map(link=>{const target=byId.get(link.id);return target?'<path d="M '+(node.x+cellWidth/2)+' '+(node.y+cellHeight/2)+' L '+(target.x+cellWidth/2)+' '+(target.y+cellHeight/2)+'"></path>':'';})).join('');
-  return `<div class="graph-wrap"><div class="graph" style="width:${width}px;height:${height}px"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${lines}</svg>${positions.map(node=>`<button class="graph-node${state.selected===node.card.id?' active':''}" style="left:${node.x}px;top:${node.y}px;width:${cellWidth}px;height:78px" onclick="selectRevisionCard('${node.card.id}')"><span>${escapeRevision(node.card.topic)}</span><strong>${escapeRevision(node.card.title)}</strong></button>`).join('')}</div></div>`;
+  const query=String(state.graphQuery||'').trim().toLowerCase();
+  const cards=state.cards.filter(card=>!query||[card.title,card.answer,card.subject,card.topic,card.source,...linkedCards(card).map(link=>link.title)].some(value=>String(value||'').toLowerCase().includes(query)));
+  if(!cards.length)return '<div class="map-empty">'+(query?'No cards match this search.':'No cards in this revision set yet. Add or import cards to build your knowledge map.')+'</div>';
+  const subjects=new Map();
+  cards.forEach(card=>{
+    const subject=String(card.subject||'Other');
+    const topic=String(card.topic||'General');
+    if(!subjects.has(subject))subjects.set(subject,new Map());
+    const topics=subjects.get(subject);
+    if(!topics.has(topic))topics.set(topic,[]);
+    topics.get(topic).push(card);
+  });
+  const groups=[...subjects.entries()].sort(([a],[b])=>a.localeCompare(b));
+  const markup=groups.map(([subject,topics])=>{
+    const total=[...topics.values()].reduce((count,items)=>count+items.length,0);
+    const topicMarkup=[...topics.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([topic,items])=>{
+      const cardMarkup=items.map(card=>{
+        const count=linkedCards(card).length;
+        const active=state.selected===card.id;
+        return '<button type="button" class="map-card'+(active?' active':'')+'" aria-pressed="'+String(active)+'" onclick="selectRevisionCard(\''+escapeRevision(card.id)+'\')"><span class="map-card-topic">'+escapeRevision(topic)+'</span><strong>'+escapeRevision(card.title)+'</strong><span class="map-card-meta">'+count+' connection'+(count===1?'':'s')+'</span></button>';
+      }).join('');
+      return '<section class="map-topic"><div class="map-topic-heading"><h3>'+escapeRevision(topic)+'</h3><span>'+items.length+'</span></div><div class="map-card-grid">'+cardMarkup+'</div></section>';
+    }).join('');
+    return '<section class="map-subject"><div class="map-subject-heading"><h2>'+escapeRevision(subject)+'</h2><span>'+total+' cards</span></div>'+topicMarkup+'</section>';
+  }).join('');
+  return '<div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards</div><div class="map-subjects">'+markup+'</div>';
+}
+function filterKnowledgeMap(value){
+  state.graphQuery=value;
+  const map=document.getElementById('knowledge-map-content');
+  if(map)map.innerHTML=renderGraph();
+  const selection=document.getElementById('knowledge-map-selection');
+  if(selection)selection.innerHTML=renderGraphSelection(cardById(state.selected));
+}
+function renderGraphSelection(selected){
+  if(!selected)return '<div class="map-selection-empty">Select a card to see its answer and connected ideas.</div>';
+  const query=String(state.graphQuery||'').trim().toLowerCase();
+  const isVisible=!query||[selected.title,selected.answer,selected.subject,selected.topic,selected.source,...linkedCards(selected).map(link=>link.title)].some(value=>String(value||'').toLowerCase().includes(query));
+  const links=linkedCards(selected);
+  const connections=links.length?links.map(link=>'<button type="button" class="graph-connection" onclick="selectRevisionCard(\''+escapeRevision(link.id)+'\')">'+escapeRevision(link.title)+'</button>').join(''):'<span class="knowledge-meta">No linked cards yet.</span>';
+  return '<section class="graph-selection"><div class="graph-selection-content">'+(isVisible?'':'<div class="map-selection-note">This selected card is hidden by the current search filter.</div>')+'<div class="knowledge-meta">'+escapeRevision(selected.subject)+' · '+escapeRevision(selected.topic)+'</div><h2>'+escapeRevision(selected.title)+'</h2><p>'+escapeRevision(selected.answer)+'</p>'+(selected.source?'<div class="knowledge-meta graph-source">Source: '+escapeRevision(selected.source)+'</div>':'')+'<div class="graph-connections"><h3>Connected cards</h3>'+connections+'</div></div><div class="graph-selection-actions"><button type="button" class="btn bp" onclick="startStudy(\''+escapeRevision(selected.id)+'\')">Review card</button><button type="button" class="btn" onclick="editRevisionCard(\''+escapeRevision(selected.id)+'\')">Edit</button></div></section>';
 }
 function renderCardList(cards=state.cards){
   return `<div class="knowledge-list">${cards.map(card=>`<div class="knowledge-item${state.selected===card.id?' active':''}" onclick="selectRevisionCard('${card.id}')"><span class="knowledge-dot"></span><div><div class="knowledge-title">${escapeRevision(card.title)}</div><div class="knowledge-meta">${escapeRevision(card.subject)} · ${escapeRevision(card.topic)} · ${linkedCards(card).length} linked idea${linkedCards(card).length===1?'':'s'} · ${formatDue(state.progress[card.id]?.due)}</div>${card.source?`<div class="knowledge-meta">Source: ${escapeRevision(card.source)}</div>`:''}<div class="knowledge-links">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="event.stopPropagation();selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div></div></div>`).join('')}</div>`;
@@ -873,7 +908,7 @@ function renderCards(){
 }
 function renderGraphView(){
   const selected=cardById(state.selected);
-  return `<div class="pt">Knowledge map</div><div class="ps">Explore connections between your revision topics. Select a card to see its details.</div>${renderGraph()}${selected?`<section class="graph-selection"><div><div class="knowledge-meta">${escapeRevision(selected.subject)} · ${escapeRevision(selected.topic)}</div><h2>${escapeRevision(selected.title)}</h2><p>${escapeRevision(selected.answer)}</p></div><div class="graph-selection-actions"><button class="btn bp" onclick="startStudy('${selected.id}')">Review card</button><button class="btn" onclick="editRevisionCard('${selected.id}')">Edit</button></div></section>`:''}`;
+  return '<div class="pt">Knowledge map</div><div class="ps">Cards are grouped by subject and topic. Select a card to see its answer and connected ideas.</div><div class="map-toolbar"><label for="knowledge-map-search">Find a card</label><input id="knowledge-map-search" type="search" value="'+escapeRevision(state.graphQuery||'')+'" placeholder="Search titles, topics and answers…" oninput="filterKnowledgeMap(this.value)"></div><div id="knowledge-map-content">'+renderGraph()+'</div><div id="knowledge-map-selection">'+renderGraphSelection(selected)+'</div>';
 }
 function renderCreateCard(){return `<div style="max-width:620px;margin:0 auto"><div class="pt">Create a revision card</div><div class="ps">Add a source reference so you can check the original material later.</div><form class="card" onsubmit="event.preventDefault();submitRevisionCard()"><div class="g2"><div class="fg"><label for="new-card-subject">Subject</label><input id="new-card-subject" type="text" placeholder="e.g. Biology" required></div><div class="fg"><label for="new-card-topic">Topic</label><input id="new-card-topic" type="text" placeholder="e.g. Cells" required></div></div><div class="fg"><label for="new-card-title">Front / term</label><input id="new-card-title" type="text" placeholder="What should you remember?" required></div><div class="fg"><label for="new-card-answer">Back / definition</label><textarea id="new-card-answer" rows="6" placeholder="Write the definition or explanation..." required></textarea></div><div class="fg"><label for="new-card-source">Source reference (optional)</label><input id="new-card-source" type="text" placeholder="Book, page, URL, or document"></div><div class="fg"><label for="new-card-difficulty">Difficulty</label><select id="new-card-difficulty"><option value="1">Easy</option><option value="2" selected>Medium</option><option value="3">Hard</option></select></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn bp" type="submit">＋ Add card</button><button class="btn" type="button" onclick="state.view='overview';renderRevision()">Cancel</button></div></form></div>`;}
 function renderSettings(){
