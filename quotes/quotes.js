@@ -3009,7 +3009,7 @@ function rAch(){
 // ════════════════════════════════════════════════
 function rSett(){
   const cur=(S.settings&&S.settings.theme)||'default';
-  const courseSettings=`<div class="card" style="margin-bottom:12px"><div class="sec">Your course</div><div class="ps">Choose which ${label.toLowerCase()} count towards your tracked progress.</div><button class="btn" onclick="editCourseSelection()">Choose ${label.toLowerCase()}</button></div>`;
+  const courseSettings=`<div class="card" style="margin-bottom:12px"><div class="sec">Your course</div><div class="ps">Choose which texts count towards your tracked progress.</div><button class="btn" onclick="editCourseSelection()">Choose texts</button></div>`;
   const all=getAllThemes();
   const builtinKeys=Object.keys(THEMES);
   const customKeys=Object.keys(getCustomThemes());
