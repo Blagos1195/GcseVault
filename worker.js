@@ -378,12 +378,6 @@ export default {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
       const userKey = String(body.userKey || "").trim();
-      if (!(await allowRateLimitedAction("account-reset", userKey, 5, 900))) {
-        return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
-      }
-      if (!(await allowRateLimitedAction("account-setup", userKey, 5, 900))) {
-        return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
-      }
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });
       const account = await env.DB.prepare(
         "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
@@ -538,6 +532,9 @@ export default {
       if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
       const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-setup", userKey, 5, 900))) {
+        return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
@@ -607,6 +604,9 @@ export default {
       if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
       const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-reset", userKey, 5, 900))) {
+        return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
