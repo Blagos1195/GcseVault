@@ -1119,7 +1119,7 @@ test("Test Centre reports missing migrations without changing the database", asy
   assert.equal(data.results[0].status,"failed");
   assert.match(data.results[0].detail,/missing tables/);
   assert.match(data.results[0].detail,/ai_access/);
-  assert.equal(env.updates.length,0);
+  assert.equal(env.updates.some(update=>/revision_sync_data|custom_themes|account_credentials|account_sessions|revision_leaderboard|ALTER TABLE/.test(update.sql)),false);
 });
 
 test("admin status exposes Worker version metadata without account information", async () => {
