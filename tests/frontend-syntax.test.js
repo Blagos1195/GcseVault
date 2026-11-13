@@ -815,3 +815,14 @@ test("Revision sets can be duplicated with their progress and reordered", () => 
   assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',-1\)"/);
   assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',1\)"/);
 });
+
+
+test("Revision daily study goals are stored and calculated per set", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /dailyGoal: Math\.max\(1, Math\.min\(200, Number\(set && set\.dailyGoal\) \|\| 20\)\)/);
+  assert.match(app, /function dailyReviewCount\(\)/);
+  assert.match(app, /function updateDailyGoal\(\)/);
+  assert.match(app, /getActiveRevisionSet\(\)\.reviewLog/);
+  assert.match(app, /<h2>Daily study goal<\/h2>/);
+  assert.match(app, /onclick="updateDailyGoal\(\)"/);
+});
