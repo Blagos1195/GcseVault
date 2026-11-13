@@ -101,9 +101,11 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           assert.equal(await page.locator("#tb-title").innerText(), "Library", path + " navigation did not change sections");
         }
         if (path === "/revision/") {
-          const menu = page.locator("#revision-page-switcher");
+          const menu = page.locator('select[aria-label="Tools navigation"]');
           await menu.selectOption("graph");
           await page.getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
+          await page.locator("#knowledge-map-search").waitFor({ timeout: 5000 });
+          assert.ok(await page.locator("#knowledge-map-content").count());
         }
         if (viewport.width === 390) {
           const width = await page.evaluate(() => document.documentElement.scrollWidth);
