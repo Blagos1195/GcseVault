@@ -802,3 +802,16 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(html, /app\.js\?v=20261113-multi-set-workspace/);
   assert.match(html, /revision\.css\?v=20261113-multi-set-workspace/);
 });
+
+
+test("Revision sets can be duplicated with their progress and reordered", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.match(app, /function duplicateRevisionSet\(setId\)/);
+  assert.match(app, /JSON\.parse\(JSON\.stringify\(source\)\)/);
+  assert.match(app, /copy\.published=false/);
+  assert.match(app, /function moveRevisionSet\(setId,direction\)/);
+  assert.match(app, /state\.accountSets\.splice\(next,0,set\)/);
+  assert.match(app, /onclick="duplicateRevisionSet\('\$\{set\.id\}'\)">Duplicate/);
+  assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',-1\)"/);
+  assert.match(app, /onclick="moveRevisionSet\('\$\{set\.id\}',1\)"/);
+});
