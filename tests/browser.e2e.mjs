@@ -96,9 +96,27 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/quotes/" || path === "/dates/") {
-          const menu = page.locator('select[aria-label="Library navigation"]');
-          await menu.selectOption("library");
+          const menu = page.locator("#nav .nav-menu").filter({ has: page.locator(".nav-menu-name", { hasText: "Library" }) });
+          const trigger = menu.locator("summary");
+          if (viewport.width >= 761) {
+            await trigger.hover();
+            await menu.locator(".nav-options").waitFor({ state: "visible" });
+            assert.equal(await menu.evaluate(element => element.open), true, path + " Library menu did not open on hover");
+          } else {
+            await trigger.click();
+          }
+          await menu.locator(".nav-option").filter({ hasText: /^Library$/ }).click();
           assert.equal(await page.locator("#tb-title").innerText(), "Library", path + " navigation did not change sections");
+          if (viewport.width >= 761) {
+            const positions = await page.evaluate(() => {
+              const selectors = [".sb-logo", "#tb-title", "#nav", ".site-switcher"];
+              return selectors.map(selector => {
+                const rect = document.querySelector("#topbar " + selector).getBoundingClientRect();
+                return { top: rect.top, bottom: rect.bottom };
+              });
+            });
+            assert.ok(Math.max(...positions.map(item => item.top)) - Math.min(...positions.map(item => item.top)) < 8, path + " header items are not on one row");
+          }
         }
         if (path === "/revision/") {
           const menu = page.locator('select[aria-label="Tools navigation"]');
