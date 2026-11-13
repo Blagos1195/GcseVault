@@ -42,10 +42,7 @@ self.addEventListener("activate", event => {
 });
 
 function navigationCacheUrl(url) {
-  let path = url.pathname;
-  if (path === scopeUrl.pathname) path += "index.html";
-  else if (path.endsWith("/")) path += "index.html";
-  const target = new URL(path, url.origin);
+  const target = new URL(url.pathname, url.origin);
   return cachedPaths.has(target.pathname) ? target.href : null;
 }
 
@@ -58,19 +55,32 @@ self.addEventListener("fetch", event => {
   if (request.mode === "navigate") {
     const cacheUrl = navigationCacheUrl(url);
     if (!cacheUrl) return;
-    event.respondWith(fetch(request).then(response => {
-      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(cacheUrl, response.clone()));
-      return response;
-    }).catch(async () => (await caches.match(cacheUrl)) || (await caches.match(new URL("index.html", scopeUrl).href))));
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(cacheUrl, response.clone());
+        }
+        return response;
+      } catch {
+        return (await caches.match(cacheUrl)) || (await caches.match(scopeUrl.href));
+      }
+    })());
     return;
   }
 
   if (!cachedPaths.has(url.pathname)) return;
-  event.respondWith(caches.match(request, { ignoreSearch: true }).then(cached => {
-    const update = fetch(request).then(response => {
-      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
       return response;
-    });
-    return cached || update;
-  }));
+    } catch {
+      return (await caches.match(request, { ignoreSearch: true })) || Response.error();
+    }
+  })());
 });
