@@ -64,7 +64,7 @@ const state = {
   xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
-  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
+  publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, setMessageType: 'success', linkSource: null, editingCard: null,
   studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
@@ -267,7 +267,7 @@ function saveRevisionSetName(setId){
 }
 function publishRevisionSet(setId){
   const target = state.accountSets.find(set => set.id === setId);
-  if (!target) { state.setMessage = 'Choose a revision set to publish.'; renderRevision(); return; }
+  if (!target) { state.setMessage = 'Choose a revision set to publish.'; state.setMessageType = 'error'; renderRevision(); return; }
   if (!target) return;
   if (!revisionUserKey() || !revisionUsername()) {
     state.accountMessage = 'Link your shared account before publishing a set.';
@@ -276,16 +276,19 @@ function publishRevisionSet(setId){
     renderRevision();
     return;
   }
+  state.setMessage = `Submitting “${target.name}” for review…`;
+  state.setMessageType = 'success';
+  renderRevision();
   const payload = { userKey: revisionUserKey(), note: { title: target.name, subject: 'General', level: '', cards: Array.isArray(target.cards) ? target.cards : [] } };
   fetch(`${ThemeManager.WORKER_URL}/revision/public`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
     .then(response => response.ok ? response.json() : response.json().then(data => Promise.reject(new Error(data.error || 'Could not publish set.'))))
-    .then(() => { target.published = true; state.setMessage = `“${target.name}” submitted for review.`; saveRevision(); renderRevision(); })
-    .catch(error => { state.setMessage = error.message || 'Could not publish this set.'; renderRevision(); });
+    .then(() => { target.published = true; state.setMessage = `“${target.name}” submitted for admin review.`; state.setMessageType = 'success'; saveRevision(); renderRevision(); })
+    .catch(error => { state.setMessage = error.message || 'Could not publish this set.'; state.setMessageType = 'error'; renderRevision(); });
 }
 function publishSelectedRevisionSet(){publishRevisionSet(state.publishSetId||state.activeSetId);}
 function renderPublishSetControl(){
   const selected=state.accountSets.some(set=>set.id===state.publishSetId)?state.publishSetId:state.activeSetId;
-  return `<div class="fg" style="margin-top:12px"><label for="revision-publish-set">Pick a set to publish</label><select id="revision-publish-set" onchange="state.publishSetId=this.value">${state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}" ${set.id===selected?'selected':''}>${escapeRevision(set.name)} · ${(set.cards||[]).length} cards</option>`).join('')}</select><div style="margin-top:8px"><button class="btn bp" type="button" onclick="publishSelectedRevisionSet()">Publish selected set</button></div>${state.setMessage?`<div class="qfb qok" role="status" style="margin-top:9px">${escapeRevision(state.setMessage)}</div>`:''}</div>`;
+  return `<div class="fg" style="margin-top:12px"><label for="revision-publish-set">Pick a set to publish</label><select id="revision-publish-set" onchange="state.publishSetId=this.value">${state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}" ${set.id===selected?'selected':''}>${escapeRevision(set.name)} · ${(set.cards||[]).length} cards</option>`).join('')}</select><div style="margin-top:8px"><button class="btn bp" type="button" onclick="publishSelectedRevisionSet()">Publish selected set</button></div>${state.setMessage?`<div class="qfb ${state.setMessageType==='error'?'qwr':'qok'}" role="status" style="margin-top:9px">${escapeRevision(state.setMessage)}</div>`:''}</div>`;
 }
 function promptNewRevisionSet(){const name=(prompt('Name your new revision set:','New set')||'').trim();if(name)addRevisionSet(name);}
 function requestDeleteRevisionSet(setId){state.confirmDeleteSetId=setId;renderRevision();}
