@@ -178,7 +178,12 @@ function changeAccountPage(direction){window.adminAccountPage=Math.max(0,(window
 function renderErrorTrends(reports){
   const groups=new Map();
   const now=new Date();
-  const days=Array.from({length:7},(_,index)=>{const date=new Date(now);date.setHours(0,0,0,0);date.setDate(date.getDate()-(6-index));return{key:date.toISOString().slice(0,10),label:date.toLocaleDateString(undefined,{weekday:'short'}),count:0};});
+  const days=Array.from({length:7},(_,index)=>{
+    const date=new Date(now);
+    date.setHours(0,0,0,0);
+    date.setDate(date.getDate()-(6-index));
+    return {key:date.toISOString().slice(0,10),label:date.toLocaleDateString(undefined,{weekday:'short'}),count:0};
+  });
   reports.filter(item=>item.fingerprint||item.errorName).forEach(item=>{
     const key=String(item.fingerprint||[item.sourceApplication,item.errorName,item.errorLocation].join(':'));
     if(!groups.has(key))groups.set(key,{errorName:item.errorName||'Error',source:item.sourceApplication||'Unknown app',location:item.errorLocation||'Unknown location',count:0,lastSeen:'',description:item.description||'',days:days.map(day=>({...day}))});
@@ -193,7 +198,12 @@ function renderErrorTrends(reports){
     }
   });
   const sorted=[...groups.values()].sort((a,b)=>b.count-a.count||String(b.lastSeen).localeCompare(String(a.lastSeen)));
-  return `<section class="panel" style="margin-bottom:14px"><h2>Recurring error trends</h2><p class="sub">Reports grouped by fingerprint from the currently retained error reports. Counts cover the reports still available to the admin workspace.</p><div class="queue">${sorted.map(group=>{const max=Math.max(1,...group.days.map(day=>day.count));return `<article class="item"><div><div class="meta"><span class="tag">${esc(group.errorName)}</span><span>${esc(group.source)}</span><span>${group.count} report${group.count===1?'':'s'}</span><span>Last seen ${esc(group.lastSeen||'Unknown')}</span></div><h2>${esc(group.location)}</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:58px;max-width:320px">${group.days.map(day=>`<div style="display:flex;flex-direction:column;align-items:center;justify-content:end;gap:3px;height:100%"><div title="${day.count} reports on ${day.key}" style="width:100%;max-width:24px;height:${Math.max(3,day.count/max*34)}px;background:var(--teal);border-radius:3px 3px 0 0"></div><span class="sub">${day.label}</span></div>`).join('')}</div><p class="sub">${esc(group.description.slice(0,220))}</p></div></article>`).join('')||'<div class="empty">No error reports with fingerprints are currently retained.</div>'}</div></section>`;
+  const cards=sorted.map(group=>{
+    const max=Math.max(1,...group.days.map(day=>day.count));
+    const bars=group.days.map(day=>`<div style="display:flex;flex-direction:column;align-items:center;justify-content:end;gap:3px;height:100%"><div title="${day.count} reports on ${day.key}" style="width:100%;max-width:24px;height:${Math.max(3,day.count/max*34)}px;background:var(--teal);border-radius:3px 3px 0 0"></div><span class="sub">${day.label}</span></div>`).join('');
+    return `<article class="item"><div><div class="meta"><span class="tag">${esc(group.errorName)}</span><span>${esc(group.source)}</span><span>${group.count} report${group.count===1?'':'s'}</span><span>Last seen ${esc(group.lastSeen||'Unknown')}</span></div><h2>${esc(group.location)}</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:58px;max-width:320px">${bars}</div><p class="sub">${esc(group.description.slice(0,220))}</p></div></article>`;
+  }).join('');
+  return `<section class="panel" style="margin-bottom:14px"><h2>Recurring error trends</h2><p class="sub">Reports grouped by fingerprint from the currently retained error reports. Counts cover the reports still available to the admin workspace.</p><div class="queue">${cards||'<div class="empty">No error reports with fingerprints are currently retained.</div>'}</div></section>`;
 }
 async function changeAccountRole(select){
   const username=select.dataset.username;
