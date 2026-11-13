@@ -109,6 +109,10 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             await menu.locator(".nav-options").waitFor({ state: "visible" });
             assert.equal(await menu.evaluate(element => element.open), true, path + " Library menu did not open on hover");
           } else {
+            const mobileMenu = page.locator("#hbg");
+            await mobileMenu.click();
+            assert.equal(await mobileMenu.getAttribute("aria-expanded"), "true");
+            await menu.waitFor({ state: "visible" });
             await trigger.click();
           }
           await menu.locator(".nav-option").filter({ hasText: /^Library$/ }).click();
@@ -132,6 +136,10 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             await menu.locator(".revision-nav-options").waitFor({ state: "visible" });
             assert.equal(await menu.evaluate(element => element.open), true, "Revision Tools menu did not open on hover");
           } else {
+            const mobileMenu = page.locator("#revision-mobile-menu");
+            await mobileMenu.click();
+            assert.equal(await mobileMenu.getAttribute("aria-expanded"), "true");
+            await menu.waitFor({ state: "visible" });
             await trigger.click();
           }
           await menu.locator('[data-view="graph"]').click();
