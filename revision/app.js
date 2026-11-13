@@ -282,11 +282,10 @@ function publishRevisionSet(setId){
     .then(() => { target.published = true; state.setMessage = `“${target.name}” submitted for review.`; saveRevision(); renderRevision(); })
     .catch(error => { state.setMessage = error.message || 'Could not publish this set.'; renderRevision(); });
 }
-function selectRevisionSetToPublish(setId){if(state.accountSets.some(set=>set.id===setId)){state.publishSetId=setId;renderRevision();}}
 function publishSelectedRevisionSet(){publishRevisionSet(state.publishSetId||state.activeSetId);}
 function renderPublishSetControl(){
   const selected=state.accountSets.some(set=>set.id===state.publishSetId)?state.publishSetId:state.activeSetId;
-  return `<div class="fg" style="margin-top:12px"><label for="revision-publish-set">Pick a set to publish</label><select id="revision-publish-set" onchange="state.publishSetId=this.value">${state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}" ${set.id===selected?'selected':''}>${escapeRevision(set.name)} · ${(set.cards||[]).length} cards</option>`).join('')}</select><div style="margin-top:8px"><button class="btn bp" type="button" onclick="publishSelectedRevisionSet()">Publish selected set</button></div></div>`;
+  return `<div class="fg" style="margin-top:12px"><label for="revision-publish-set">Pick a set to publish</label><select id="revision-publish-set" onchange="state.publishSetId=this.value">${state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}" ${set.id===selected?'selected':''}>${escapeRevision(set.name)} · ${(set.cards||[]).length} cards</option>`).join('')}</select><div style="margin-top:8px"><button class="btn bp" type="button" onclick="publishSelectedRevisionSet()">Publish selected set</button></div>${state.setMessage?`<div class="qfb qok" role="status" style="margin-top:9px">${escapeRevision(state.setMessage)}</div>`:''}</div>`;
 }
 function promptNewRevisionSet(){const name=(prompt('Name your new revision set:','New set')||'').trim();if(name)addRevisionSet(name);}
 function requestDeleteRevisionSet(setId){state.confirmDeleteSetId=setId;renderRevision();}
