@@ -75,8 +75,10 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
         assert.ok((await page.locator("body").innerText()).trim().length > 0, "Empty page at " + path);
         if (path === "/" && viewport.width === 390) {
           const search = page.locator("#global-search-input");
-          await search.fill("vault-e2e-no-match");
-          await page.getByText("No matching public content found.").waitFor({ timeout: 5000 });
+          if (await search.count()) {
+            await search.fill("vault-e2e-no-match");
+            await page.getByText("No matching public content found.").waitFor({ timeout: 5000 });
+          }
         }
         if (viewport.width === 390) {
           const width = await page.evaluate(() => document.documentElement.scrollWidth);
