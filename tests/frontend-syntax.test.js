@@ -427,10 +427,11 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   assert.match(html, /practice\.js/);
   assert.match(html, /id="revision-nav" aria-label="Revision sections"/);
   for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('nav-' + group.toLowerCase()));
-  assert.match(html, /aria-label="Study navigation"/);
-  assert.match(html, /aria-label="Library navigation"/);
-  assert.match(html, /aria-label="Progress navigation"/);
-  assert.match(html, /aria-label="Tools navigation"/);
+  assert.match(html, /class="revision-nav-menu"/);
+  assert.match(html, /data-view="graph"/);
+  assert.match(app, /pointerenter/);
+  assert.match(app, /pointerleave/);
+  assert.match(css, /revision-nav-menu:hover/);
   assert.doesNotMatch(html, /maximum-scale/);
   assert.ok(html.trimEnd().endsWith("</html>"));
   assert.equal((html.match(/name="viewport"/g)||[]).length,1);
