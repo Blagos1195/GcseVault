@@ -269,7 +269,10 @@ export default {
         for (const key of page.keys) {
           if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:") || key.name.startsWith("test-centre:")) continue;
           const value = await binding.get(key.name, "json");
-          if (value) items.push(sanitizeSubmission(value));
+          if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+          const item = sanitizeSubmission(value);
+          if (!item.id) item.id = key.name;
+          items.push(item);
         }
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
