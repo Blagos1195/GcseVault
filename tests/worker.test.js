@@ -1140,3 +1140,54 @@ test("admin status handles deployments without version metadata", async () => {
   assert.equal(response.status,200);
   assert.equal(data.deployment,null);
 });
+
+
+test("account login rejects oversized request bodies", async () => {
+  const env = makeEnv();
+  const response = await worker.fetch(new Request("https://example.test/account/login", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({username:"student",passwordHash:"a".repeat(5000)})
+  }),env);
+  assert.equal(response.status,413);
+});
+
+test("account setup rate limiting blocks repeated attempts before database access", async () => {
+  const env = makeEnv();
+  env.QUOTEVAULT.get = async () => "5";
+  env.DB.prepare = () => { throw new Error("Database should not be accessed after the rate limit is reached"); };
+  const response = await worker.fetch(new Request("https://example.test/account/setup", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","CF-Connecting-IP":"203.0.113.10"},
+    body:JSON.stringify({userKey:"account-key"})
+  }),env);
+  assert.equal(response.status,429);
+});
+
+test("content submissions enforce size limits and account rate limits", async () => {
+  const oversizedEnv = makeEnv();
+  const oversized = await worker.fetch(new Request("https://example.test/submit", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text:"x".repeat(20000)})
+  }),oversizedEnv);
+  assert.equal(oversized.status,413);
+
+  const limitedEnv = makeEnv();
+  limitedEnv.QUOTEVAULT.get = async key => key.startsWith("quote-submit:") ? "10" : null;
+  limitedEnv.DB.prepare = sql => ({
+    bind: () => ({
+      first: async () => {
+        if (sql.includes("FROM account_credentials")) return {user_key:"student-key"};
+        if (sql.includes("FROM account_sessions s JOIN users")) return {user_key:"student-key",username:"student",role:"user"};
+        return null;
+      }
+    })
+  });
+  const limited = await worker.fetch(new Request("https://example.test/submit", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","X-Account-Session":"a".repeat(64),"CF-Connecting-IP":"203.0.113.11"},
+    body:JSON.stringify({userKey:"student-key",text:"A test quote"})
+  }),limitedEnv);
+  assert.equal(limited.status,429);
+});
