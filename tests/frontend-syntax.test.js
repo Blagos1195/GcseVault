@@ -826,3 +826,14 @@ test("Revision daily study goals are stored and calculated per set", () => {
   assert.match(app, /<h2>Daily study goal<\/h2>/);
   assert.match(app, /onclick="updateDailyGoal\(\)"/);
 });
+
+
+test("Revision library supports safe bulk subject and topic edits and deletion", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("function applyBulkEdit()"));
+  assert.ok(app.includes("function deleteBulkSelected()"));
+  assert.ok(app.includes("data-bulk-card"));
+  assert.ok(app.includes("Select all filtered"));
+  assert.ok(app.includes("This cannot be undone."));
+  assert.ok(app.includes("state.bulkSelected = []"));
+});
