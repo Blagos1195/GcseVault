@@ -1241,7 +1241,17 @@ function renderRevision(){
   if(state.view!=='graph')graphNeedsFit=true;
   const setSwitcher=document.getElementById('revision-set-switcher');
   if(setSwitcher){setSwitcher.innerHTML=state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}">${escapeRevision(set.name)} · ${(set.cards||[]).length}</option>`).join('');setSwitcher.value=state.activeSetId;setSwitcher.title=`Current set: ${getActiveRevisionSet().name}`;}
-  document.querySelectorAll('#revision-nav select').forEach(select=>{select.value=[...select.options].some(option=>option.value===state.view)?state.view:'';});
+
+  const navViews={study:{overview:'Overview',cards:'Flashcards'},library:{library:'Library',resources:'Course materials',public:'Public notes'},progress:{analytics:'Progress',leaderboard:'Leaderboard'},tools:{create:'New card',graph:'Knowledge map',settings:'Settings',ai:'AI tools'}};
+  Object.entries(navViews).forEach(([group,views])=>{
+    const current=views[state.view]||Object.values(views)[0];
+    const label=document.getElementById('revision-nav-'+group+'-current');
+    if(label)label.textContent=current;
+    document.querySelectorAll('#revision-nav .revision-nav-menu').forEach(menu=>{
+      const selected=menu.querySelector('[data-view="'+state.view+'"]');
+      menu.querySelectorAll('[data-view]').forEach(button=>button.classList.toggle('active',button===selected));
+    });
+  });
   document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
   if(state.view==='graph'&&graphNeedsFit){
     graphNeedsFit=false;
@@ -1390,7 +1400,18 @@ function closeRevisionSidebar(){
   if(revisionMobileMenu)revisionMobileMenu.setAttribute('aria-expanded','false');
 }
 
-document.querySelectorAll('#revision-nav select').forEach(select=>select.addEventListener('change',closeRevisionSidebar));
+document.querySelectorAll('#revision-nav .revision-nav-menu').forEach(menu=>{
+  menu.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch')menu.open=true;});
+  menu.addEventListener('pointerleave',event=>{if(event.pointerType!=='touch'&&!menu.matches(':focus-within'))menu.open=false;});
+  menu.addEventListener('focusin',()=>menu.open=true);
+  menu.addEventListener('focusout',event=>{if(!menu.contains(event.relatedTarget))menu.open=false;});
+});
+document.querySelectorAll('#revision-nav [data-view]').forEach(item=>item.addEventListener('click',()=>{
+  state.view=item.dataset.view||'overview';
+  renderRevision();
+  document.getElementById('page').scrollTop=0;
+  document.querySelectorAll('#revision-nav details').forEach(menu=>menu.open=false);
+}));
 document.querySelectorAll('.ni').forEach(item => {
   item.addEventListener('click', () => {
     const nextView = item.dataset.view || 'overview';
