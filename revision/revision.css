@@ -315,3 +315,5 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  .graph-selection{flex-direction:column}
  .graph-selection-actions{flex-wrap:wrap}
 }
+
+@media(max-width:360px){#topbar{height:auto;min-height:48px;flex-wrap:wrap;padding:8px 12px}.global-search{order:3;flex:1 1 100%;max-width:none;min-width:0}#revision-set-switcher{flex:1 1 100px;max-width:130px}.sync-status{flex:1;max-width:none}#new-card{white-space:nowrap}}
