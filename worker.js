@@ -532,7 +532,7 @@ export default {
       if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
       const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
-      if (!(await allowRateLimitedAction("account-setup", userKey, 5, 900))) {
+      if (!(await allowRateLimitedAction("account-setup", "all", 5, 900))) {
         return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
       }
       const passwordHashValue = String(body.passwordHash || "");
@@ -604,7 +604,7 @@ export default {
       if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
       const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
-      if (!(await allowRateLimitedAction("account-reset", userKey, 5, 900))) {
+      if (!(await allowRateLimitedAction("account-reset", "all", 5, 900))) {
         return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
       }
       const passwordHashValue = String(body.passwordHash || "");
