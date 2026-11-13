@@ -277,6 +277,23 @@ export default {
           if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
           return "D1 query passed; all seven required KV bindings are available.";
         },
+        migrations: async () => {
+          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const presentTables = new Set((tableRows.results || []).map(row => row.name));
+          const missingTables = requiredTables.filter(name => !presentTables.has(name));
+          const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
+          const presentColumns = new Set((userColumns.results || []).map(column => column.name));
+          const requiredColumns = ["role", "ai_access"];
+          const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
+          if (missingTables.length || missingColumns.length) {
+            const issues = [];
+            if (missingTables.length) issues.push("missing tables: " + missingTables.join(", "));
+            if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
+            throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
+          }
+          return "All six migration-managed tables and both required users columns are present.";
+        },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
           const error = new Error("GCSE Vault synthetic diagnostic test");
@@ -360,14 +377,36 @@ export default {
           results.push({ name, status: "failed", detail: String(error?.message || error).slice(0, 1200), duration_ms: Date.now() - started });
         }
       }
-      return new Response(JSON.stringify({ results, completed_at: new Date().toISOString() }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const completedAt = new Date().toISOString();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      for (const result of results) {
+        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
+          crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
+        ).run();
+      }
+      return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/test-history" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
+      return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
       ).first();
-      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+      const metadata = env.CF_VERSION_METADATA || {};
+      const deployment = metadata.id ? {
+        versionId: String(metadata.id),
+        tag: metadata.tag ? String(metadata.tag) : null,
+        timestamp: metadata.timestamp ? new Date(metadata.timestamp).toISOString() : null
+      } : null;
+      return new Response(JSON.stringify({ initialized: Boolean(owner), deployment }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
