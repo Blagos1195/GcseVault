@@ -1,5 +1,5 @@
 (() => {
-  if (!("serviceWorker" in navigator) || location.protocol !== "https:" && location.hostname !== "localhost") return;
+  if (!("serviceWorker" in navigator) || location.protocol !== "https:" && !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) return;
   const script = document.currentScript;
   if (!script) return;
   const workerUrl = new URL("sw.js", script.src);
