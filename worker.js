@@ -360,7 +360,30 @@ export default {
           results.push({ name, status: "failed", detail: String(error?.message || error).slice(0, 1200), duration_ms: Date.now() - started });
         }
       }
-      return new Response(JSON.stringify({ results, completed_at: new Date().toISOString() }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const completedAt = new Date().toISOString();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      for (const result of results) {
+        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
+          crypto.randomUUID(),
+          actor.username,
+          result.name,
+          result.status,
+          result.detail,
+          result.duration_ms,
+          completedAt
+        ).run();
+      }
+      return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/test-history" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      const { results } = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").all();
+      return new Response(JSON.stringify({ history: results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
