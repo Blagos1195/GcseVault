@@ -129,6 +129,7 @@ function restoreRevisionSnapshot(userKey){
   try{snapshot=JSON.parse(localStorage.getItem(revisionSnapshotKey(userKey))||'null');}catch{}
   if(snapshot){
     state.accountSets=Array.isArray(snapshot.accountSets)?snapshot.accountSets.map(set=>normalizeRevisionSet(set,DEFAULT_REVISION_SET_ID)):initialRevisionSets;
+    state.bulkSelected=[];
     state.activeSetId=snapshot.activeSetId||state.accountSets[0]?.id||DEFAULT_REVISION_SET_ID;
     state.cards=Array.isArray(snapshot.cards)?snapshot.cards:[];
     state.progress=snapshot.progress&&typeof snapshot.progress==='object'?snapshot.progress:{};
@@ -194,6 +195,7 @@ function switchRevisionSet(setId){
   const selected = state.accountSets.find(set => set.id === setId);
   if (!selected) return;
   state.activeSetId = selected.id;
+  state.bulkSelected = [];
   state.cards = Array.isArray(selected.cards) ? selected.cards : [];
   state.progress = selected.progress && typeof selected.progress === 'object' ? selected.progress : {};
   state.xp = Number(selected.xp) || 0;
@@ -207,6 +209,7 @@ function switchRevisionSet(setId){
 function addRevisionSet(name = 'New set'){
   const newSet = normalizeRevisionSet({id:`set-${Date.now()}`,name,name,cards:[],progress:{},xp:0,streak:0,lastReview:''}, `set-${Date.now()}`);
   state.accountSets.push(newSet);
+  state.bulkSelected = [];
   state.activeSetId = newSet.id;
   state.cards = [];
   state.progress = {};
@@ -233,6 +236,7 @@ function deleteRevisionSet(setId){
   const index = state.accountSets.findIndex(set => set.id === setId);
   if (index < 0) return;
   const [removed] = state.accountSets.splice(index, 1);
+  state.bulkSelected = [];
   const fallback = state.accountSets[0];
   state.activeSetId = fallback.id;
   state.cards = Array.isArray(fallback.cards) ? fallback.cards : [];
