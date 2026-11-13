@@ -256,7 +256,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .sb-logo-sub{font-size:.62rem}
 .nav-label{display:none}
 #revision-page-switcher{width:auto;min-width:190px;max-width:250px;height:38px;padding:7px 34px 7px 12px;border:1px solid var(--border2);border-radius:9px;background:var(--bg3);font-size:.86rem;font-weight:600;color:var(--text)}
-#sidebar>.sb-link,#sidebar .sb-sec,#sidebar .ni,#sidebar .sb-foot{display:none!important}
+#sidebar>.sb-link{display:none!important}#sidebar>.sb-link:first-of-type{display:flex!important}#sidebar .sb-sec,#sidebar .ni,#sidebar .sb-foot{display:none!important}
 #main{height:calc(100vh - 66px)}
 #topbar{height:54px;min-height:54px;padding:0 24px;gap:12px}
 #topbar #hbg{display:none}
