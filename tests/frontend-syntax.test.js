@@ -425,14 +425,18 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   assert.match(html, /revision\.css/);
   assert.match(html, /app\.js/);
   assert.match(html, /practice\.js/);
-  assert.match(html, /<select id="revision-page-switcher" aria-label="Navigate to a section"/);
-  for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('<optgroup label="' + group + '">'));
+  assert.match(html, /id="revision-nav" aria-label="Revision sections"/);
+  for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('nav-' + group.toLowerCase()));
+  assert.match(html, /aria-label="Study navigation"/);
+  assert.match(html, /aria-label="Library navigation"/);
+  assert.match(html, /aria-label="Progress navigation"/);
+  assert.match(html, /aria-label="Tools navigation"/);
   assert.doesNotMatch(html, /maximum-scale/);
   assert.ok(html.trimEnd().endsWith("</html>"));
   assert.equal((html.match(/name="viewport"/g)||[]).length,1);
   assert.match(css, /knowledge-list[\s\S]*?max-height:[^;]+;overflow-y:auto/);
   assert.match(css, /overview-hero/);
-  assert.match(html, /aria-label="Navigate to a section"/);
+  assert.match(html, /aria-label="Revision sections"/);
   assert.match(app, /scrollTop = 0/);
 });
 
@@ -462,17 +466,18 @@ test("Revision knowledge map includes every card and filters results", () => {
   vm.createContext(context);
   vm.runInContext(app.slice(start, end), context);
   const allCards = context.renderGraph();
-  assert.equal((allCards.match(/class="map-card(?: active)?"/g) || []).length, 30);
+  assert.equal((allCards.match(/class="graph-node(?: active)?"/g) || []).length, 30);
   assert.ok(allCards.includes("Card 29"));
   context.state.graphQuery = "Card 29";
   const filtered = context.renderGraph();
-  assert.equal((filtered.match(/class="map-card(?: active)?"/g) || []).length, 1);
+  assert.equal((filtered.match(/class="graph-node(?: active)?"/g) || []).length, 1);
   assert.ok(filtered.includes("Card 29"));
   assert.doesNotMatch(app, /state\.cards\.slice\(0,24\)/);
   assert.match(app, /function filterKnowledgeMap\(value\)/);
   assert.match(app, /function renderGraphSelection\(selected\)/);
-  assert.match(css, /\.map-card-grid\{display:grid;grid-template-columns:repeat\(auto-fill/);
-  assert.doesNotMatch(css, /\.graph-wrap\{width:100%;overflow:auto/);
+  assert.match(css, /\.graph-wrap\{width:100%;max-height:[^;]+;overflow:auto/);
+  assert.match(css, /\.graph svg path\{fill:none;stroke:/);
+  assert.match(css, /\.graph-node\{position:absolute/);
 });
 
 test("Revision product tools provide search, daily planning, resource tracking and sync status", () => {
@@ -567,9 +572,10 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.ok(html.includes(script.split("/").pop()));
     assert.ok(html.includes(stylesheet.split("/").pop()));
     assert.doesNotMatch(html, /maximum-scale/);
-    assert.match(app, /<select id="site-page-select" aria-label="Navigate to a section"/);
-    assert.match(app, /<optgroup label=/);
-    assert.match(app, /aria-label="Navigate to a section"/);
+    assert.match(html, /id="nav"/);
+    assert.match(app, /function buildNav\(\)/);
+    assert.match(app, /function go\(page\)/);
+    assert.match(app, /const PAGES = \[/);
     assert.match(app, /scrollTop=0/);
     assert.match(app, /class="library-results"/);
     assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
@@ -867,8 +873,8 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.match(html, /app\.js\?v=20261114-knowledge-map-v1/);
-  assert.match(html, /revision\.css\?v=20261114-knowledge-map-v1/);
+  assert.match(html, /app\.js\?v=20261114-remember-page-v1/);
+  assert.match(html, /revision\.css\?v=20261114-connected-map-v1/);
 });
 
 
