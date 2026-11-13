@@ -1424,7 +1424,9 @@ function rLib(){
             : ''}
         ${q._submittedByMe&&q._status==='pending'
           ?`<button class="btn bsm" onclick="deletePendingFact('${q.id}')" style="color:var(--coral);border-color:var(--coral);padding:3px 6px" title="Withdraw">✕</button>`
-          :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'Unhide':'Hide'}</button>`}
+          :q._submittedByMe&&q._status==='approved-private'
+            ?`<button class="btn bsm" onclick="deletePrivateFact('${q.id}')" style="color:var(--coral);border-color:var(--coral);padding:3px 6px" title="Delete personal card">✕ Delete</button>`
+            :`<button class="btn bsm" onclick="toggleHidden('${q.id}')" style="color:${S.hidden.has(q.id)?'var(--amber)':'var(--text3)'};padding:3px 6px">${S.hidden.has(q.id)?'Unhide':'Hide'}</button>`}
       </div>
     </div>
     <div class="dc-event">${q.event}</div>
