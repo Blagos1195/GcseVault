@@ -31,3 +31,33 @@ Reviewed the Worker authentication and account routes, moderation endpoints, acc
 ## Not changed
 
 No user data, account records, moderation history, or feedback records were deleted or migrated by this review. No backup system was added.
+
+
+## Worker endpoint coverage
+
+The route inventory was checked against the current Worker source. The groups below describe the access checks found in the handlers and shared guards.
+
+| Area | Endpoints reviewed | Access model |
+|---|---|---|
+| Account credentials | `/account/setup`, `/account/challenge`, `/account/login`, `/account/reset`, `/account/session`, `/account/logout` | Setup/reset rely on possession of the legacy account key. Login is throttled by IP plus username. Session reads and logout require the account-session header. |
+| Admin authentication | `/auth`, `/auth/session`, `/auth/logout`, `/admin/status`, `/admin/bootstrap` | Admin sessions are bound to a live account session and current role. Bootstrap uses the one-time setup secret. Status exposes only whether an owner/admin has been configured. |
+| Owner administration | `/admin/users`, `/admin/leaderboard-visibility`, `/admin/ai-access`, `/admin/migrate-storage`, `/admin/test-run` | Owner role is checked server-side for privileged operations. |
+| Admin workspace | `/admin/published`, `/admin/push/subscribe`, `/admin/notifications`, `/admin/notifications/read`, `/admin/notifications/delete`, `/admin/moderation-log` | Requires a valid admin session. Notification reads/deletes are scoped to the authenticated admin. |
+| QuoteVault and DateVault | `/quotes`, `/pending`, `/submit`, `/approve`, `/reject`, `/withdraw`, `/update-pending`, `/update-public`, `/delete`, and the corresponding `/dv/*` routes | Published content is public. Submission requires an account session. Moderation and content-management routes require admin access. Withdrawal is account-scoped. |
+| Submission decisions | `/submissions/notifications`, `/submissions/private/remove`, `/submissions/notifications/resolve` | Requires the signed-in account session; records are queried and changed using that session's user key. |
+| Leaderboards and account data | `/lb/list`, `/lb/get`, `/lb/register`, `/lb/username-available`, `/lb/update-theme`, `/lb/streak`, `/themes/save`, `/themes/list`, `/themes/delete` | Public responses are limited to leaderboard or username information. Account-data reads and writes use account checks; password-protected accounts require a live session. |
+| Revision | `/revision/sync`, `/revision/leaderboard`, `/revision/public`, `/revision/public/pending`, `/revision/public/admin-list`, `/revision/public/approve`, `/revision/public/reject`, `/revision/public/update`, `/revision/public/admin-delete`, `/revision/public/delete` | Private sync and publication require account authentication. Moderation routes require admin access. Public reads expose published material only. |
+| Revision review schedules | `/review-schedules` | Requires a valid password-account session and scopes data to that session's user key. |
+| Feedback and diagnostics | `/feedback/submit`, `/feedback/list`, `/feedback/update`, `/feedback/delete` | Submission is public with a 12 KB body limit and best-effort per-IP throttling. Listing and management require admin access. |
+| AI | `/ai/auth`, `/ai/session`, `/ai/logout`, `/generate` | AI sessions are linked to live account sessions and current AI permission. |
+
+## Additional findings from the endpoint review
+
+- Account sessions have a 30-day expiry. Logging out revokes the current session, and password reset revokes all sessions for that account. There is not yet a dedicated account-wide **sign out all devices** control or session-management screen.
+- The moderation audit records approval/rejection actions. Owner changes to account roles and AI access are not currently recorded in that same audit log.
+- Login and feedback have rate limits. Other public write paths, including account setup/reset and content submissions, do not currently share a common rate-limit layer.
+- Feedback has an explicit request-body limit. Request-size limits are not yet applied consistently to every JSON endpoint, particularly large account and Revision sync payloads.
+- Error reports retain fingerprints, timestamps, app versions and diagnostic context. The admin workspace does not yet provide a grouped recurring-error trend view.
+- The production Test Centre still performs isolated storage/permission checks. The new CI lifecycle test exercises QuoteVault submission through approval and publication with synthetic sessions and in-memory storage, but it is not a browser test and does not replace a production Test Centre flow using a dedicated disposable account.
+
+This endpoint inventory is a source review, not proof against every runtime or infrastructure failure. The remaining compatibility and operational limitations above should be treated as open work rather than assumed solved.
