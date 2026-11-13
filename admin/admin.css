@@ -55,3 +55,12 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .notification-read{opacity:.72}
 .notification-read .tag{color:var(--muted)}
 @media(max-width:760px){.admin-tabs{margin-right:-14px;padding-right:14px}.admin-tab{padding:9px 11px}}
+
+.feedback-diagnostics{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--surface)}
+.feedback-diagnostics summary{cursor:pointer;font-weight:600}
+.feedback-diagnostics h3{font-size:.85rem;margin:16px 0 7px}
+.diagnostic-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:12px}
+.diagnostic-fields>div{min-width:0;padding:9px;background:var(--surface2);border-radius:7px}
+.diagnostic-fields span{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}
+.diagnostic-fields strong{display:block;font-size:.82rem;font-weight:500;overflow-wrap:anywhere}
+.feedback-diagnostics pre{max-height:360px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
