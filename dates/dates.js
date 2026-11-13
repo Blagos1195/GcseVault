@@ -2721,6 +2721,7 @@ function rAdd(){
     <div class="fg"><label>Note (optional)</label><input type="text" id="a-no" placeholder="Common errors, exam tips…"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
       <button class="btn bg" onclick="saveFact()">Submit for Review</button>
+      <button class="btn" onclick="saveFact(true)">Save to My Library</button>
       <button class="btn" onclick="checkDupFact()">Check duplicate</button>
     </div>
     <div id="add-fb" style="margin-top:10px"></div>
