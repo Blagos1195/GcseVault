@@ -3079,7 +3079,7 @@ function rStats(){
   <div class="ps">Your detailed revision overview</div>
   <div class="g4" style="margin-bottom:11px">
     <div class="scard"><div class="snum" style="color:var(--gold)">${qs.length}</div><div class="slbl">Total Dates</div></div>
-    <div class="scard"><div class="snum" style="color:var(--teal)">${S.mastered.size}</div><div class="slbl">Mastered</div></div>
+    <div class="scard"><div class="snum" style="color:var(--teal)">${[...S.mastered].filter(id=>qs.some(q=>q.id===id)).length}</div><div class="slbl">Mastered</div></div>
     <div class="scard"><div class="snum" style="color:var(--purple3)">${S.xp}</div><div class="slbl">Total XP</div></div>
     <div class="scard"><div class="snum" style="color:var(--amber)">${S.streak}</div><div class="slbl">Streak </div></div>
   </div>
@@ -3131,10 +3131,10 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'01',n:'First Date',d:'Mastered your first fact',e:S.mastered.size>=1},
-    {i:'02',n:'Chronologist',d:'Mastered 10 dates',e:S.mastered.size>=10},
-    {i:'03',n:'Historian',d:'Mastered 30 dates',e:S.mastered.size>=30},
-    {i:'04',n:'Scholar',d:'Mastered 60 dates',e:S.mastered.size>=60},
+    {i:'01',n:'First Date',d:'Mastered your first fact',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=1},
+    {i:'02',n:'Chronologist',d:'Mastered 10 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=10},
+    {i:'03',n:'Historian',d:'Mastered 30 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=30},
+    {i:'04',n:'Scholar',d:'Mastered 60 dates',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=60},
     {i:'05',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
     {i:'06',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
     {i:'07',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
