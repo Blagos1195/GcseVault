@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import vm from "node:vm";
 
 const files = [
@@ -1015,6 +1016,7 @@ test("all pages load an environment-specific Worker URL before shared account co
 
 test("staging deployment provisions isolated resources and never reuses production IDs", () => {
   const script = fs.readFileSync(new URL("../scripts/deploy-staging.mjs", import.meta.url), "utf8");
+  assert.doesNotThrow(() => execFileSync(process.execPath, ["--check", new URL("../scripts/deploy-staging.mjs", import.meta.url).pathname]));
   const workflow = fs.readFileSync(new URL("../.github/workflows/staging.yml", import.meta.url), "utf8");
   const docs = fs.readFileSync(new URL("../docs/staging.md", import.meta.url), "utf8");
   for (const value of ["gcsevault-staging", "quotevault-api-staging", "STAGING_ADMIN_KEY", "CLOUDFLARE_API_TOKEN", "d1", "kv", "pages", "worker-config.js"]) {
