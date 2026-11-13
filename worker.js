@@ -277,6 +277,23 @@ export default {
           if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
           return "D1 query passed; all seven required KV bindings are available.";
         },
+        migrations: async () => {
+          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const presentTables = new Set((tableRows.results || []).map(row => row.name));
+          const missingTables = requiredTables.filter(name => !presentTables.has(name));
+          const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
+          const presentColumns = new Set((userColumns.results || []).map(column => column.name));
+          const requiredColumns = ["role", "ai_access"];
+          const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
+          if (missingTables.length || missingColumns.length) {
+            const issues = [];
+            if (missingTables.length) issues.push("missing tables: " + missingTables.join(", "));
+            if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
+            throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
+          }
+          return "All six migration-managed tables and both required users columns are present.";
+        },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
           const error = new Error("GCSE Vault synthetic diagnostic test");
