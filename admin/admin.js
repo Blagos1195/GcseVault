@@ -256,6 +256,36 @@ function itemSummary(item){
   if(item._kind==="feedback")return [item.sourceApplication,item.errorName,item.browser,item.device,item.page].filter(Boolean).join(" · ") + (item.description ? " · " + item.description.slice(0,500) : "");
   return item.description||item.message||"";
 }
+function errorReportText(item){
+  const details={...item};
+  delete details._kind;
+  delete details._source;
+  delete details._pending;
+  return Object.entries(details).filter(([,value])=>value!==undefined&&value!==null&&value!=="").map(([key,value])=>key+" : "+(typeof value==="string"?value:JSON.stringify(value,null,2))).join("\n");
+}
+async function copyAllErrorDetails(){
+  const reports=(AdminManager.items||[]).filter(item=>item._kind==="feedback");
+  if(!reports.length)return;
+  const output=reports.map((item,index)=>"ERROR REPORT "+(index+1)+"\n"+errorReportText(item)).join("\n\n"+"=".repeat(72)+"\n\n");
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(output);
+    else{
+      const field=document.createElement("textarea");
+      field.value=output;
+      field.style.position="fixed";
+      field.style.opacity="0";
+      document.body.appendChild(field);
+      field.select();
+      const copied=document.execCommand("copy");
+      field.remove();
+      if(!copied)throw new Error("Clipboard access was blocked by the browser.");
+    }
+    window.adminCopyStatus="Copied "+reports.length+" error report"+(reports.length===1?"":"s")+" to clipboard.";
+  }catch(error){
+    window.adminCopyStatus="Could not copy error details: "+error.message;
+  }
+  renderAdmin();
+}
 function feedbackDetails(item){
   if(item._kind!=="feedback")return "";
   const fields=[
@@ -359,7 +389,7 @@ function renderAdmin(){
   if(tab==="review"||tab==="published"||tab==="feedback"){
     const selected=tab==="review"?pendingFiltered:tab==="published"?publishedFiltered:feedbackFiltered;
     const title=tab==="review"?"Awaiting review":tab==="published"?"Published content":"Feedback";
-    content=`<div class="toolbar"><div><h2>${title}</h2><p class="sub">${selected.length} ${selected.length===1?'item':'items'}</p></div></div>${tab==="feedback"?renderErrorTrends(feedbackFiltered):""}<div class="filters"><input aria-label="Search submissions" placeholder="Search content or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?'selected':''}>All types</option><option value="quote" ${kind==="quote"?'selected':''}>QuoteVault</option><option value="date" ${kind==="date"?'selected':''}>DateVault</option><option value="revision-note" ${kind==="revision-note"?'selected':''}>Revision notes</option><option value="feedback" ${kind==="feedback"?'selected':''}>Feedback</option></select></div><section class="queue">${selected.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":item._kind==="feedback"?"Feedback":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">Nothing in this section matches your filters.</div>'}</section>`;
+    content=`<div class="toolbar"><div><h2>${title}</h2><p class="sub">${selected.length} ${selected.length===1?'item':'items'}</p></div>${tab==="feedback"?'<div class="actions"><button class="primary" onclick="copyAllErrorDetails()">Copy all error details</button></div>':""}</div>${tab==="feedback"&&window.adminCopyStatus?'<p class="sub" role="status">'+esc(window.adminCopyStatus)+'</p>':""}${tab==="feedback"?renderErrorTrends(feedbackFiltered):""}<div class="filters"><input aria-label="Search submissions" placeholder="Search content or submitter…" value="${esc(q)}" oninput="window.adminQuery=this.value"><button onclick="renderAdmin()">Search</button><select aria-label="Filter submission type" onchange="window.adminKind=this.value;renderAdmin()"><option value="all" ${kind==="all"?'selected':''}>All types</option><option value="quote" ${kind==="quote"?'selected':''}>QuoteVault</option><option value="date" ${kind==="date"?'selected':''}>DateVault</option><option value="revision-note" ${kind==="revision-note"?'selected':''}>Revision notes</option><option value="feedback" ${kind==="feedback"?'selected':''}>Feedback</option></select></div><section class="queue">${selected.map(item=>`<article class="item"><div><div class="meta"><span class="tag">${esc(item._source||item._kind)}</span><span>${esc(item.submittedBy||"Submitter not recorded")}</span><span>${esc(item.submittedAt||item.timestamp||"Date not recorded")}</span><span class="tag">${item._pending===false?"Published":item._kind==="feedback"?"Feedback":"Pending"}</span></div><h2>${esc(itemTitle(item))}</h2><p>${esc(itemSummary(item))}</p>${feedbackDetails(item)}</div><div class="item-actions"><a class="button primary" href="editor.html?kind=${encodeURIComponent(item._kind)}&id=${encodeURIComponent(item.id)}">Open editor</a>${renderQueueActions(item)}</div></article>`).join("")||'<div class="empty">Nothing in this section matches your filters.</div>'}</section>`;
   }else if(tab==="notifications"){
     content=renderAdminNotifications();
   }else if(tab==="users"){
