@@ -96,6 +96,12 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/quotes/" || path === "/dates/") {
+          const courseOverlay = page.locator("#course-selection-overlay");
+          if (await courseOverlay.count()) {
+            await courseOverlay.locator("[data-course-option]").first().check();
+            await courseOverlay.getByRole("button", { name: /Save my (texts|topics)/ }).click();
+            await courseOverlay.waitFor({ state: "detached" });
+          }
           const menu = page.locator("#nav .nav-menu").filter({ has: page.locator(".nav-menu-name", { hasText: "Library" }) });
           const trigger = menu.locator("summary");
           if (viewport.width >= 761) {
