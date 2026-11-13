@@ -1014,10 +1014,15 @@ export default {
 
     // ── QUOTEVAULT SUBMIT ─────────────────────────────────────────────────────
     if (url.pathname === "/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
+      }
+      if (!(await allowRateLimitedAction("quote-submit", userKey, 10, 3600))) {
+        return new Response("Too many quote submissions. Try again later.", { status: 429, headers: cors });
       }
       const submitter = await getAccountSession(request);
       delete data.userKey;
@@ -1138,10 +1143,15 @@ export default {
     // ── DATEVAULT ROUTES ──────────────────────────────────────────────────────
 
         if (url.pathname === "/dv/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
+      }
+      if (!(await allowRateLimitedAction("date-submit", userKey, 10, 3600))) {
+        return new Response("Too many date submissions. Try again later.", { status: 429, headers: cors });
       }
       const submitter = await getAccountSession(request);
       delete data.userKey;
@@ -2095,11 +2105,16 @@ export default {
     }
 
     if (url.pathname === "/revision/public" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 262144);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
+      if (!(await allowRateLimitedAction("revision-submit", userKey, 3, 3600))) {
+        return new Response("Too many Revision note publications. Try again later.", { status: 429, headers: cors });
+      }
       const account = await env.DB.prepare("SELECT username FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
