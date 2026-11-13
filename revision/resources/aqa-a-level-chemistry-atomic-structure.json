@@ -1,147 +1,897 @@
 {
-  "name": "AQA A-level Chemistry: Atomic structure",
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-a-level-chemistry-atomic-structure-pack",
+  "catalogueId": "aqa-a-level-chemistry",
+  "subject": "Chemistry",
+  "examBoard": "AQA",
+  "qualification": "A-level Chemistry (7405)",
+  "topic": "Atomic structure",
+  "catalogue": {
+    "type": "revision-catalogue",
+    "version": 1,
+    "id": "aqa-a-level-chemistry",
+    "subject": "Chemistry",
+    "examBoard": "AQA",
+    "qualification": "A-level Chemistry (7405)",
+    "source": "AGS Chemistry curriculum and AQA A-level Chemistry specification",
+    "topics": [
+      {
+        "id": "chemistry-01",
+        "name": "Atomic structure",
+        "year": "Year 12",
+        "area": "Atomic structure",
+        "subtopics": [
+          "Protons, neutrons and electrons",
+          "Mass spectrometry",
+          "Electron configuration",
+          "First ionisation energy"
+        ]
+      },
+      {
+        "id": "chemistry-02",
+        "name": "Amount of substance",
+        "year": "Year 12",
+        "area": "Amount of substance",
+        "subtopics": [
+          "Relative formula mass",
+          "Moles and Avogadro constant",
+          "Empirical and molecular formulae",
+          "Concentration",
+          "Gas volumes",
+          "Titrations"
+        ]
+      },
+      {
+        "id": "chemistry-03",
+        "name": "Bonding",
+        "year": "Year 12",
+        "area": "Bonding",
+        "subtopics": [
+          "Ionic bonding",
+          "Covalent bonding",
+          "Metallic bonding",
+          "Shapes of molecules",
+          "Electronegativity",
+          "Intermolecular forces"
+        ]
+      },
+      {
+        "id": "chemistry-04",
+        "name": "Redox",
+        "year": "Year 12",
+        "area": "Redox",
+        "subtopics": [
+          "Oxidation states",
+          "Oxidation and reduction equations"
+        ]
+      },
+      {
+        "id": "chemistry-05",
+        "name": "Periodicity",
+        "year": "Year 12",
+        "area": "Periodicity",
+        "subtopics": [
+          "Period 3 elements and oxides",
+          "Trends in physical properties"
+        ]
+      },
+      {
+        "id": "chemistry-06",
+        "name": "Group 2",
+        "year": "Year 12",
+        "area": "Group 2",
+        "subtopics": [
+          "Reactions of Group 2 metals",
+          "Group 2 compounds and trends"
+        ]
+      },
+      {
+        "id": "chemistry-07",
+        "name": "Group 7",
+        "year": "Year 12",
+        "area": "Group 7",
+        "subtopics": [
+          "Reactivity trends",
+          "Displacement reactions",
+          "Halide ions and silver nitrate"
+        ]
+      },
+      {
+        "id": "chemistry-08",
+        "name": "Energetics",
+        "year": "Year 12",
+        "area": "Energetics",
+        "subtopics": [
+          "Enthalpy changes",
+          "Calorimetry",
+          "Hess's law",
+          "Mean bond enthalpy"
+        ]
+      },
+      {
+        "id": "chemistry-09",
+        "name": "Kinetics",
+        "year": "Year 12",
+        "area": "Kinetics",
+        "subtopics": [
+          "Collision theory",
+          "Maxwell-Boltzmann distributions",
+          "Factors affecting rate"
+        ]
+      },
+      {
+        "id": "chemistry-10",
+        "name": "Equilibria",
+        "year": "Year 12",
+        "area": "Equilibria",
+        "subtopics": [
+          "Dynamic equilibrium",
+          "Le Chatelier's principle",
+          "Equilibrium constants Kc and Kp"
+        ]
+      },
+      {
+        "id": "chemistry-11",
+        "name": "Alkanes",
+        "year": "Year 12",
+        "area": "Alkanes",
+        "subtopics": [
+          "Structure and nomenclature",
+          "Combustion",
+          "Free-radical substitution"
+        ]
+      },
+      {
+        "id": "chemistry-12",
+        "name": "Halogenoalkanes",
+        "year": "Year 12",
+        "area": "Halogenoalkanes",
+        "subtopics": [
+          "Nucleophilic substitution",
+          "Elimination",
+          "Rates of hydrolysis"
+        ]
+      },
+      {
+        "id": "chemistry-13",
+        "name": "Alkenes",
+        "year": "Year 12",
+        "area": "Alkenes",
+        "subtopics": [
+          "Electrophilic addition",
+          "Addition polymers"
+        ]
+      },
+      {
+        "id": "chemistry-14",
+        "name": "Alcohols",
+        "year": "Year 12",
+        "area": "Alcohols",
+        "subtopics": [
+          "Oxidation",
+          "Dehydration",
+          "Esterification"
+        ]
+      },
+      {
+        "id": "chemistry-15",
+        "name": "Organic analysis",
+        "year": "Year 13",
+        "area": "Organic analysis",
+        "subtopics": [
+          "Functional group tests",
+          "Mass spectrometry",
+          "Infrared spectroscopy"
+        ]
+      },
+      {
+        "id": "chemistry-16",
+        "name": "Rate equations",
+        "year": "Year 13",
+        "area": "Rate equations",
+        "subtopics": [
+          "Orders of reaction",
+          "Rate constants",
+          "Rate-determining steps",
+          "Arrhenius equation"
+        ]
+      },
+      {
+        "id": "chemistry-17",
+        "name": "Chromatography",
+        "year": "Year 13",
+        "area": "Chromatography",
+        "subtopics": [
+          "Thin-layer chromatography",
+          "Gas chromatography",
+          "Retention times"
+        ]
+      },
+      {
+        "id": "chemistry-18",
+        "name": "NMR",
+        "year": "Year 13",
+        "area": "NMR",
+        "subtopics": [
+          "Proton NMR",
+          "Carbon-13 NMR",
+          "Chemical shifts",
+          "Integration and splitting"
+        ]
+      },
+      {
+        "id": "chemistry-19",
+        "name": "Acids and bases",
+        "year": "Year 13",
+        "area": "Acids and bases",
+        "subtopics": [
+          "Brønsted-Lowry theory",
+          "pH and Ka",
+          "Buffer solutions",
+          "Titration curves"
+        ]
+      },
+      {
+        "id": "chemistry-20",
+        "name": "Optical isomerism",
+        "year": "Year 13",
+        "area": "Optical isomerism",
+        "subtopics": [
+          "Chirality",
+          "Enantiomers"
+        ]
+      },
+      {
+        "id": "chemistry-21",
+        "name": "Carbonyls",
+        "year": "Year 13",
+        "area": "Carbonyls",
+        "subtopics": [
+          "Aldehydes and ketones",
+          "Nucleophilic addition",
+          "Oxidation and reduction"
+        ]
+      },
+      {
+        "id": "chemistry-22",
+        "name": "Thermodynamics",
+        "year": "Year 13",
+        "area": "Thermodynamics",
+        "subtopics": [
+          "Entropy",
+          "Gibbs free energy"
+        ]
+      },
+      {
+        "id": "chemistry-23",
+        "name": "Carboxylic acids and derivatives",
+        "year": "Year 13",
+        "area": "Carboxylic acids and derivatives",
+        "subtopics": [
+          "Carboxylic acid reactions",
+          "Esters",
+          "Acyl chlorides"
+        ]
+      },
+      {
+        "id": "chemistry-24",
+        "name": "Aromatic chemistry",
+        "year": "Year 13",
+        "area": "Aromatic chemistry",
+        "subtopics": [
+          "Benzene structure",
+          "Electrophilic substitution",
+          "Phenols"
+        ]
+      },
+      {
+        "id": "chemistry-25",
+        "name": "Amines",
+        "year": "Year 13",
+        "area": "Amines",
+        "subtopics": [
+          "Basicity",
+          "Preparation and reactions"
+        ]
+      },
+      {
+        "id": "chemistry-26",
+        "name": "Amino acids, DNA and polymers",
+        "year": "Year 13",
+        "area": "Amino acids, DNA and polymers",
+        "subtopics": [
+          "Amino acids",
+          "Peptides and proteins",
+          "DNA",
+          "Addition and condensation polymers"
+        ]
+      },
+      {
+        "id": "chemistry-27",
+        "name": "Electrochemical cells",
+        "year": "Year 13",
+        "area": "Electrochemical cells",
+        "subtopics": [
+          "Electrode potentials",
+          "Cell EMF",
+          "Feasibility of reactions"
+        ]
+      },
+      {
+        "id": "chemistry-28",
+        "name": "Transition metals and aqueous ions",
+        "year": "Year 13",
+        "area": "Transition metals and aqueous ions",
+        "subtopics": [
+          "Transition metal properties",
+          "Complex ions",
+          "Ligand substitution",
+          "Redox reactions of ions"
+        ]
+      }
+    ]
+  },
   "cards": [
     {
-      "id": "atomic-01",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What are the three fundamental subatomic particles?",
-      "answer": "Protons, neutrons and electrons. Protons and neutrons are in the nucleus; electrons occupy shells, subshells and orbitals around it.",
+      "id": "a01",
+      "topicId": "chemistry-01",
+      "front": "What are the three fundamental subatomic particles?",
+      "back": "Protons, neutrons and electrons. The nucleus contains protons and neutrons; electrons occupy orbitals around the nucleus.",
+      "difficulty": 3,
       "links": [
-        "atomic-02",
-        "atomic-03"
+        "a02",
+        "a03"
       ]
     },
     {
-      "id": "atomic-02",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What are the relative charges and masses of protons, neutrons and electrons?",
-      "answer": "Proton: charge +1, relative mass 1. Neutron: charge 0, relative mass 1. Electron: charge −1, relative mass approximately 1/1836.",
+      "id": "a02",
+      "topicId": "chemistry-01",
+      "front": "What are the relative charges of a proton, neutron and electron?",
+      "back": "Proton: +1. Neutron: 0. Electron: −1.",
+      "difficulty": 3,
       "links": [
-        "atomic-01",
-        "atomic-03",
-        "atomic-04"
+        "a01",
+        "a03"
       ]
     },
     {
-      "id": "atomic-03",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What do atomic number and mass number tell you?",
-      "answer": "Atomic number is the number of protons. Mass number is the total number of protons and neutrons. In a neutral atom, electrons equal protons.",
+      "id": "a03",
+      "topicId": "chemistry-01",
+      "front": "What are the relative masses of a proton, neutron and electron?",
+      "back": "Proton: 1. Neutron: 1. Electron: approximately 1/1836.",
+      "difficulty": 3,
       "links": [
-        "atomic-01",
-        "atomic-02",
-        "atomic-04",
-        "atomic-05"
+        "a01",
+        "a04"
       ]
     },
     {
-      "id": "atomic-04",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "How do you calculate the number of neutrons in an atom?",
-      "answer": "Number of neutrons = mass number − atomic number.",
+      "id": "a04",
+      "topicId": "chemistry-01",
+      "front": "Where are the fundamental particles found in an atom?",
+      "back": "Protons and neutrons are in the tiny, dense nucleus. Electrons occupy regions around the nucleus called orbitals.",
+      "difficulty": 3,
       "links": [
-        "atomic-02",
-        "atomic-03",
-        "atomic-05"
+        "a01",
+        "a03",
+        "a05"
       ]
     },
     {
-      "id": "atomic-05",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What are isotopes?",
-      "answer": "Atoms of the same element with the same number of protons but different numbers of neutrons. They have the same atomic number but different mass numbers.",
+      "id": "a05",
+      "topicId": "chemistry-01",
+      "front": "How did the model of the atom develop?",
+      "back": "Evidence changed the model: the discovery of the electron led to the plum-pudding model; alpha-particle scattering supported a small, dense, positively charged nucleus; later evidence established neutrons and electron energy levels.",
+      "difficulty": 3,
       "links": [
-        "atomic-03",
-        "atomic-04",
-        "atomic-06",
-        "atomic-07"
+        "a04",
+        "a06"
       ]
     },
     {
-      "id": "atomic-06",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What does a time-of-flight mass spectrometer measure?",
-      "answer": "It measures the mass-to-charge ratio (m/z) of ions. Ions are accelerated and their flight times are used to determine m/z.",
+      "id": "a06",
+      "topicId": "chemistry-01",
+      "front": "What is the atomic (proton) number, Z?",
+      "back": "The number of protons in the nucleus. It identifies the element. A neutral atom has the same number of electrons as protons.",
+      "difficulty": 3,
       "links": [
-        "atomic-05",
-        "atomic-07",
-        "atomic-08"
+        "a07",
+        "a08"
       ]
     },
     {
-      "id": "atomic-07",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "How is relative atomic mass calculated from isotopic abundances?",
-      "answer": "Use the weighted mean: relative atomic mass = Σ(isotopic mass × percentage abundance) ÷ 100.",
+      "id": "a07",
+      "topicId": "chemistry-01",
+      "front": "What is the mass number, A?",
+      "back": "The total number of protons and neutrons in the nucleus.",
+      "difficulty": 3,
       "links": [
-        "atomic-05",
-        "atomic-06"
+        "a06",
+        "a08",
+        "a09"
       ]
     },
     {
-      "id": "atomic-08",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "How are electrons arranged in atoms?",
-      "answer": "Electrons occupy shells containing subshells and orbitals. The order of filling follows increasing orbital energy, giving configurations for atoms up to calcium (Z = 20) and beyond.",
+      "id": "a08",
+      "topicId": "chemistry-01",
+      "front": "How do you calculate the numbers of protons, neutrons and electrons in an atom or ion?",
+      "back": "Protons = Z. Neutrons = A − Z. Electrons = Z for a neutral atom; for a positive ion subtract the charge number, and for a negative ion add its charge number.",
+      "difficulty": 3,
       "links": [
-        "atomic-06",
-        "atomic-09",
-        "atomic-10"
+        "a06",
+        "a07",
+        "a09"
       ]
     },
     {
-      "id": "atomic-09",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What are s, p and d subshells and how many electrons can they hold?",
-      "answer": "An s subshell contains one orbital and holds 2 electrons; a p subshell contains three orbitals and holds 6; a d subshell contains five orbitals and holds 10. Each orbital holds up to 2 electrons.",
+      "id": "a09",
+      "topicId": "chemistry-01",
+      "front": "What are isotopes?",
+      "back": "Atoms of the same element with the same number of protons but different numbers of neutrons. They have the same Z but different A values.",
+      "difficulty": 3,
       "links": [
-        "atomic-08",
-        "atomic-10"
+        "a07",
+        "a08",
+        "a10"
       ]
     },
     {
-      "id": "atomic-10",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "What is first ionisation energy?",
-      "answer": "The energy required to remove one electron from each atom in one mole of gaseous atoms to form one mole of gaseous 1+ ions.",
+      "id": "a10",
+      "topicId": "chemistry-01",
+      "front": "Why do isotopes of an element have the same chemical properties?",
+      "back": "They have the same number and arrangement of electrons, including the same outer-shell electron configuration. Chemical properties are determined mainly by electrons.",
+      "difficulty": 3,
       "links": [
-        "atomic-08",
-        "atomic-09",
-        "atomic-11",
-        "atomic-12"
+        "a09",
+        "a11"
       ]
     },
     {
-      "id": "atomic-11",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "Why does first ionisation energy generally increase across a period?",
-      "answer": "Nuclear charge increases while shielding changes relatively little. The outer electron is attracted more strongly, so more energy is needed to remove it.",
+      "id": "a11",
+      "topicId": "chemistry-01",
+      "front": "What information can a mass spectrum provide?",
+      "back": "It can show the relative masses of ions and their relative abundances. Isotope patterns can identify an element and help determine relative atomic mass; molecular ion peaks can indicate relative molecular mass.",
+      "difficulty": 3,
       "links": [
-        "atomic-10",
-        "atomic-12"
+        "a09",
+        "a10",
+        "a12"
       ]
     },
     {
-      "id": "atomic-12",
-      "subject": "Chemistry",
-      "topic": "Atomic structure",
-      "title": "Why are there exceptions to the general first-ionisation-energy trend?",
-      "answer": "Subshell energy differences and repulsion between paired electrons can make an electron easier to remove at particular points in a period.",
+      "id": "a12",
+      "topicId": "chemistry-01",
+      "front": "What are the main stages of a time-of-flight mass spectrometer?",
+      "back": "Ionisation, acceleration, drift, detection and data analysis.",
+      "difficulty": 3,
       "links": [
-        "atomic-10",
-        "atomic-11"
+        "a11",
+        "a13",
+        "a14"
       ]
+    },
+    {
+      "id": "a13",
+      "topicId": "chemistry-01",
+      "front": "What happens during ionisation in a time-of-flight mass spectrometer?",
+      "back": "The sample is converted into positive ions. In electrospray ionisation, the sample is dissolved, sprayed as charged droplets and solvent is removed to leave ions.",
+      "difficulty": 3,
+      "links": [
+        "a12",
+        "a14"
+      ]
+    },
+    {
+      "id": "a14",
+      "topicId": "chemistry-01",
+      "front": "Why are ions accelerated in a time-of-flight mass spectrometer?",
+      "back": "They are accelerated so that ions have the same kinetic energy. For ions with the same charge, lighter ions travel faster than heavier ions.",
+      "difficulty": 3,
+      "links": [
+        "a12",
+        "a13",
+        "a15"
+      ]
+    },
+    {
+      "id": "a15",
+      "topicId": "chemistry-01",
+      "front": "What happens in the drift region of a time-of-flight mass spectrometer?",
+      "back": "Ions travel through a field-free region. Their speeds differ according to their mass-to-charge ratios, so they reach the detector at different times.",
+      "difficulty": 3,
+      "links": [
+        "a14",
+        "a16"
+      ]
+    },
+    {
+      "id": "a16",
+      "topicId": "chemistry-01",
+      "front": "How does the detector in a time-of-flight mass spectrometer work?",
+      "back": "When ions reach the detector they produce a signal. The instrument records arrival times and converts them into mass-to-charge ratios.",
+      "difficulty": 3,
+      "links": [
+        "a15",
+        "a17"
+      ]
+    },
+    {
+      "id": "a17",
+      "topicId": "chemistry-01",
+      "front": "What does m/z mean?",
+      "back": "The mass-to-charge ratio of an ion. A larger m/z generally gives a longer flight time when ions have been accelerated to the same kinetic energy.",
+      "difficulty": 3,
+      "links": [
+        "a14",
+        "a15",
+        "a16"
+      ]
+    },
+    {
+      "id": "a18",
+      "topicId": "chemistry-01",
+      "front": "How can a mass spectrum identify an element?",
+      "back": "The positions of isotope peaks give isotopic masses and the relative peak heights give relative abundances. The pattern can be compared with known isotope data.",
+      "difficulty": 3,
+      "links": [
+        "a11",
+        "a19",
+        "a20"
+      ]
+    },
+    {
+      "id": "a19",
+      "topicId": "chemistry-01",
+      "front": "How do you calculate relative atomic mass from isotopic abundances?",
+      "back": "Multiply each isotopic mass by its percentage abundance, add the products, then divide by 100. This is a weighted mean.",
+      "difficulty": 3,
+      "links": [
+        "a18",
+        "a20",
+        "a21"
+      ]
+    },
+    {
+      "id": "a20",
+      "topicId": "chemistry-01",
+      "front": "An element has isotopes of masses 10 (20%) and 11 (80%). What is its relative atomic mass?",
+      "back": "(10 × 20 + 11 × 80) ÷ 100 = 10.8.",
+      "difficulty": 3,
+      "links": [
+        "a18",
+        "a19"
+      ]
+    },
+    {
+      "id": "a21",
+      "topicId": "chemistry-01",
+      "front": "How can mass spectrometry determine relative molecular mass?",
+      "back": "A molecular ion peak can provide the mass-to-charge ratio of the molecule ion. For a singly charged molecular ion, its m/z gives the relative molecular mass.",
+      "difficulty": 3,
+      "links": [
+        "a11",
+        "a19"
+      ]
+    },
+    {
+      "id": "a22",
+      "topicId": "chemistry-01",
+      "front": "What is an electron shell?",
+      "back": "A principal energy level around the nucleus. Shells are labelled by the principal quantum number n and contain one or more subshells.",
+      "difficulty": 3,
+      "links": [
+        "a23",
+        "a24"
+      ]
+    },
+    {
+      "id": "a23",
+      "topicId": "chemistry-01",
+      "front": "What is a subshell?",
+      "back": "A subdivision of a shell, labelled s, p, d or f. Each subshell contains orbitals of the same type and energy within that subshell.",
+      "difficulty": 3,
+      "links": [
+        "a22",
+        "a24",
+        "a25"
+      ]
+    },
+    {
+      "id": "a24",
+      "topicId": "chemistry-01",
+      "front": "What is an orbital?",
+      "back": "A region of space around the nucleus in which an electron is likely to be found. Each orbital can hold a maximum of two electrons.",
+      "difficulty": 3,
+      "links": [
+        "a22",
+        "a23",
+        "a25"
+      ]
+    },
+    {
+      "id": "a25",
+      "topicId": "chemistry-01",
+      "front": "How many orbitals and electrons can s, p and d subshells hold?",
+      "back": "s: 1 orbital, 2 electrons. p: 3 orbitals, 6 electrons. d: 5 orbitals, 10 electrons.",
+      "difficulty": 3,
+      "links": [
+        "a23",
+        "a24",
+        "a26"
+      ]
+    },
+    {
+      "id": "a26",
+      "topicId": "chemistry-01",
+      "front": "What is the order of filling for the subshells needed up to Z = 36?",
+      "back": "1s, 2s, 2p, 3s, 3p, 4s, 3d, 4p.",
+      "difficulty": 3,
+      "links": [
+        "a25",
+        "a27",
+        "a28"
+      ]
+    },
+    {
+      "id": "a27",
+      "topicId": "chemistry-01",
+      "front": "Write the electron configuration of chlorine (Z = 17).",
+      "back": "1s² 2s² 2p⁶ 3s² 3p⁵.",
+      "difficulty": 3,
+      "links": [
+        "a26",
+        "a29"
+      ]
+    },
+    {
+      "id": "a28",
+      "topicId": "chemistry-01",
+      "front": "Write the electron configuration of calcium (Z = 20).",
+      "back": "1s² 2s² 2p⁶ 3s² 3p⁶ 4s².",
+      "difficulty": 3,
+      "links": [
+        "a26",
+        "a29"
+      ]
+    },
+    {
+      "id": "a29",
+      "topicId": "chemistry-01",
+      "front": "Write the electron configuration of bromine (Z = 35).",
+      "back": "1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d¹⁰ 4p⁵.",
+      "difficulty": 3,
+      "links": [
+        "a26",
+        "a27",
+        "a28",
+        "a30"
+      ]
+    },
+    {
+      "id": "a30",
+      "topicId": "chemistry-01",
+      "front": "How do you write the electron configuration of a positive ion?",
+      "back": "Remove the required number of electrons from the neutral atom. For transition-metal cations, electrons are removed from the 4s subshell before the 3d subshell.",
+      "difficulty": 3,
+      "links": [
+        "a29",
+        "a31"
+      ]
+    },
+    {
+      "id": "a31",
+      "topicId": "chemistry-01",
+      "front": "What is the electron configuration of Mg²⁺?",
+      "back": "Magnesium is 1s² 2s² 2p⁶ 3s². Mg²⁺ loses the two 3s electrons, giving 1s² 2s² 2p⁶.",
+      "difficulty": 3,
+      "links": [
+        "a30",
+        "a32"
+      ]
+    },
+    {
+      "id": "a32",
+      "topicId": "chemistry-01",
+      "front": "What is first ionisation energy?",
+      "back": "The energy required to remove one electron from each atom in one mole of gaseous atoms to form one mole of gaseous 1+ ions.",
+      "difficulty": 3,
+      "links": [
+        "a31",
+        "a33",
+        "a34"
+      ]
+    },
+    {
+      "id": "a33",
+      "topicId": "chemistry-01",
+      "front": "Write the equation for the first ionisation energy of sodium.",
+      "back": "Na(g) → Na⁺(g) + e⁻.",
+      "difficulty": 3,
+      "links": [
+        "a32",
+        "a34"
+      ]
+    },
+    {
+      "id": "a34",
+      "topicId": "chemistry-01",
+      "front": "What is successive ionisation energy?",
+      "back": "The energy required to remove further electrons, one at a time, from gaseous atoms or ions. Each successive ionisation energy is larger than the previous one for the same species.",
+      "difficulty": 3,
+      "links": [
+        "a32",
+        "a33",
+        "a35"
+      ]
+    },
+    {
+      "id": "a35",
+      "topicId": "chemistry-01",
+      "front": "Why do successive ionisation energies increase?",
+      "back": "After each electron is removed, the ion becomes more positively charged. The remaining electrons experience stronger attraction to the nucleus, so more energy is needed.",
+      "difficulty": 3,
+      "links": [
+        "a34",
+        "a36",
+        "a37"
+      ]
+    },
+    {
+      "id": "a36",
+      "topicId": "chemistry-01",
+      "front": "What does a very large jump between successive ionisation energies indicate?",
+      "back": "The next electron is being removed from a shell closer to the nucleus. The large jump shows that the previous shell has been emptied.",
+      "difficulty": 3,
+      "links": [
+        "a35",
+        "a38",
+        "a39"
+      ]
+    },
+    {
+      "id": "a37",
+      "topicId": "chemistry-01",
+      "front": "Why does first ionisation energy generally increase across Period 3?",
+      "back": "Nuclear charge increases while shielding by inner electrons remains broadly similar. Atomic radius decreases and the outer electron is attracted more strongly.",
+      "difficulty": 3,
+      "links": [
+        "a35",
+        "a40",
+        "a41"
+      ]
+    },
+    {
+      "id": "a38",
+      "topicId": "chemistry-01",
+      "front": "How do successive ionisation energies provide evidence for shell structure?",
+      "back": "A large jump after a particular number of electrons have been removed shows that the next electron comes from a new, inner shell. The number removed before the jump indicates the number in the outer shell.",
+      "difficulty": 3,
+      "links": [
+        "a36",
+        "a39"
+      ]
+    },
+    {
+      "id": "a39",
+      "topicId": "chemistry-01",
+      "front": "How do successive ionisation energies provide evidence for subshells?",
+      "back": "A smaller but noticeable jump can occur when removal begins from a lower-energy, more strongly attracted subshell. Patterns across elements help identify subshell arrangements.",
+      "difficulty": 3,
+      "links": [
+        "a36",
+        "a38",
+        "a40"
+      ]
+    },
+    {
+      "id": "a40",
+      "topicId": "chemistry-01",
+      "front": "Why is the first ionisation energy of aluminium lower than magnesium?",
+      "back": "Aluminium loses a 3p electron, which is higher in energy and slightly easier to remove than magnesium's 3s electron.",
+      "difficulty": 3,
+      "links": [
+        "a37",
+        "a39",
+        "a41"
+      ]
+    },
+    {
+      "id": "a41",
+      "topicId": "chemistry-01",
+      "front": "Why is the first ionisation energy of sulfur lower than phosphorus?",
+      "back": "Sulfur has a pair of electrons in one 3p orbital. Repulsion between paired electrons makes one easier to remove than an electron from phosphorus's half-filled 3p arrangement.",
+      "difficulty": 3,
+      "links": [
+        "a37",
+        "a40",
+        "a42"
+      ]
+    },
+    {
+      "id": "a42",
+      "topicId": "chemistry-01",
+      "front": "How can first ionisation energies across Period 3 be used to support electron configurations?",
+      "back": "The overall increase reflects increasing nuclear charge. The dips from Mg to Al and P to S provide evidence for the relative energies of 3s and 3p subshells and for electron pairing.",
+      "difficulty": 3,
+      "links": [
+        "a37",
+        "a40",
+        "a41"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "chemistry-01",
+      "kind": "notes",
+      "title": "Atomic structure: particles, nuclear notation and isotopes",
+      "content": "## The structure of an atom\nAn atom contains a tiny, dense nucleus surrounded by electrons. The nucleus contains positively charged protons and uncharged neutrons. Electrons have a negative charge and occupy orbitals around the nucleus.\n\n| Particle | Relative charge | Relative mass | Location |\n|---|---:|---:|---|\n| Proton | +1 | 1 | Nucleus |\n| Neutron | 0 | 1 | Nucleus |\n| Electron | −1 | 1/1836 | Orbitals |\n\n## Nuclear notation\nAn atom or ion is represented using mass number A and atomic (proton) number Z. Z is the number of protons. A is the number of protons plus neutrons. Therefore neutrons = A − Z.\n\nFor ions, the charge tells you how many electrons have been lost or gained. A 2+ ion has two fewer electrons than its neutral atom; a 1− ion has one extra electron.\n\n## Isotopes\nIsotopes are atoms of the same element with the same number of protons but different numbers of neutrons. Their chemical properties are very similar because they have the same electron arrangement. Their masses differ, and their physical properties can differ.\n\n## Development of the atomic model\nScientific models changed as new evidence became available. Experiments involving cathode rays led to the discovery of electrons and the plum-pudding model. Alpha-particle scattering showed that positive charge and most mass are concentrated in a tiny nucleus. Further work established the neutron and the arrangement of electrons in energy levels."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "worked-examples",
+      "title": "Counting particles in atoms and ions",
+      "content": "## Worked example 1: an aluminium ion\nConsider ²⁷₁₃Al³⁺.\n- Protons = Z = 13.\n- Neutrons = A − Z = 27 − 13 = 14.\n- Electrons = 13 − 3 = 10.\n\n## Worked example 2: a sulfide ion\nConsider ³²₁₆S²⁻.\n- Protons = 16.\n- Neutrons = 32 − 16 = 16.\n- Electrons = 16 + 2 = 18.\n\n## Common errors\nDo not use the mass number as the number of neutrons. Do not change the number of protons when an atom becomes an ion. Ion formation changes the number of electrons, not the identity of the element."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "notes",
+      "title": "Time-of-flight mass spectrometry",
+      "content": "## Purpose\nA mass spectrometer measures the mass-to-charge ratio (m/z) of ions. It can provide accurate isotopic masses and relative abundances, identify elements, and help determine relative molecular mass.\n\n## The stages\n1. **Ionisation:** the sample is converted into positive ions. In electrospray ionisation, a solution is sprayed through a charged nozzle to form charged droplets; solvent evaporates and leaves ions.\n2. **Acceleration:** ions are accelerated so that they have the same kinetic energy.\n3. **Drift:** ions travel through a field-free region. Lighter ions travel faster than heavier ions with the same charge because they have the same kinetic energy.\n4. **Detection:** ions reach a detector at different times and generate signals.\n5. **Data analysis:** flight times are used to calculate m/z values and produce a mass spectrum.\n\n## Reading a spectrum\nThe horizontal axis represents m/z. The vertical axis represents relative abundance. Peak positions indicate ion masses relative to charge; peak heights show how abundant the ions are. For singly charged atomic ions, m/z is effectively the isotopic mass.\n\n## Relative molecular mass\nA molecular ion peak can indicate the relative molecular mass. For a singly charged molecular ion, its m/z value corresponds to the relative molecular mass."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "worked-examples",
+      "title": "Mass spectra and weighted mean calculations",
+      "content": "## Calculating relative atomic mass\nRelative atomic mass is a weighted mean of the isotopic masses, taking account of their relative abundances.\n\n**Method**\n1. Multiply each isotopic mass by its percentage abundance.\n2. Add the products.\n3. Divide by 100 if abundances are percentages.\n4. Give an appropriate number of significant figures.\n\n**Example**\nAn element contains isotope X-10 at 20% and X-11 at 80%.\n\nAr = [(10 × 20) + (11 × 80)] ÷ 100 = 10.8.\n\nIf abundances are given as fractions that add to 1, multiply each mass by its fractional abundance and add the results. Check that percentage abundances total 100%."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "notes",
+      "title": "Electron shells, subshells and orbitals",
+      "content": "## Three levels of organisation\nElectrons occupy shells. Each shell contains subshells, and each subshell contains orbitals. An orbital can hold a maximum of two electrons.\n\n| Subshell | Number of orbitals | Maximum electrons |\n|---|---:|---:|\n| s | 1 | 2 |\n| p | 3 | 6 |\n| d | 5 | 10 |\n\n## Filling order up to Z = 36\nThe subshells fill in increasing energy order:\n1s, 2s, 2p, 3s, 3p, 4s, 3d, 4p.\n\nThe 4s subshell fills before 3d for neutral atoms in this range. Electron configurations should be written with the subshell label and a superscript showing the number of electrons.\n\n## Examples\n- Oxygen (Z = 8): 1s² 2s² 2p⁴.\n- Calcium (Z = 20): 1s² 2s² 2p⁶ 3s² 3p⁶ 4s².\n- Bromine (Z = 35): 1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d¹⁰ 4p⁵.\n\nFor positive ions, remove electrons from the outermost occupied shell. For transition-metal ions, remove 4s electrons before 3d electrons."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "worked-examples",
+      "title": "Writing electron configurations for atoms and ions",
+      "content": "## Worked example: sulfur, Z = 16\nThere are 16 electrons. Fill the subshells in order:\n1s² 2s² 2p⁶ 3s² 3p⁴.\n\n## Worked example: calcium, Z = 20\nThere are 20 electrons:\n1s² 2s² 2p⁶ 3s² 3p⁶ 4s².\n\n## Worked example: Ca²⁺\nA calcium atom loses its two outer 4s electrons. Ca²⁺ is therefore:\n1s² 2s² 2p⁶ 3s² 3p⁶.\n\n## Worked example: Fe²⁺\nNeutral iron is [Ar] 4s² 3d⁶. The two 4s electrons are removed first, giving Fe²⁺ as [Ar] 3d⁶.\n\nAlways check that the total number of electrons matches the atomic number adjusted for the ion charge."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "notes",
+      "title": "Ionisation energies and electron configuration evidence",
+      "content": "## First ionisation energy\nThe first ionisation energy is the energy required to remove one electron from each atom in one mole of gaseous atoms to form one mole of gaseous 1+ ions.\n\nX(g) → X⁺(g) + e⁻\n\nThe gaseous state matters because the definition refers to isolated gaseous atoms. Ionisation energy is endothermic: energy must be supplied to overcome attraction between the electron and nucleus.\n\n## Successive ionisation energies\nSuccessive ionisation energies remove further electrons from gaseous ions:\nX⁺(g) → X²⁺(g) + e⁻\nX²⁺(g) → X³⁺(g) + e⁻\n\nThey increase because each removal leaves a more positively charged ion, so the remaining electrons are attracted more strongly. A very large jump occurs when removal begins from an inner shell.\n\n## Evidence for shells and subshells\nAcross Period 3, large jumps in successive ionisation energies show when removal moves to an inner shell. The number of electrons removed before the jump reveals the number of outer-shell electrons.\n\nSmaller changes and patterns across elements also provide evidence for subshells. First ionisation energy generally increases across a period, but there are dips when the next electron enters a higher-energy subshell or when electron pairing increases repulsion.\n\n- Mg to Al: the electron removed from Al is in a 3p subshell, higher in energy than Mg's 3s electron.\n- P to S: sulfur has a pair of electrons in one 3p orbital; repulsion makes one easier to remove.\n\nAQA expects explanations using nuclear charge, shielding, distance from the nucleus, subshell energy and electron-pair repulsion."
+    },
+    {
+      "topicId": "chemistry-01",
+      "kind": "exam-guidance",
+      "title": "Atomic structure: exam technique and common traps",
+      "content": "## What exam questions commonly require\n- Calculate protons, neutrons and electrons for atoms and ions from A, Z and charge.\n- Explain why isotopes are chemically similar but have different masses.\n- Describe the stages of a time-of-flight mass spectrometer in the correct order.\n- Interpret isotope peaks and calculate relative atomic mass using a weighted mean.\n- Write electron configurations for atoms and ions up to Z = 36.\n- Define first ionisation energy precisely, including gaseous atoms and one mole.\n- Write equations for first and successive ionisation energies with state symbols.\n- Interpret successive ionisation energy data to infer shells and subshells.\n\n## Precision checklist\nUse **gaseous atoms** in the first-ionisation-energy definition. Include state symbols in ionisation equations. Distinguish mass number from relative atomic mass. When explaining a trend, identify the particle being removed and compare nuclear charge, shielding and distance. For anomalies, name the subshell or paired-electron effect rather than saying only that the trend is unusual.\n\n## Calculation checklist\nShow the weighted-mean expression, include all isotopes, check percentage abundances total 100%, and round only at the end. For particle counts, calculate neutrons using A − Z and adjust electron count for the charge."
+    }
+  ],
+  "formulas": [
+    {
+      "topicId": "chemistry-01",
+      "name": "Relative atomic mass from isotopic abundances",
+      "expression": "Ar = Σ(isotopic mass × percentage abundance) ÷ 100",
+      "units": "No units",
+      "conditions": "Use percentage abundances that total 100%."
+    },
+    {
+      "topicId": "chemistry-01",
+      "name": "Number of neutrons",
+      "expression": "Neutrons = mass number − atomic number",
+      "units": "Number of particles",
+      "conditions": "Applies to atoms and ions; ion charge does not change the nucleus."
+    },
+    {
+      "topicId": "chemistry-01",
+      "name": "Electron count in an ion",
+      "expression": "Electrons = atomic number − ionic charge",
+      "units": "Number of electrons",
+      "conditions": "Use signed charge: for a negative ion, subtracting a negative adds electrons."
     }
   ]
 }
