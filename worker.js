@@ -277,6 +277,23 @@ export default {
           if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
           return "D1 query passed; all seven required KV bindings are available.";
         },
+        migrations: async () => {
+          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const presentTables = new Set((tableRows.results || []).map(row => row.name));
+          const missingTables = requiredTables.filter(name => !presentTables.has(name));
+          const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
+          const presentColumns = new Set((userColumns.results || []).map(column => column.name));
+          const requiredColumns = ["role", "ai_access"];
+          const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
+          if (missingTables.length || missingColumns.length) {
+            const issues = [];
+            if (missingTables.length) issues.push("missing tables: " + missingTables.join(", "));
+            if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
+            throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
+          }
+          return "All six migration-managed tables and both required users columns are present.";
+        },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
           const error = new Error("GCSE Vault synthetic diagnostic test");
@@ -360,14 +377,36 @@ export default {
           results.push({ name, status: "failed", detail: String(error?.message || error).slice(0, 1200), duration_ms: Date.now() - started });
         }
       }
-      return new Response(JSON.stringify({ results, completed_at: new Date().toISOString() }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const completedAt = new Date().toISOString();
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      for (const result of results) {
+        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
+          crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
+        ).run();
+      }
+      return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/test-history" && request.method === "GET") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
+      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
+      return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
       ).first();
-      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+      const metadata = env.CF_VERSION_METADATA || {};
+      const deployment = metadata.id ? {
+        versionId: String(metadata.id),
+        tag: metadata.tag ? String(metadata.tag) : null,
+        timestamp: metadata.timestamp ? new Date(metadata.timestamp).toISOString() : null
+      } : null;
+      return new Response(JSON.stringify({ initialized: Boolean(owner), deployment }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
@@ -485,6 +524,22 @@ export default {
       return token;
     }
 
+    async function readBoundedJson(req, maxBytes) {
+      const raw = await req.text();
+      if (new TextEncoder().encode(raw).byteLength > maxBytes) return { error: "Request body is too large.", status: 413 };
+      try { return { data: JSON.parse(raw), status: 200 }; }
+      catch { return { error: "Invalid JSON.", status: 400 }; }
+    }
+
+    async function allowRateLimitedAction(prefix, identity, limit, ttl) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const key = prefix + ":" + await hashValue(ip + ":" + String(identity || ""));
+      const count = Number(await env.QUOTEVAULT.get(key) || 0);
+      if (count >= limit) return false;
+      await env.QUOTEVAULT.put(key, String(count + 1), { expirationTtl: ttl });
+      return true;
+    }
+
     async function getAccountSession(req) {
       const token = req.headers.get("X-Account-Session");
       if (!token || token.length !== 64) return null;
@@ -512,8 +567,13 @@ export default {
     }
 
     if (url.pathname === "/account/setup" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-setup", "all", 5, 900))) {
+        return new Response("Too many password setup attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
@@ -539,6 +599,9 @@ export default {
     }
 
     if (url.pathname === "/account/challenge" && request.method === "GET") {
+      if (!(await allowRateLimitedAction("account-challenge", "lookup", 30, 900))) {
+        return new Response("Too many account lookups. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const username = String(url.searchParams.get("username") || "").trim();
       if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
       const credential = await env.DB.prepare(
@@ -550,7 +613,9 @@ export default {
       });
     }
     if (url.pathname === "/account/login" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const username = String(body.username || "").trim();
       const passwordHashValue = String(body.passwordHash || "");
       if (!username || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || username.length > 20) {
@@ -574,8 +639,13 @@ export default {
 
 
     if (url.pathname === "/account/reset" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 4096);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
+      if (!(await allowRateLimitedAction("account-reset", "all", 5, 900))) {
+        return new Response("Too many password reset attempts. Try again in 15 minutes.", { status: 429, headers: cors });
+      }
       const passwordHashValue = String(body.passwordHash || "");
       const passwordSalt = String(body.passwordSalt || "");
       if (!userKey || !/^[a-f0-9]{64}$/i.test(passwordHashValue) || !/^[A-Za-z0-9+\\/]{22}==$/.test(passwordSalt)) {
@@ -992,10 +1062,15 @@ export default {
 
     // ── QUOTEVAULT SUBMIT ─────────────────────────────────────────────────────
     if (url.pathname === "/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit quotes.", { status: 401, headers: cors });
+      }
+      if (!(await allowRateLimitedAction("quote-submit", userKey, 10, 3600))) {
+        return new Response("Too many quote submissions. Try again later.", { status: 429, headers: cors });
       }
       const submitter = await getAccountSession(request);
       delete data.userKey;
@@ -1116,10 +1191,15 @@ export default {
     // ── DATEVAULT ROUTES ──────────────────────────────────────────────────────
 
         if (url.pathname === "/dv/submit" && request.method === "POST") {
-      const data = await request.json();
+      const parsed = await readBoundedJson(request, 16384);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const data = parsed.data;
       const userKey = String(data.userKey || "").trim();
       if (!userKey || !(await verifyPasswordAccountAccess(userKey, request))) {
         return new Response("A signed-in password account is required to submit dates.", { status: 401, headers: cors });
+      }
+      if (!(await allowRateLimitedAction("date-submit", userKey, 10, 3600))) {
+        return new Response("Too many date submissions. Try again later.", { status: 429, headers: cors });
       }
       const submitter = await getAccountSession(request);
       delete data.userKey;
@@ -2078,11 +2158,16 @@ export default {
     }
 
     if (url.pathname === "/revision/public" && request.method === "POST") {
-      const body = await request.json();
+      const parsed = await readBoundedJson(request, 262144);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const body = parsed.data;
       const userKey = String(body.userKey || "").trim();
       const note = body.note && typeof body.note === "object" ? body.note : null;
       if (!userKey || !note) return new Response("Missing userKey or note", { status: 400, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("A signed-in password account is required to publish notes.", { status: 401, headers: cors });
+      if (!(await allowRateLimitedAction("revision-submit", userKey, 3, 3600))) {
+        return new Response("Too many Revision note publications. Try again later.", { status: 429, headers: cors });
+      }
       const account = await env.DB.prepare("SELECT username FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
