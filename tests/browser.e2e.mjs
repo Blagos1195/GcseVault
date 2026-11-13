@@ -113,8 +113,11 @@ test("the main learning tools remain available after the device goes offline", a
     await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await page.goto(base + "/admin/", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => navigator.serviceWorker.register("/GcseVault/admin/push-sw.js", { scope: "/GcseVault/admin/" }));
+    await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.endsWith("/admin/push-sw.js"), null, { timeout: 15000 });
     await context.setOffline(true);
-    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/", "GCSE Vault"]]) {
+    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"], ["/", "GCSE Vault"], ["/admin/", "Admin"]]) {
       await page.goto(base + path, { waitUntil: "domcontentloaded", timeout: 10000 });
       assert.ok((await page.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
     }
