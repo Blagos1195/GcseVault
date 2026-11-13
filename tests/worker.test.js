@@ -1191,3 +1191,30 @@ test("content submissions enforce size limits and account rate limits", async ()
   }),limitedEnv);
   assert.equal(limited.status,429);
 });
+
+
+test("owner account permission changes are written to the admin audit log", async () => {
+  const env = makeEnv();
+  const writes = [];
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
+        if (sql.includes("SELECT user_key, username, role FROM users WHERE user_key")) return { user_key: "admin-key", username: "owner", role: "owner" };
+        if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)") || sql.includes("SELECT user_key, role, ai_access FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user", ai_access: 0 };
+        return null;
+      },
+      all: async () => ({ results: [] }),
+      run: async () => { writes.push({ sql, values }); return { success: true, meta: { changes: 1 } }; }
+    })
+  });
+  const response = await worker.fetch(new Request("https://example.test/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Session-Token": "test-session" },
+    body: JSON.stringify({ username: "student", role: "admin" })
+  }), env);
+  assert.equal(response.status, 200);
+  assert.ok(writes.some(write => write.sql.includes("INSERT INTO admin_account_audit") &&
+    write.values[0] === "student" && write.values[1] === "owner" &&
+    write.values[2] === "Role changed from user to admin"));
+});
