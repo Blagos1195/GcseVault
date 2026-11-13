@@ -64,7 +64,7 @@ const state = {
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
   publicNotes: [], aiResult: null, aiNotice:'', syncing: false, syncStatus: 'local', accountMessage: '', accountMessageType: 'success', themeMessage: '', setMessage: '', confirmClearData:false, publicMessage: '', publicMessageType: 'success', aiDraft: {subject:'',level:'',notes:'',setName:'',count:'30',source:'',mode:'new'}, editingSetId: null, confirmDeleteSetId: null, linkSource: null, editingCard: null,
-  studyQueue: [], studySessionActive: false, sessionReviewed: 0, libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
+  studyQueue: [], studySessionActive: false, sessionReviewed: 0, bulkSelected: [], libraryQuery:'', librarySubject:'all', libraryTopic:'all', libraryDue:'all', librarySort:'due', connectionCardId:null, connectionTargetId:null, connectionRevealed:false, syllabusDraft:'', uploadMessage:'', analyticsRange:30
 };
 
 function getActiveRevisionSet(){
@@ -629,13 +629,41 @@ function renderSuggestions(){
   const suggestions=suggestedTopics();
   return `<div class="card"><div class="sec" style="margin-top:0">Suggested next topics</div>${suggestions.length?suggestions.map(([topic,stats])=>`<div class="suggestion"><div><div class="suggestion-name">${escapeRevision(topic)}</div><div class="suggestion-reason">${stats.due} card${stats.due===1?'':'s'} due · ${stats.reviewed}/${stats.total} reviewed</div></div><button class="btn bsm" onclick="startTopic('${encodeURIComponent(topic)}')">Study</button></div>`).join(''):'<div class="ps">Add cards to receive recommendations.</div>'}</div>`;
 }
+function renderBulkCardList(cards){
+  return \`<div class="knowledge-list">\${cards.map(card=>\`<div class="knowledge-item\${state.selected===card.id?' active':''}" onclick="selectRevisionCard('\${escapeRevision(card.id)}')"><input type="checkbox" data-bulk-card="\${escapeRevision(card.id)}" \${state.bulkSelected.includes(card.id)?'checked':''} aria-label="Select \${escapeRevision(card.title)}" onclick="event.stopPropagation()"><span class="knowledge-dot"></span><div><div class="knowledge-title">\${escapeRevision(card.title)}</div><div class="knowledge-meta">\${escapeRevision(card.subject)} · \${escapeRevision(card.topic)} · \${linkedCards(card).length} linked ideas · \${formatDue(state.progress[card.id]?.due)}</div></div></div>\`).join('')}</div>\`;
+}
+function applyBulkEdit(){
+  const ids=new Set(state.bulkSelected);
+  if(!ids.size)return;
+  const subject=document.getElementById('bulk-subject')?.value.trim()||'';
+  const topic=document.getElementById('bulk-topic')?.value.trim()||'';
+  if(!subject&&!topic)return;
+  state.cards.forEach(card=>{if(!ids.has(card.id))return;if(subject)card.subject=subject;if(topic)card.topic=topic;});
+  state.bulkSelected=[];
+  saveRevision();
+  renderRevision();
+}
+function deleteBulkSelected(){
+  const ids=new Set(state.bulkSelected);
+  if(!ids.size||!confirm(\`Delete \${ids.size} selected revision cards? This cannot be undone.\`))return;
+  state.cards=state.cards.filter(card=>!ids.has(card.id));
+  state.cards.forEach(card=>card.links=(card.links||[]).filter(id=>!ids.has(id)));
+  ids.forEach(id=>delete state.progress[id]);
+  Object.keys(state.progress).forEach(key=>{if(key.startsWith('link:')&&key.slice(5).split(':').some(id=>ids.has(id)))delete state.progress[key];});
+  const set=getActiveRevisionSet();
+  set.reviewLog=(set.reviewLog||[]).filter(entry=>!ids.has(entry.cardId)&&!(entry.link&&entry.link.slice(5).split(':').some(id=>ids.has(id))));
+  state.bulkSelected=[];
+  if(ids.has(state.selected))state.selected=null;
+  saveRevision();
+  renderRevision();
+}
 function renderLibrary(){
   const subjects=[...new Set(state.cards.map(card=>card.subject||'General'))].sort();
   const topics=[...new Set(state.cards.map(card=>card.topic||'Untopiced'))].sort();
   const query=state.libraryQuery.toLowerCase();
   let cards=state.cards.filter(card=>(state.librarySubject==='all'||(card.subject||'General')===state.librarySubject)&&(state.libraryTopic==='all'||(card.topic||'Untopiced')===state.libraryTopic)&&(state.libraryDue==='all'||(state.libraryDue==='due'?cardIsDue(card):!cardIsDue(card)))&&(!query||`${card.title} ${card.answer} ${card.source||''}`.toLowerCase().includes(query)));
   cards.sort((a,b)=>state.librarySort==='alpha'?a.title.localeCompare(b.title):state.librarySort==='topic'?a.topic.localeCompare(b.topic)||a.title.localeCompare(b.title):Number(state.progress[a.id]?.due||0)-Number(state.progress[b.id]?.due||0));
-  return `<div><div class="pt">Card library</div><div class="ps">Find, filter and sort cards in this set.</div><div class="card"><div class="g2"><div class="fg"><label for="library-search">Search cards</label><input id="library-search" type="text" value="${escapeRevision(state.libraryQuery)}" placeholder="Search term, definition, source"></div><div class="fg"><label for="library-subject">Subject</label><select id="library-subject"><option value="all">All subjects</option>${subjects.map(subject=>`<option${state.librarySubject===subject?' selected':''}>${escapeRevision(subject)}</option>`).join('')}</select></div><div class="fg"><label for="library-topic">Topic</label><select id="library-topic"><option value="all">All topics</option>${topics.map(topic=>`<option${state.libraryTopic===topic?' selected':''}>${escapeRevision(topic)}</option>`).join('')}</select></div><div class="fg"><label for="library-due">Review status</label><select id="library-due"><option value="all"${state.libraryDue==='all'?' selected':''}>All cards</option><option value="due"${state.libraryDue==='due'?' selected':''}>Due now</option><option value="scheduled"${state.libraryDue==='scheduled'?' selected':''}>Scheduled later</option></select></div><div class="fg"><label for="library-sort">Sort by</label><select id="library-sort"><option value="due"${state.librarySort==='due'?' selected':''}>Due date</option><option value="alpha"${state.librarySort==='alpha'?' selected':''}>Front A–Z</option><option value="topic"${state.librarySort==='topic'?' selected':''}>Topic</option></select></div></div><div class="knowledge-meta">${cards.length} matching cards</div>${renderCardList(cards)}</div></div>`;
+  return `<div><div class="pt">Card library</div><div class="ps">Find, filter and sort cards in this set.</div><div class="card"><div class="g2"><div class="fg"><label for="library-search">Search cards</label><input id="library-search" type="text" value="${escapeRevision(state.libraryQuery)}" placeholder="Search term, definition, source"></div><div class="fg"><label for="library-subject">Subject</label><select id="library-subject"><option value="all">All subjects</option>${subjects.map(subject=>`<option${state.librarySubject===subject?' selected':''}>${escapeRevision(subject)}</option>`).join('')}</select></div><div class="fg"><label for="library-topic">Topic</label><select id="library-topic"><option value="all">All topics</option>${topics.map(topic=>`<option${state.libraryTopic===topic?' selected':''}>${escapeRevision(topic)}</option>`).join('')}</select></div><div class="fg"><label for="library-due">Review status</label><select id="library-due"><option value="all"${state.libraryDue==='all'?' selected':''}>All cards</option><option value="due"${state.libraryDue==='due'?' selected':''}>Due now</option><option value="scheduled"${state.libraryDue==='scheduled'?' selected':''}>Scheduled later</option></select></div><div class="fg"><label for="library-sort">Sort by</label><select id="library-sort"><option value="due"${state.librarySort==='due'?' selected':''}>Due date</option><option value="alpha"${state.librarySort==='alpha'?' selected':''}>Front A–Z</option><option value="topic"${state.librarySort==='topic'?' selected':''}>Topic</option></select></div></div><div class="knowledge-meta">\${cards.length} matching cards</div><div class="card" style="margin:10px 0"><div class="knowledge-title">Bulk edit</div><div class="knowledge-meta">\${state.bulkSelected.length} selected</div><div class="g2"><div class="fg"><label for="bulk-subject">Set subject</label><input id="bulk-subject" type="text" placeholder="Leave blank to keep existing"></div><div class="fg"><label for="bulk-topic">Set topic</label><input id="bulk-topic" type="text" placeholder="Leave blank to keep existing"></div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><label><input id="library-select-all" type="checkbox" \${cards.length&&cards.every(card=>state.bulkSelected.includes(card.id))?'checked':''}> Select all filtered</label><button class="btn bsm bp" onclick="applyBulkEdit()" \${state.bulkSelected.length?'':'disabled'}>Update selected</button><button class="btn bsm br" onclick="deleteBulkSelected()" \${state.bulkSelected.length?'':'disabled'}>Delete selected</button></div></div>\${renderBulkCardList(cards)}</div></div>\`;
 }
 function bindLibraryEvents(){
   const query=document.getElementById('library-search'),subject=document.getElementById('library-subject'),topic=document.getElementById('library-topic'),due=document.getElementById('library-due'),sort=document.getElementById('library-sort');
@@ -644,6 +672,9 @@ function bindLibraryEvents(){
   if(topic)topic.onchange=()=>{state.libraryTopic=topic.value;renderRevision();};
   if(due)due.onchange=()=>{state.libraryDue=due.value;renderRevision();};
   if(sort)sort.onchange=()=>{state.librarySort=sort.value;renderRevision();};
+  const selectAll=document.getElementById('library-select-all');
+  if(selectAll)selectAll.onchange=()=>{const visible=[...document.querySelectorAll('[data-bulk-card]')].map(input=>input.dataset.bulkCard);state.bulkSelected=selectAll.checked?[...new Set([...state.bulkSelected,...visible])]:state.bulkSelected.filter(id=>!visible.includes(id));renderRevision();};
+  document.querySelectorAll('[data-bulk-card]').forEach(input=>input.onchange=()=>{state.bulkSelected=input.checked?[...new Set([...state.bulkSelected,input.dataset.bulkCard])]:state.bulkSelected.filter(id=>id!==input.dataset.bulkCard);renderRevision();});
 }
 function renderAnalytics(){
   const topics=topicAnalytics();const due=dueSummary();const set=getActiveRevisionSet();
