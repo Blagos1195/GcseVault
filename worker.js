@@ -603,6 +603,15 @@ export default {
       });
     }
 
+    if (url.pathname === "/account/logout-all" && request.method === "POST") {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(session.user_key).run();
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...cors, "Content-Type": "application/json" }
+      });
+    }
+
     if (url.pathname === "/account/logout" && request.method === "POST") {
       const session = await getAccountSession(request);
       if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
