@@ -857,3 +857,68 @@ test("review schedule routes authenticate and always scope writes to the signed-
   assert.equal(saved.status, 200);
   assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
 });
+
+
+test("submission approval replaces existing private copies instead of duplicating them", async () => {
+  const env = makeEnv();
+  const updates = [];
+  const existing = [
+    { id: "quote-1", text: "Older local copy" },
+    { id: "quote-1", text: "Duplicate local copy" },
+    { id: "quote-2", text: "Unrelated quote" }
+  ];
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
+        if (sql.includes("FROM submission_notifications")) return {
+          site: "qv",
+          item_id: "quote-1",
+          status: "approved",
+          payload: JSON.stringify({
+            original: { id: "quote-1", text: "Original quote" },
+            approved: { id: "quote-1", text: "Edited quote" }
+          })
+        };
+        if (sql.includes("SELECT qv_pending_data, qv_rejected_ids")) return {
+          qv_pending_data: JSON.stringify(existing),
+          qv_rejected_ids: "[]"
+        };
+        return null;
+      },
+      run: async () => {
+        updates.push({ sql, values });
+        return { success: true, meta: { changes: 1 } };
+      }
+    })
+  });
+
+  const response = await call("/submissions/notifications/resolve", env, {
+    id: "qv:quote-1:approved",
+    choice: "replace"
+  }, { "X-Account-Session": "a".repeat(64) });
+
+  assert.equal(response.status, 200);
+  const saved = updates.find(update => update.sql.includes("UPDATE users SET qv_pending_data"));
+  assert.ok(saved);
+  const pending = JSON.parse(saved.values[0]);
+  assert.equal(pending.filter(item => String(item.id) === "quote-1").length, 1);
+  assert.equal(pending.find(item => String(item.id) === "quote-1").text, "Edited quote");
+  assert.equal(pending.some(item => item.id === "quote-2"), true);
+});
+
+test("feedback submissions enforce a per-IP rate limit", async () => {
+  const env = makeEnv();
+  let saved = false;
+  env.QUOTEVAULT.get = async key => key.startsWith("feedback-submit:") ? "5" : null;
+  env.FEEDBACK = { put: async () => { saved = true; } };
+
+  const response = await call("/feedback/submit", env, {
+    type: "Bug report",
+    title: "Test",
+    description: "Test description"
+  }, { "CF-Connecting-IP": "192.0.2.1" });
+
+  assert.equal(response.status, 429);
+  assert.equal(saved, false);
+});
