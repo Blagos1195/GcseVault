@@ -908,7 +908,8 @@ async function resolveSubmissionNotification(choice){
     if(notice.status==='approved'){
       const chosen=choice==='replace'&&notice.payload?.approved?notice.payload.approved:notice.payload?.original;
       S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
-      if(chosen&&!S.custom.some(item=>String(item.id)===String(notice.item_id)))S.custom.push({...chosen,_submittedByMe:true,_status:'approved-private'});
+      S.custom=S.custom.filter(item=>String(item.id)!==String(notice.item_id));
+      if(chosen)S.custom.push({...chosen,id:notice.item_id,_submittedByMe:true,_status:'approved-private'});
     }else if(choice==='remove'){
       S.pending=S.pending.filter(item=>String(item.id)!==String(notice.item_id));
     }else if(choice==='keep'){
