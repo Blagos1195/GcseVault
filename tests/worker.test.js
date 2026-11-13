@@ -92,6 +92,23 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("owner Test Centre runs persist results and expose restricted history", async () => {
+  const env = makeEnv();
+  const run = await call("/admin/test-run", env, { test: "permissions" }, { "X-Session-Token": "test-session" });
+  assert.equal(run.status, 200);
+  const data = await run.json();
+  assert.equal(data.results[0].status, "passed");
+  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO test_run_history") &&
+    update.values[1] === "owner" &&
+    update.values[2] === "permissions" &&
+    update.values[3] === "passed"));
+  const denied = await call("/admin/test-history", env);
+  assert.equal(denied.status, 401);
+  const history = await call("/admin/test-history", env, null, { "X-Session-Token": "test-session" });
+  assert.equal(history.status, 200);
+  assert.ok(Array.isArray((await history.json()).history));
+});
+
 test("admin push subscriptions require an admin session and are stored per account", async () => {
   const env = makeEnv();
   const denied = await call("/admin/push/subscribe", env, {
