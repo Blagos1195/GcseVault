@@ -70,7 +70,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
   const browser = await chromium.launch({ headless: true });
   const failures = [];
   try {
-    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
       const context = await browser.newContext({ viewport });
       for (const path of ["/", "/quotes/", "/dates/", "/revision/", "/progress/"]) {
         const page = await context.newPage();
@@ -95,13 +95,15 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             await page.getByText("No matching public content found.").waitFor({ timeout: 5000 });
           }
         }
-        if (viewport.width === 390 && ["/quotes/", "/dates/", "/revision/"].includes(path)) {
-          const menu = page.locator("#hbg");
-          await menu.focus();
-          await page.keyboard.press("Space");
-          assert.equal(await menu.getAttribute("aria-expanded"), "true", path + " menu did not announce its open state");
-          await page.keyboard.press("Escape");
-          assert.equal(await menu.getAttribute("aria-expanded"), "false", path + " menu did not close on Escape");
+        if (path === "/quotes/" || path === "/dates/") {
+          const menu = page.locator("#site-page-select");
+          await menu.selectOption("library");
+          assert.equal(await page.locator("#tb-title").innerText(), "Library", path + " navigation did not change sections");
+        }
+        if (path === "/revision/") {
+          const menu = page.locator("#revision-page-switcher");
+          await menu.selectOption("graph");
+          await page.getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
         }
         if (viewport.width === 390) {
           const width = await page.evaluate(() => document.documentElement.scrollWidth);
