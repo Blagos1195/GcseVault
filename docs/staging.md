@@ -29,7 +29,7 @@ The staging site is served under `/GcseVault/` so existing application paths con
 
 - Push notifications are disabled in staging until a separate VAPID key pair is configured.
 - The Cloudflare Workers AI binding is intentionally omitted to avoid accidental AI usage during testing.
-- Use disposable test accounts and test data only. Staging has its own D1 and KV stores.
+- Use disposable test accounts and test data only. Staging uses separate D1 and KV resources from production.
 - The workflow is manual. It does not deploy staging on every push and does not deploy or modify production.
 
 The expected site URL is `https://staging.gcsevault-staging.pages.dev/GcseVault/`. The workflow prints the actual Worker URL after deployment.
