@@ -222,6 +222,7 @@ function addRevisionSet(name = 'New set'){
 }
 function deleteRevisionSet(setId){
   if (state.accountSets.length <= 1) {
+    state.bulkSelected = [];
     state.accountSets = [normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''}, DEFAULT_REVISION_SET_ID)];
     state.activeSetId = DEFAULT_REVISION_SET_ID;
     state.cards = [];
