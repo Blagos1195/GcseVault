@@ -964,3 +964,20 @@ test("the admin push worker also keeps its static workspace available offline", 
   assert.ok(worker.includes("self.registration.showNotification"));
   assert.ok(worker.includes("self.addEventListener(\"fetch\""));
 });
+
+
+test("the progress dashboard only requests account-scoped summary totals", () => {
+  const page = fs.readFileSync(new URL("../progress/index.html", import.meta.url), "utf8");
+  const script = fs.readFileSync(new URL("../progress/progress.js", import.meta.url), "utf8");
+  const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
+  assert.ok(page.includes("Progress dashboard") || page.includes("Your progress"));
+  assert.ok(page.includes("/GcseVault/offline.js"));
+  assert.ok(script.includes("/account/progress-summary"));
+  assert.ok(script.includes("X-Account-Session"));
+  assert.ok(page.includes("QuoteVault"));
+  assert.ok(page.includes("DateVault"));
+  assert.ok(page.includes("Revision"));
+  assert.match(worker, /url\.pathname === "\/account\/progress-summary"/);
+  assert.match(worker, /verifyPasswordAccountAccess\(session\.user_key, request\)/);
+  assert.ok(!script.includes("revision_sync_data"));
+});

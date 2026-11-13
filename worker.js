@@ -2024,6 +2024,50 @@ export default {
       return new Response(JSON.stringify({ success: true, schedules: merged, updatedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/account/progress-summary" && request.method === "GET") {
+      const session = await getAccountSession(request);
+      if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) {
+        return new Response("Sign in with a password account to view synced progress.", { status: 401, headers: cors });
+      }
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
+      const [quoteRow, dateRow, revisionRow] = await Promise.all([
+        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "qv").first(),
+        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "dv").first(),
+        env.DB.prepare("SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?").bind(session.user_key).first()
+      ]);
+      const today = new Date().toISOString().slice(0, 10);
+      const summarizeSchedules = row => {
+        let schedules = {};
+        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
+        const values = Object.values(schedules).filter(item => item && typeof item === "object" && !Array.isArray(item));
+        return {
+          scheduled: values.length,
+          due: values.filter(item => !item.due || String(item.due).slice(0, 10) <= today).length,
+          updatedAt: row?.updated_at || null
+        };
+      };
+      let revisionData = {};
+      try { revisionData = revisionRow ? JSON.parse(revisionRow.data_json || "{}") : {}; } catch {}
+      const sets = Array.isArray(revisionData.accountSets) && revisionData.accountSets.length
+        ? revisionData.accountSets
+        : [{ cards: Array.isArray(revisionData.cards) ? revisionData.cards : [], progress: revisionData.progress || {}, xp: revisionData.xp || 0 }];
+      const revision = { sets: sets.length, cards: 0, reviewed: 0, due: 0, xp: 0, updatedAt: revisionRow?.updated_at || null };
+      for (const set of sets) {
+        const cards = Array.isArray(set?.cards) ? set.cards : [];
+        const progress = set?.progress && typeof set.progress === "object" ? set.progress : {};
+        revision.cards += cards.length;
+        revision.reviewed += cards.filter(card => Number(progress[card.id]?.reviews) > 0).length;
+        revision.due += cards.filter(card => !progress[card.id]?.due || Number(progress[card.id].due) <= Date.now()).length;
+        revision.xp += Number(set?.xp) || 0;
+      }
+      return new Response(JSON.stringify({
+        account: { username: session.username || "" },
+        quoteVault: summarizeSchedules(quoteRow),
+        dateVault: summarizeSchedules(dateRow),
+        revision
+      }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/revision/sync" && request.method === "GET") {
       const userKey = url.searchParams.get("userKey");
       if (!userKey) return new Response("Missing userKey", { status: 400, headers: cors });

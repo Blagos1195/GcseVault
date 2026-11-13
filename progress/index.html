@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#12111f">
+<title>Progress | GCSE Vault</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="progress.css?v=20261113-progress-dashboard">
+</head>
+<body>
+<main class="progress-shell">
+  <header class="progress-header">
+    <a href="/GcseVault/" class="home-link">← GCSE Vault</a>
+    <div class="eyebrow">YOUR STUDY OVERVIEW</div>
+    <h1>Your progress</h1>
+    <p>See your synced revision activity across GCSE Vault.</p>
+    <div id="account-name" class="account-name" hidden></div>
+  </header>
+  <div id="status" class="status" role="status" aria-live="polite">Loading your progress…</div>
+  <section id="dashboard" hidden>
+    <div class="progress-grid">
+      <article class="progress-card purple">
+        <div class="card-kicker">QUOTEVAULT</div>
+        <h2>Quotes</h2>
+        <div class="metric"><span id="qv-due">0</span><small>due reviews</small></div>
+        <p><span id="qv-scheduled">0</span> synced review schedules</p>
+        <a href="/GcseVault/quotes/">Open QuoteVault ↗</a>
+      </article>
+      <article class="progress-card gold">
+        <div class="card-kicker">DATEVAULT</div>
+        <h2>History dates</h2>
+        <div class="metric"><span id="dv-due">0</span><small>due reviews</small></div>
+        <p><span id="dv-scheduled">0</span> synced review schedules</p>
+        <a href="/GcseVault/dates/">Open DateVault ↗</a>
+      </article>
+      <article class="progress-card teal">
+        <div class="card-kicker">REVISION</div>
+        <h2>Flashcards</h2>
+        <div class="metric"><span id="revision-reviewed">0</span><small>reviewed</small></div>
+        <div class="progress-track"><div id="revision-bar"></div></div>
+        <p><span id="revision-total">0</span> cards across <span id="revision-sets">0</span> sets · <span id="revision-due">0</span> due</p>
+        <p><span id="revision-xp">0</span> XP across your sets</p>
+        <a href="/GcseVault/revision/">Open Revision ↗</a>
+      </article>
+    </div>
+    <p class="data-note">These figures use data synced to your account. QuoteVault and DateVault currently sync review schedules, not mastery totals or XP, so those figures are deliberately not estimated here. Revision figures include all your synced sets.</p>
+    <button id="refresh" class="refresh-button" type="button">Refresh progress</button>
+  </section>
+  <section id="sign-in" class="sign-in" hidden>
+    <h2>Sign in to see synced progress</h2>
+    <p>Use your GCSE Vault password account. Sign in from one of the learning tools, then return here.</p>
+    <div class="sign-in-links">
+      <a href="/GcseVault/quotes/">QuoteVault</a>
+      <a href="/GcseVault/dates/">DateVault</a>
+      <a href="/GcseVault/revision/">Revision</a>
+    </div>
+  </section>
+  <footer><span id="updated-at"></span><span>Only account-scoped summary totals are returned. Your cards and notes stay private.</span></footer>
+</main>
+<script src="../shared.js?v=20261109-ai-permissions"></script>
+<script src="progress.js?v=20261113-progress-dashboard"></script>
+<script src="/GcseVault/offline.js?v=20261113-offline-shell-v2"></script>
+</body>
+</html>
