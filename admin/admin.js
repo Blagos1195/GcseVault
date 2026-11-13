@@ -91,13 +91,19 @@ async function clearReadAdminNotifications(){
   await deleteAdminNotifications(ids);
 }
 async function deleteAdminNotifications(ids){
+  const endpoint='/admin/notifications/delete';
   try{
-    const response=await fetch(`${VaultUser.WORKER_URL}/admin/notifications/delete`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids})});
-    if(!response.ok)throw new Error(await response.text()||`HTTP ${response.status}`);
+    const response=await fetch(VaultUser.WORKER_URL+endpoint,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Token':AdminManager.getToken()},body:JSON.stringify({ids})});
+    if(!response.ok){
+      const detail=(await response.text()).trim();
+      if(response.status===404)throw new Error(`The deployed Worker does not recognise POST ${endpoint} (HTTP 404). The latest Worker code on main includes this endpoint, so Cloudflare needs to deploy the latest main commit. Response: ${detail||response.statusText||'Not found'}`);
+      throw new Error(`Could not delete notifications: HTTP ${response.status} ${response.statusText}. ${detail}`.trim());
+    }
     const deleted=new Set(ids);
     adminNotifications=adminNotifications.filter(item=>!deleted.has(item.id));
+    AdminManager.error='';
     renderAdmin();
-  }catch(error){AdminManager.error=error.message;renderAdmin();}
+  }catch(error){AdminManager.error=error.message||String(error);renderAdmin();}
 }
 function renderAdminNotifications(){
   const unread=adminNotifications.filter(item=>!item.read_at).length;
@@ -195,8 +201,20 @@ function itemSummary(item){
   return item.description||item.message||"";
 }
 function feedbackDetails(item){
-  if(item._kind!=="feedback"||!item.errorStack)return "";
-  return `<details><summary>Technical details</summary><pre>${esc(item.errorStack)}</pre></details>`;
+  if(item._kind!=="feedback")return "";
+  const fields=[
+    ["Application",item.sourceApplication],
+    ["Error type",item.errorName],
+    ["Location",item.errorLocation],
+    ["Page",item.page],
+    ["Browser",item.browser],
+    ["Device",item.device],
+    ["App version",item.appVersion],
+    ["Occurred",item.timestamp],
+    ["Fingerprint",item.fingerprint]
+  ].filter(([,value])=>value);
+  const description=item.description||"No error description was captured.";
+  return `<details class="feedback-diagnostics"><summary>Full error report · ${fields.length} diagnostic fields</summary><div class="diagnostic-fields">${fields.map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("")}</div><h3>Captured message and context</h3><pre>${esc(description)}</pre>${item.errorStack?`<h3>JavaScript stack trace</h3><pre>${esc(item.errorStack)}</pre>`:""}<p class="sub">Report ID: ${esc(item.id||"Unavailable")}</p></details>`;
 }
 function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
