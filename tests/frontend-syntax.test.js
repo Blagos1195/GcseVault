@@ -616,6 +616,13 @@ test("review schedules are stored per account and synchronised through authentic
   assert.ok(scheduleRoute.includes("verifyPasswordAccountAccess(session.user_key, request)"));
 });
 
+test("Revision avoids oversized keepalive sync payloads", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("const payloadBytes=new Blob([payloadText]).size;"));
+  assert.ok(app.includes("if(keepalive&&payloadBytes>60000)"));
+  assert.ok(app.includes("payloadBytes='+String(payloadBytes)"));
+});
+
 test("Revision local snapshots are isolated between anonymous use and signed-in accounts", () => {
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const shared = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
