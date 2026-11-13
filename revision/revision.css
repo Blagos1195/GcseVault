@@ -283,7 +283,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .overview-section-heading h2{font-size:1rem}
 .overview-stats{gap:10px;margin:12px 0 18px}
 @media(max-width:760px){
- #sidebar{min-height:60px;padding:8px 14px;gap:12px}
+ #sidebar{position:relative;width:100%;min-width:0;height:auto;min-height:60px;padding:8px 14px;gap:12px;transform:none;box-shadow:none}
  #main{height:calc(100dvh - 60px)}
  #revision-page-switcher{min-width:0;max-width:none;flex:1;font-size:.8rem}
  #topbar{height:48px;min-height:48px;padding:0 14px;gap:7px}
