@@ -837,3 +837,34 @@ test("Revision library supports safe bulk subject and topic edits and deletion",
   assert.ok(app.includes("This cannot be undone."));
   assert.ok(app.includes("state.bulkSelected = []"));
 });
+
+
+test("Revision queues sync while online and preserves changes locally while offline", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const start = app.indexOf("function syncRevisionSoon(){");
+  const end = app.indexOf("\\nwindow.addEventListener('pagehide'", start);
+  assert.ok(start >= 0 && end > start);
+  let scheduled = 0;
+  const context = {
+    navigator: { onLine: false },
+    state: { syncStatus: "synced", accountMessage: "", accountMessageType: "" },
+    revisionSyncTimer: null,
+    clearTimeout() {},
+    revisionActiveScope: "account",
+    revisionUserKey: () => "account",
+    revisionUsername: () => "student",
+    VaultUser: { getAccountSession: () => "session" },
+    setTimeout() { scheduled++; return 1; }
+  };
+  vm.runInNewContext(app.slice(start, end), context);
+  context.syncRevisionSoon();
+  assert.equal(context.state.syncStatus, "offline");
+  assert.match(context.state.accountMessage, /saved on this device/);
+  assert.equal(scheduled, 0);
+  context.navigator.onLine = true;
+  context.syncRevisionSoon();
+  assert.equal(scheduled, 1);
+  assert.match(app, /window\.addEventListener\('online'/);
+  assert.match(app, /window\.addEventListener\('offline'/);
+  assert.match(app, /Offline · saved on this device/);
+});
