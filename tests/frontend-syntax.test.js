@@ -784,3 +784,13 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("Revision library supports safe bulk subject and topic edits and deletion", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("function applyBulkEdit()"));
+  assert.ok(app.includes("function deleteBulkSelected()"));
+  assert.ok(app.includes("data-bulk-card"));
+  assert.ok(app.includes("Select all filtered"));
+  assert.ok(app.includes("This cannot be undone."));
+});
