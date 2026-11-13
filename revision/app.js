@@ -712,29 +712,20 @@ function renderGraph(){
   const query=String(state.graphQuery||'').trim().toLowerCase();
   const cards=state.cards.filter(card=>!query||[card.title,card.answer,card.subject,card.topic,card.source,...linkedCards(card).map(link=>link.title)].some(value=>String(value||'').toLowerCase().includes(query)));
   if(!cards.length)return '<div class="map-empty">'+(query?'No cards match this search.':'No cards in this revision set yet. Add or import cards to build your knowledge map.')+'</div>';
-  const subjects=new Map();
-  cards.forEach(card=>{
-    const subject=String(card.subject||'Other');
-    const topic=String(card.topic||'General');
-    if(!subjects.has(subject))subjects.set(subject,new Map());
-    const topics=subjects.get(subject);
-    if(!topics.has(topic))topics.set(topic,[]);
-    topics.get(topic).push(card);
-  });
-  const groups=[...subjects.entries()].sort(([a],[b])=>a.localeCompare(b));
-  const markup=groups.map(([subject,topics])=>{
-    const total=[...topics.values()].reduce((count,items)=>count+items.length,0);
-    const topicMarkup=[...topics.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([topic,items])=>{
-      const cardMarkup=items.map(card=>{
-        const count=linkedCards(card).length;
-        const active=state.selected===card.id;
-        return '<button type="button" class="map-card'+(active?' active':'')+'" aria-pressed="'+String(active)+'" onclick="selectRevisionCard(\''+escapeRevision(card.id)+'\')"><span class="map-card-topic">'+escapeRevision(topic)+'</span><strong>'+escapeRevision(card.title)+'</strong><span class="map-card-meta">'+count+' connection'+(count===1?'':'s')+'</span></button>';
-      }).join('');
-      return '<section class="map-topic"><div class="map-topic-heading"><h3>'+escapeRevision(topic)+'</h3><span>'+items.length+'</span></div><div class="map-card-grid">'+cardMarkup+'</div></section>';
-    }).join('');
-    return '<section class="map-subject"><div class="map-subject-heading"><h2>'+escapeRevision(subject)+'</h2><span>'+total+' cards</span></div>'+topicMarkup+'</section>';
-  }).join('');
-  return '<div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards</div><div class="map-subjects">'+markup+'</div>';
+  const columns=Math.min(4,Math.max(1,cards.length));
+  const cellWidth=190,cellHeight=112,gap=22,nodeWidth=190,nodeHeight=78;
+  const rows=Math.ceil(cards.length/columns),width=columns*cellWidth+(columns-1)*gap,height=rows*cellHeight;
+  const positions=cards.map((card,index)=>({x:(index%columns)*(cellWidth+gap),y:Math.floor(index/columns)*cellHeight,card}));
+  const byId=new Map(positions.map(node=>[node.card.id,node]));
+  const paths=positions.flatMap(node=>linkedCards(node.card).map(link=>{
+    const target=byId.get(link.id);
+    if(!target||node.card.id.localeCompare(link.id)>0)return '';
+    const x1=node.x+nodeWidth/2,y1=node.y+nodeHeight/2,x2=target.x+nodeWidth/2,y2=target.y+nodeHeight/2;
+    const bend=Math.max(24,Math.abs(x2-x1)*.28);
+    return '<path d="M '+x1+' '+y1+' C '+(x1+(x2>=x1?bend:-bend))+' '+y1+', '+(x2+(x2>=x1?-bend:bend))+' '+y2+', '+x2+' '+y2+'"></path>';
+  })).join('');
+  const nodes=positions.map(node=>'<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" style="left:'+node.x+'px;top:'+node.y+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(\''+escapeRevision(node.card.id)+'\')"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong></button>').join('');
+  return '<div class="graph-wrap"><div class="graph" style="width:'+width+'px;height:'+height+'px"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none">'+paths+'</svg>'+nodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Lines show linked ideas</div>';
 }
 function filterKnowledgeMap(value){
   state.graphQuery=value;
