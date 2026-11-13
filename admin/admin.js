@@ -220,6 +220,43 @@ function login(){
   if(!VaultUser.getAccountSession()){VaultUser.showAccountDialog();return;}
   AdminManager.login().then(()=>{renderAdmin();loadModerationLog();loadAdminNotifications(false);checkAdminPushSubscription();});
 }
+let ownerTestResults = {};
+let ownerTestsRunning = false;
+const ownerTestDefinitions = [
+  ["health","System health","Checks the D1 database and required KV bindings."],
+  ["error","Error reporting","Creates and verifies a synthetic error report, then removes it."],
+  ["quote","QuoteVault","Checks isolated pending-quote storage."],
+  ["date","DateVault","Checks isolated pending-date storage."],
+  ["revision","Revision","Checks isolated revision-note storage."],
+  ["feedback","Feedback","Checks isolated feedback storage without notifying admins."],
+  ["notifications","Notifications","Tests notification creation, read status and deletion without push."],
+  ["permissions","Permissions","Verifies owner-only access to the test centre."]
+];
+async function runOwnerTest(test){
+  if(ownerTestsRunning)return;
+  ownerTestsRunning=true;
+  if(test==="all")ownerTestResults={};
+  else ownerTestResults={...ownerTestResults,[test]:{status:"running",detail:"Running…"}};
+  renderAdmin();
+  try{
+    const response=await fetch(VaultUser.WORKER_URL+"/admin/test-run",{method:"POST",headers:{"Content-Type":"application/json","X-Session-Token":AdminManager.getToken()},body:JSON.stringify({test})});
+    const raw=await response.text();
+    if(!response.ok)throw new Error(`HTTP ${response.status}: ${raw||response.statusText}`);
+    const data=JSON.parse(raw);
+    for(const result of data.results||[])ownerTestResults[result.name]=result;
+  }catch(error){
+    if(test==="all")ownerTestResults={...ownerTestResults,system:{status:"failed",detail:error.message}};
+    else ownerTestResults={...ownerTestResults,[test]:{status:"failed",detail:error.message}};
+  }finally{
+    ownerTestsRunning=false;
+    renderAdmin();
+  }
+}
+function renderOwnerTestCentre(){
+  const passed=Object.values(ownerTestResults).filter(result=>result.status==="passed").length;
+  const failed=Object.values(ownerTestResults).filter(result=>result.status==="failed").length;
+  return `<section class="panel owner-test-centre"><div class="toolbar"><div><h2>System Test Centre</h2><p class="sub">Run isolated checks against the production Worker and storage bindings.</p></div><button class="primary" onclick="runOwnerTest('all')" ${ownerTestsRunning?'disabled':''}>${ownerTestsRunning?'Running tests…':'Run all tests'}</button></div><div class="test-safety-note">Tests use temporary, specially named records and clean them up automatically. They do not publish content, alter real submissions or send test push notifications.</div><div class="test-summary"><strong>${passed} passed</strong><strong>${failed} failed</strong><span>${Object.keys(ownerTestResults).length} of ${ownerTestDefinitions.length} run</span></div><div class="test-list">${ownerTestDefinitions.map(([id,title,description])=>{const result=ownerTestResults[id];const status=result?.status||"not-run";return `<article class="test-row"><div class="test-copy"><div class="test-heading"><strong>${title}</strong><span class="test-status ${status}">${status==="not-run"?"Not run":status==="running"?"Running":status==="passed"?"Passed":"Failed"}</span></div><p>${description}</p>${result?`<div class="test-detail">${esc(result.detail||"")}${result.duration_ms!==undefined?` <span>${result.duration_ms} ms</span>`:""}</div>`:""}</div><button onclick="runOwnerTest('${id}')" ${ownerTestsRunning?'disabled':''}>Run</button></article>`}).join("")}</div><p class="sub">These are integration smoke tests for the Worker bindings and storage operations. They do not yet simulate a real user account submitting and moderating content end to end.</p></section>`;
+}
 function renderAdmin(){
   const token=AdminManager.getToken();
   document.getElementById("account-state").textContent=AdminManager.username?AdminManager.username:"";
@@ -261,9 +298,12 @@ function renderAdmin(){
   }else if(tab==="history"){
     content=renderApprovalHistory();
   }
+  else if(tab==="tests"&&AdminManager.role==="owner"){
+    content=renderOwnerTestCentre();
+  }
   app.innerHTML=`<div class="toolbar"><div><h1>Admin workspace</h1><p class="sub">${esc(AdminManager.username)} · ${esc(AdminManager.role)} access</p></div><div class="actions"><button onclick="AdminManager.refresh()">Refresh</button><button onclick="AdminManager.logout()">Sign out</button></div></div>
   <div class="stats"><div class="stat"><strong>${pendingCount}</strong> awaiting review</div><div class="stat"><strong>${publishedCount}</strong> published</div><div class="stat"><strong>${counts.quote||0}</strong> quotes</div><div class="stat"><strong>${counts.date||0}</strong> dates</div><div class="stat"><strong>${counts['revision-note']||0}</strong> revision notes</div><div class="stat"><strong>${counts.feedback||0}</strong> feedback</div></div>
-  <nav class="admin-tabs" aria-label="Admin sections">${tabButton("review","To review",pendingCount)}${tabButton("published","Published",publishedCount)}${tabButton("feedback","Feedback",feedback.length)}${tabButton("notifications","Notifications",unread)}${AdminManager.role==="owner"?tabButton("users","Users",(AdminManager.users||[]).length):""}${tabButton("history","History",moderationLog.length)}</nav>
+  <nav class="admin-tabs" aria-label="Admin sections">${tabButton("review","To review",pendingCount)}${tabButton("published","Published",publishedCount)}${tabButton("feedback","Feedback",feedback.length)}${tabButton("notifications","Notifications",unread)}${AdminManager.role==="owner"?tabButton("users","Users",(AdminManager.users||[]).length):""}${tabButton("history","History",moderationLog.length)}${AdminManager.role==="owner"?tabButton("tests","Test Centre",0):""}</nav>
   ${AdminManager.error?`<div class="error">${esc(AdminManager.error)}</div>`:""}
   ${AdminManager.loading?'<div class="notice">Refreshing submissions…</div>':""}
   ${content}`;

@@ -252,13 +252,115 @@ export default {
       do {
         const page = await binding.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:")) continue;
+          if (key.name.startsWith("session:") || key.name.startsWith("ai-session:") || key.name.startsWith("review-schedules:") || key.name.startsWith("test-centre:")) continue;
           const value = await binding.get(key.name, "json");
           if (value) items.push(sanitizeSubmission(value));
         }
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
       return items;
+    }
+
+    if (url.pathname === "/admin/test-run" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      let body = {};
+      try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      const selected = String(body.test || "all");
+      const tests = {
+        health: async () => {
+          const row = await env.DB.prepare("SELECT 1 AS ok").first();
+          if (Number(row?.ok) !== 1) throw new Error("D1 query returned an unexpected result");
+          const bindings = ["QUOTEVAULT", "PUBLIC_QUOTES", "DV_PENDING", "DV_PUBLIC", "REVISION", "FEEDBACK", "THEMES"];
+          const missing = bindings.filter(name => !env[name] || typeof env[name].put !== "function");
+          if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
+          return "D1 query passed; all seven required KV bindings are available.";
+        },
+        error: async () => {
+          const id = "test-centre:error:" + crypto.randomUUID();
+          const error = new Error("GCSE Vault synthetic diagnostic test");
+          const record = { id, type: "test", title: "Synthetic error-reporting test", description: error.message, errorName: error.name, errorStack: error.stack || "", errorLocation: "Owner Test Centre", sourceApplication: "GCSE Vault Test Centre", timestamp: new Date().toISOString(), testRecord: true };
+          try {
+            await env.FEEDBACK.put(id, JSON.stringify(record));
+            const stored = await env.FEEDBACK.get(id, "json");
+            if (!stored || stored.errorName !== "Error" || stored.description !== error.message) throw new Error("Synthetic error report did not round-trip correctly");
+            return "Synthetic error details were written, retrieved and verified in the feedback store.";
+          } finally { await env.FEEDBACK.delete(id); }
+        },
+        quote: async () => {
+          const id = "test-centre:quote:" + crypto.randomUUID();
+          const record = { id, text: "GCSE Vault test quote", char: "Test character", work: "Test work", submittedBy: "Test Centre", _testRecord: true };
+          try {
+            await env.QUOTEVAULT.put(id, JSON.stringify(record));
+            const stored = await env.QUOTEVAULT.get(id, "json");
+            if (!stored || stored.text !== record.text || stored._testRecord !== true) throw new Error("QuoteVault test record did not round-trip correctly");
+            return "QuoteVault pending-storage write/read passed; the temporary record was removed.";
+          } finally { await env.QUOTEVAULT.delete(id); }
+        },
+        date: async () => {
+          const id = "test-centre:date:" + crypto.randomUUID();
+          const record = { id, event: "GCSE Vault test date", year: "2000", topic: "Test", submittedBy: "Test Centre", _testRecord: true };
+          try {
+            await env.DV_PENDING.put(id, JSON.stringify(record));
+            const stored = await env.DV_PENDING.get(id, "json");
+            if (!stored || stored.event !== record.event || stored._testRecord !== true) throw new Error("DateVault test record did not round-trip correctly");
+            return "DateVault pending-storage write/read passed; the temporary record was removed.";
+          } finally { await env.DV_PENDING.delete(id); }
+        },
+        revision: async () => {
+          const id = "test-centre:" + crypto.randomUUID();
+          const key = "test:" + id;
+          const record = { id, title: "GCSE Vault test revision note", subject: "Test", cards: [{ front: "Test", back: "Test" }], _testRecord: true };
+          try {
+            await env.REVISION.put(key, JSON.stringify(record));
+            const stored = await env.REVISION.get(key, "json");
+            if (!stored || stored.title !== record.title || stored._testRecord !== true) throw new Error("Revision test note did not round-trip correctly");
+            return "Revision storage write/read passed; the temporary test note was removed.";
+          } finally { await env.REVISION.delete(key); }
+        },
+        feedback: async () => {
+          const id = "test-centre:feedback:" + crypto.randomUUID();
+          const record = { id, type: "test", title: "Synthetic feedback test", description: "Temporary owner test record", timestamp: new Date().toISOString(), testRecord: true };
+          try {
+            await env.FEEDBACK.put(id, JSON.stringify(record));
+            const stored = await env.FEEDBACK.get(id, "json");
+            if (!stored || stored.testRecord !== true || stored.description !== record.description) throw new Error("Feedback test record did not round-trip correctly");
+            return "Feedback storage write/read passed; no real admin notification was sent and the temporary record was removed.";
+          } finally { await env.FEEDBACK.delete(id); }
+        },
+        notifications: async () => {
+          await ensureModerationTables();
+          const id = "test-centre:" + crypto.randomUUID();
+          try {
+            await env.DB.prepare("INSERT INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
+            const row = await env.DB.prepare("SELECT id, read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            if (!row) throw new Error("Could not retrieve the temporary notification");
+            await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
+            const read = await env.DB.prepare("SELECT read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            if (!read?.read_at) throw new Error("Could not mark the temporary notification as read");
+            await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+            return "Notification creation, retrieval, mark-read and deletion all passed without sending a push alert.";
+          } finally { await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run(); }
+        },
+        permissions: async () => {
+          if (actor.role !== "owner") throw new Error("The current session is not an owner session");
+          return "Owner-only access check passed. The test endpoint rejects admin and ordinary-user roles.";
+        }
+      };
+      const names = selected === "all" ? Object.keys(tests) : [selected];
+      if (names.some(name => !Object.prototype.hasOwnProperty.call(tests, name))) return new Response("Unknown test", { status: 400, headers: cors });
+      const results = [];
+      for (const name of names) {
+        const started = Date.now();
+        try {
+          const detail = await tests[name]();
+          results.push({ name, status: "passed", detail, duration_ms: Date.now() - started });
+        } catch (error) {
+          results.push({ name, status: "failed", detail: String(error?.message || error).slice(0, 1200), duration_ms: Date.now() - started });
+        }
+      }
+      return new Response(JSON.stringify({ results, completed_at: new Date().toISOString() }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
@@ -596,7 +698,7 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       await ensureModerationTables();
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
       return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
@@ -1692,7 +1794,7 @@ export default {
         const page = await env.FEEDBACK.list(cursor ? { cursor } : {});
         for (const key of page.keys) {
           const value = await env.FEEDBACK.get(key.name, "json");
-          if (value) items.push(value);
+          if (value && value.testRecord !== true) items.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
