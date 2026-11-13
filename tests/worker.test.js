@@ -923,7 +923,9 @@ test("progress summary is account-scoped and returns aggregates without study co
   assert.equal(response.status, 200);
   assert.equal(data.account.username, "student");
   assert.equal(data.quoteVault.scheduled, 2);
+  assert.equal(data.quoteVault.due, 1);
   assert.equal(data.dateVault.scheduled, 1);
+  assert.equal(data.dateVault.due, 1);
   assert.equal(data.revision.sets, 2);
   assert.equal(data.revision.cards, 3);
   assert.equal(data.revision.reviewed, 2);
