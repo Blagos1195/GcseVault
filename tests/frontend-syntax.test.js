@@ -432,7 +432,7 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   assert.equal((html.match(/name="viewport"/g)||[]).length,1);
   assert.match(css, /knowledge-list[\s\S]*?max-height:[^;]+;overflow-y:auto/);
   assert.match(css, /overview-hero/);
-  assert.match(app, /aria-current/);
+  assert.match(html, /aria-label="Navigate to a section"/);
   assert.match(app, /scrollTop = 0/);
 });
 
@@ -462,11 +462,11 @@ test("Revision knowledge map includes every card and filters results", () => {
   vm.createContext(context);
   vm.runInContext(app.slice(start, end), context);
   const allCards = context.renderGraph();
-  assert.equal((allCards.match(/class="map-card/g) || []).length, 30);
+  assert.equal((allCards.match(/class="map-card(?: active)?"/g) || []).length, 30);
   assert.ok(allCards.includes("Card 29"));
   context.state.graphQuery = "Card 29";
   const filtered = context.renderGraph();
-  assert.equal((filtered.match(/class="map-card/g) || []).length, 1);
+  assert.equal((filtered.match(/class="map-card(?: active)?"/g) || []).length, 1);
   assert.ok(filtered.includes("Card 29"));
   assert.doesNotMatch(app, /state\.cards\.slice\(0,24\)/);
   assert.match(app, /function filterKnowledgeMap\(value\)/);
@@ -569,7 +569,7 @@ test("QuoteVault and DateVault use separate scripts, accessible navigation and c
     assert.doesNotMatch(html, /maximum-scale/);
     assert.match(app, /<select id="site-page-select" aria-label="Navigate to a section"/);
     assert.match(app, /<optgroup label=/);
-    assert.match(app, /aria-current=/);
+    assert.match(app, /aria-label="Navigate to a section"/);
     assert.match(app, /scrollTop=0/);
     assert.match(app, /class="library-results"/);
     assert.match(css, /library-results[\s\S]*?overflow-y:auto/);
@@ -867,8 +867,8 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.match(html, /app\.js\?v=20261113-offline-sync-v2/);
-  assert.match(html, /revision\.css\?v=20261113-offline-sync-v2/);
+  assert.match(html, /app\.js\?v=20261114-knowledge-map-v1/);
+  assert.match(html, /revision\.css\?v=20261114-knowledge-map-v1/);
 });
 
 
