@@ -251,7 +251,7 @@ const DOMBuilder = {
 };
 // --- 8. SHARED USER PROFILE + THEME HELPERS ---
 const VaultUser = {
-  WORKER_URL: window.GCSE_VAULT_WORKER_URL || 'https://quotevault-api.noah-l-barker.workers.dev',
+  WORKER_URL: (typeof window !== 'undefined' && window.GCSE_VAULT_WORKER_URL) || 'https://quotevault-api.noah-l-barker.workers.dev',
 
   getUsername() {
     return localStorage.getItem('vault_username') || null;
