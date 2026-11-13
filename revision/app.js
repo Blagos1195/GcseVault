@@ -1163,14 +1163,19 @@ const revisionSidebar = document.getElementById('sidebar');
 const revisionHbg = document.getElementById('hbg');
 const revisionOverlay = document.getElementById('overlay');
 
+function closeRevisionSidebar(){
+  if(revisionSidebar)revisionSidebar.classList.remove('open');
+  if(revisionOverlay)revisionOverlay.style.display='none';
+  if(revisionHbg)revisionHbg.setAttribute('aria-expanded','false');
+}
+
 document.querySelectorAll('.ni').forEach(item => {
   item.addEventListener('click', () => {
     const nextView = item.dataset.view || 'overview';
     state.view = nextView;
     renderRevision();
     document.getElementById('page').scrollTop = 0;
-    if (revisionSidebar) revisionSidebar.classList.remove('open');
-    if (revisionOverlay) revisionOverlay.style.display = 'none';
+    closeRevisionSidebar();
   });
 });
 if (revisionHbg) {
@@ -1178,14 +1183,11 @@ if (revisionHbg) {
     if (!revisionSidebar) return;
     const isOpen = revisionSidebar.classList.toggle('open');
     if (revisionOverlay) revisionOverlay.style.display = isOpen ? 'block' : 'none';
+    revisionHbg.setAttribute('aria-expanded',String(isOpen));
   });
 }
-if (revisionOverlay) {
-  revisionOverlay.addEventListener('click', () => {
-    if (revisionSidebar) revisionSidebar.classList.remove('open');
-    revisionOverlay.style.display = 'none';
-  });
-}
+if (revisionOverlay) revisionOverlay.addEventListener('click',closeRevisionSidebar);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeRevisionSidebar();});
 const revisionQuickCreate = document.getElementById('new-card');
 if (revisionQuickCreate) {
   revisionQuickCreate.addEventListener('click', () => {
