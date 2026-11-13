@@ -712,6 +712,7 @@ async function applyRevisionTheme(key){
 function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}
 let graphViewport={scale:1,x:24,y:24};
 let graphPan=null;
+let graphNeedsFit=true;
 function applyGraphViewport(){
   const stage=document.getElementById('knowledge-map-stage');
   if(stage){
@@ -975,7 +976,6 @@ function renderCards(){
   return `<div style="max-width:620px;margin:0 auto"><div class="pt">${state.studySessionActive?'Study session':'Flashcards'}</div><div class="ps">${state.studySessionActive?`${state.studyQueue.length} remaining · ${state.sessionReviewed} reviewed`:`${state.studyIndex%Math.max(queueLength,1)+1} of ${queueLength}`} · ${escapeRevision(card.topic)} · ${formatDue(state.progress[card.id]?.due)}</div><div class="card" style="min-height:230px;display:flex;flex-direction:column;justify-content:center;text-align:center"><div class="tag tp">${escapeRevision(card.topic)}</div><div style="font-size:1.15rem;font-weight:600;margin:18px 0">${escapeRevision(card.title)}</div>${state.revealed?`<p style="font-size:.85rem;color:var(--text2);line-height:1.7">${escapeRevision(card.answer)}</p>${card.source?`<div class="knowledge-meta" style="margin-top:7px">Source: ${escapeRevision(card.source)}</div>`:''}<div class="knowledge-links" style="justify-content:center;margin-top:14px">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div>`:'<div class="ps">Try to answer, then reveal the explanation.</div>'}<div style="display:flex;justify-content:center;gap:7px;margin-top:20px;flex-wrap:wrap">${state.revealed?`<button class="btn br" onclick="rateCard('${card.id}',0)">Again · 10m</button><button class="btn" onclick="rateCard('${card.id}',1)">Hard · 1d</button><button class="btn bp" onclick="rateCard('${card.id}',2)">Good · ${progress.reviews?'adaptive':'1d'}</button><button class="btn bg" onclick="rateCard('${card.id}',3)">Easy · longer</button>`:`<button class="btn bp" onclick="state.revealed=true;renderRevision()">Reveal answer</button>`}</div></div>${state.studySessionActive?renderSessionSummary():''}<div style="display:flex;gap:7px;margin-top:9px;justify-content:center"><button class="btn" onclick="state.studySessionActive=false;state.view='overview';renderRevision()">End session</button>${linkedCards(card).length?`<button class="btn" onclick="beginConnectionReview('${card.id}')">Review a connection</button>`:''}</div></div>`;
 }
 function renderGraphView(){
-  graphViewport={scale:1,x:24,y:24};
   const selected=cardById(state.selected);
   return '<div class="pt">Knowledge map</div><div class="ps">Cards are grouped by subject and topic. Select a card to see its answer and connected ideas.</div><div class="map-toolbar"><label for="knowledge-map-search">Find a card</label><input id="knowledge-map-search" type="search" value="'+escapeRevision(state.graphQuery||'')+'" placeholder="Search titles, topics and answers…" oninput="filterKnowledgeMap(this.value)"></div><div id="knowledge-map-content">'+renderGraph()+'</div><div id="knowledge-map-selection">'+renderGraphSelection(selected)+'</div>';
 }
@@ -1155,11 +1155,15 @@ window.openModal=openModal;
 window.closeModal=closeModal;
 function renderRevision(){
   if(REVISION_VIEWS.has(state.view))localStorage.setItem('revision_last_view',state.view);
+  if(state.view!=='graph')graphNeedsFit=true;
   const setSwitcher=document.getElementById('revision-set-switcher');
   if(setSwitcher){setSwitcher.innerHTML=state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}">${escapeRevision(set.name)} · ${(set.cards||[]).length}</option>`).join('');setSwitcher.value=state.activeSetId;setSwitcher.title=`Current set: ${getActiveRevisionSet().name}`;}
   document.querySelectorAll('#revision-nav select').forEach(select=>{select.value=[...select.options].some(option=>option.value===state.view)?state.view:'';});
   document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
-  if(state.view==='graph')requestAnimationFrame(fitGraphToView);
+  if(state.view==='graph'&&graphNeedsFit){
+    graphNeedsFit=false;
+    requestAnimationFrame(fitGraphToView);
+  }
   const sidebarStats=document.getElementById('sidebar-stats');
   if(sidebarStats)sidebarStats.textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
   const sidebarProgress=document.getElementById('sidebar-progress');
