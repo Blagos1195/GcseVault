@@ -710,29 +710,104 @@ async function applyRevisionTheme(key){
   renderRevision();
 }
 function clearRevisionData(){state.cards=[];state.progress={};state.xp=0;state.streak=0;state.lastReview='';state.confirmClearData=false;saveRevision();renderRevision();}
+let graphViewport={scale:1,x:24,y:24};
+let graphPan=null;
+function applyGraphViewport(){
+  const stage=document.getElementById('knowledge-map-stage');
+  if(stage){
+    stage.style.transform='translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')';
+    const level=document.getElementById('graph-zoom-level');
+    if(level)level.textContent=Math.round(graphViewport.scale*100)+'%';
+  }
+}
+function fitGraphToView(){
+  const viewport=document.getElementById('knowledge-map-viewport');
+  const stage=document.getElementById('knowledge-map-stage');
+  if(!viewport||!stage)return;
+  const scale=Math.min((viewport.clientWidth-48)/Number(stage.dataset.width),(viewport.clientHeight-48)/Number(stage.dataset.height),1);
+  graphViewport={scale:Math.max(.25,scale),x:(viewport.clientWidth-Number(stage.dataset.width)*Math.max(.25,scale))/2,y:(viewport.clientHeight-Number(stage.dataset.height)*Math.max(.25,scale))/2};
+  applyGraphViewport();
+}
+function zoomGraphAt(clientX,clientY,nextScale){
+  const viewport=document.getElementById('knowledge-map-viewport');
+  if(!viewport)return;
+  const rect=viewport.getBoundingClientRect();
+  const px=clientX-rect.left,py=clientY-rect.top;
+  const scale=Math.max(.25,Math.min(2.5,nextScale));
+  const ratio=scale/graphViewport.scale;
+  graphViewport={scale,x:px-(px-graphViewport.x)*ratio,y:py-(py-graphViewport.y)*ratio};
+  applyGraphViewport();
+}
+function zoomGraphBy(factor){
+  const viewport=document.getElementById('knowledge-map-viewport');
+  if(!viewport)return;
+  const rect=viewport.getBoundingClientRect();
+  zoomGraphAt(rect.left+rect.width/2,rect.top+rect.height/2,graphViewport.scale*factor);
+}
+function startGraphPan(event){
+  if(event.button!==0||event.target.closest('button'))return;
+  graphPan={pointerId:event.pointerId,x:event.clientX,y:event.clientY,originX:graphViewport.x,originY:graphViewport.y};
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add('is-panning');
+}
+function moveGraphPan(event){
+  if(!graphPan||graphPan.pointerId!==event.pointerId)return;
+  graphViewport.x=graphPan.originX+event.clientX-graphPan.x;
+  graphViewport.y=graphPan.originY+event.clientY-graphPan.y;
+  applyGraphViewport();
+}
+function endGraphPan(event){
+  if(!graphPan||graphPan.pointerId!==event.pointerId)return;
+  graphPan=null;
+  event.currentTarget.classList.remove('is-panning');
+}
+function zoomGraph(event){
+  event.preventDefault();
+  zoomGraphAt(event.clientX,event.clientY,graphViewport.scale*(event.deltaY<0?1.12:.89));
+}
 function renderGraph(){
   const query=String(state.graphQuery||'').trim().toLowerCase();
   const cards=state.cards.filter(card=>!query||[card.title,card.answer,card.subject,card.topic,card.source,...linkedCards(card).map(link=>link.title)].some(value=>String(value||'').toLowerCase().includes(query)));
   if(!cards.length)return '<div class="map-empty">'+(query?'No cards match this search.':'No cards in this revision set yet. Add or import cards to build your knowledge map.')+'</div>';
-  const columns=Math.min(4,Math.max(1,cards.length));
-  const cellWidth=190,cellHeight=112,gap=22,nodeWidth=190,nodeHeight=78;
-  const rows=Math.ceil(cards.length/columns),width=columns*cellWidth+(columns-1)*gap,height=rows*cellHeight;
-  const positions=cards.map((card,index)=>({x:(index%columns)*(cellWidth+gap),y:Math.floor(index/columns)*cellHeight,card}));
+  const subjects=[...new Set(cards.map(card=>card.subject||'General'))].sort((a,b)=>a.localeCompare(b));
+  const nodeWidth=224,nodeHeight=78,columnWidth=304,top=64,topicGap=26,nodeGap=16;
+  const positions=[],headers=[];
+  let height=top;
+  subjects.forEach((subject,column)=>{
+    let y=top;
+    const subjectCards=cards.filter(card=>(card.subject||'General')===subject);
+    const topics=[...new Set(subjectCards.map(card=>card.topic||'General'))].sort((a,b)=>a.localeCompare(b));
+    headers.push('<div class="graph-subject" style="left:'+(column*columnWidth)+'px;top:0;width:'+nodeWidth+'px">'+escapeRevision(subject)+'</div>');
+    topics.forEach(topic=>{
+      const topicCards=subjectCards.filter(card=>(card.topic||'General')===topic).sort((a,b)=>a.title.localeCompare(b.title));
+      headers.push('<div class="graph-topic" style="left:'+(column*columnWidth)+'px;top:'+y+'px;width:'+nodeWidth+'px">'+escapeRevision(topic)+'</div>');
+      y+=34;
+      topicCards.forEach(card=>{
+        positions.push({x:column*columnWidth,y,card});
+        y+=nodeHeight+nodeGap;
+      });
+      y+=topicGap;
+    });
+    height=Math.max(height,y);
+  });
+  const width=subjects.length*columnWidth-columnWidth+nodeWidth;
+  const graphHeight=Math.max(240,height+12);
   const byId=new Map(positions.map(node=>[node.card.id,node]));
   const paths=positions.flatMap(node=>linkedCards(node.card).map(link=>{
     const target=byId.get(link.id);
-    if(!target||node.card.id.localeCompare(link.id)>0)return '';
+    if(!target||String(node.card.id).localeCompare(String(link.id))>0)return '';
     const x1=node.x+nodeWidth/2,y1=node.y+nodeHeight/2,x2=target.x+nodeWidth/2,y2=target.y+nodeHeight/2;
-    const bend=Math.max(24,Math.abs(x2-x1)*.28);
-    return '<path d="M '+x1+' '+y1+' C '+(x1+(x2>=x1?bend:-bend))+' '+y1+', '+(x2+(x2>=x1?-bend:bend))+' '+y2+', '+x2+' '+y2+'"></path>';
+    const direction=x2>=x1?1:-1;
+    const bend=Math.max(42,Math.abs(x2-x1)*.42);
+    return '<path d="M '+x1+' '+y1+' C '+(x1+direction*bend)+' '+y1+', '+(x2-direction*bend)+' '+y2+', '+x2+' '+y2+'"></path>';
   })).join('');
-  const nodes=positions.map(node=>'<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" style="left:'+node.x+'px;top:'+node.y+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(\''+escapeRevision(node.card.id)+'\')"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong></button>').join('');
-  return '<div class="graph-wrap"><div class="graph" style="width:'+width+'px;height:'+height+'px"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none">'+paths+'</svg>'+nodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Lines show linked ideas</div>';
+  const nodes=positions.map(node=>'<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" style="left:'+node.x+'px;top:'+node.y+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(\\''+escapeRevision(node.card.id)+'\\')"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong><small>'+linkedCards(node.card).length+' connected ideas</small></button>').join('');
+  return '<div class="graph-controls"><div class="graph-zoom-controls"><button type="button" class="btn bsm" aria-label="Zoom out" onclick="zoomGraphBy(.8)">−</button><span id="graph-zoom-level">'+Math.round(graphViewport.scale*100)+'%</span><button type="button" class="btn bsm" aria-label="Zoom in" onclick="zoomGraphBy(1.25)">+</button></div><button type="button" class="btn bsm" onclick="fitGraphToView()">Fit map</button><span class="graph-help">Scroll to zoom · Drag to move</span></div><div id="knowledge-map-viewport" class="graph-viewport" onpointerdown="startGraphPan(event)" onpointermove="moveGraphPan(event)" onpointerup="endGraphPan(event)" onpointercancel="endGraphPan(event)" onwheel="zoomGraph(event)"><div id="knowledge-map-stage" class="graph-stage" data-width="'+width+'" data-height="'+graphHeight+'" style="width:'+width+'px;height:'+graphHeight+'px;transform:translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')"><svg viewBox="0 0 '+width+' '+graphHeight+'" preserveAspectRatio="none">'+paths+'</svg>'+headers.join('')+nodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Grouped by subject and topic · Lines show linked ideas</div>';
 }
 function filterKnowledgeMap(value){
   state.graphQuery=value;
   const map=document.getElementById('knowledge-map-content');
-  if(map)map.innerHTML=renderGraph();
+  if(map){map.innerHTML=renderGraph();applyGraphViewport();}
   const selection=document.getElementById('knowledge-map-selection');
   if(selection)selection.innerHTML=renderGraphSelection(cardById(state.selected));
 }
@@ -900,6 +975,7 @@ function renderCards(){
   return `<div style="max-width:620px;margin:0 auto"><div class="pt">${state.studySessionActive?'Study session':'Flashcards'}</div><div class="ps">${state.studySessionActive?`${state.studyQueue.length} remaining · ${state.sessionReviewed} reviewed`:`${state.studyIndex%Math.max(queueLength,1)+1} of ${queueLength}`} · ${escapeRevision(card.topic)} · ${formatDue(state.progress[card.id]?.due)}</div><div class="card" style="min-height:230px;display:flex;flex-direction:column;justify-content:center;text-align:center"><div class="tag tp">${escapeRevision(card.topic)}</div><div style="font-size:1.15rem;font-weight:600;margin:18px 0">${escapeRevision(card.title)}</div>${state.revealed?`<p style="font-size:.85rem;color:var(--text2);line-height:1.7">${escapeRevision(card.answer)}</p>${card.source?`<div class="knowledge-meta" style="margin-top:7px">Source: ${escapeRevision(card.source)}</div>`:''}<div class="knowledge-links" style="justify-content:center;margin-top:14px">${linkedCards(card).map(link=>`<span class="knowledge-link" onclick="selectRevisionCard('${link.id}')">↗ ${escapeRevision(link.title)}</span>`).join('')}</div>`:'<div class="ps">Try to answer, then reveal the explanation.</div>'}<div style="display:flex;justify-content:center;gap:7px;margin-top:20px;flex-wrap:wrap">${state.revealed?`<button class="btn br" onclick="rateCard('${card.id}',0)">Again · 10m</button><button class="btn" onclick="rateCard('${card.id}',1)">Hard · 1d</button><button class="btn bp" onclick="rateCard('${card.id}',2)">Good · ${progress.reviews?'adaptive':'1d'}</button><button class="btn bg" onclick="rateCard('${card.id}',3)">Easy · longer</button>`:`<button class="btn bp" onclick="state.revealed=true;renderRevision()">Reveal answer</button>`}</div></div>${state.studySessionActive?renderSessionSummary():''}<div style="display:flex;gap:7px;margin-top:9px;justify-content:center"><button class="btn" onclick="state.studySessionActive=false;state.view='overview';renderRevision()">End session</button>${linkedCards(card).length?`<button class="btn" onclick="beginConnectionReview('${card.id}')">Review a connection</button>`:''}</div></div>`;
 }
 function renderGraphView(){
+  graphViewport={scale:1,x:24,y:24};
   const selected=cardById(state.selected);
   return '<div class="pt">Knowledge map</div><div class="ps">Cards are grouped by subject and topic. Select a card to see its answer and connected ideas.</div><div class="map-toolbar"><label for="knowledge-map-search">Find a card</label><input id="knowledge-map-search" type="search" value="'+escapeRevision(state.graphQuery||'')+'" placeholder="Search titles, topics and answers…" oninput="filterKnowledgeMap(this.value)"></div><div id="knowledge-map-content">'+renderGraph()+'</div><div id="knowledge-map-selection">'+renderGraphSelection(selected)+'</div>';
 }
@@ -1083,6 +1159,7 @@ function renderRevision(){
   if(setSwitcher){setSwitcher.innerHTML=state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}">${escapeRevision(set.name)} · ${(set.cards||[]).length}</option>`).join('');setSwitcher.value=state.activeSetId;setSwitcher.title=`Current set: ${getActiveRevisionSet().name}`;}
   document.querySelectorAll('#revision-nav select').forEach(select=>{select.value=[...select.options].some(option=>option.value===state.view)?state.view:'';});
   document.getElementById('page').innerHTML=state.view==='resources'?practiceResourcesView():state.view==='cards'?renderCards():state.view==='create'?renderCreateCard():state.view==='edit'?renderEditCard():state.view==='link'?renderLinkCard():state.view==='graph'?renderGraphView():state.view==='library'?renderLibrary():state.view==='analytics'?renderAnalytics():state.view==='connection'?renderConnectionReview():state.view==='ai'?renderAI():state.view==='public'?renderPublicNotes():state.view==='leaderboard'?renderLeaderboard():state.view==='settings'?renderSettings():renderOverview();
+  if(state.view==='graph')requestAnimationFrame(fitGraphToView);
   const sidebarStats=document.getElementById('sidebar-stats');
   if(sidebarStats)sidebarStats.textContent=`${state.cards.length} cards · ${state.cards.reduce((n,c)=>n+(c.links||[]).length,0)/2|0} links`;
   const sidebarProgress=document.getElementById('sidebar-progress');
