@@ -519,7 +519,15 @@ async function syncRevision(keepalive=false){
       streak: state.streak,
       lastReview: state.lastReview
     };
-    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':syncToken},body:JSON.stringify(payload),keepalive});
+    const payloadText=JSON.stringify(payload);
+    const payloadBytes=new Blob([payloadText]).size;
+    if(keepalive&&payloadBytes>60000){
+      state.syncStatus='pending';
+      state.accountMessage='Your changes are saved on this device. This backup was too large to send while closing the page and will sync next time Revision is open.';
+      state.accountMessageType='success';
+      return;
+    }
+    const response=await fetch(`${ThemeManager.WORKER_URL}/revision/sync`,{method:'POST',headers:{'Content-Type':'application/json','X-Account-Session':syncToken},body:payloadText,keepalive});
     if(syncToken!==VaultUser.getAccountSession()||syncUserKey!==revisionUserKey()||revisionActiveScope!==syncUserKey)return;
     if(response.status===409){
       const conflict=await response.json();
@@ -544,7 +552,7 @@ async function syncRevision(keepalive=false){
     if(syncToken===VaultUser.getAccountSession()&&syncUserKey===revisionUserKey()&&revisionActiveScope===syncUserKey){
       state.syncStatus='error';
       state.accountMessage='Could not reach the Worker at /revision/sync. Your local copy is still saved on this device.';
-      window.VaultBugReporter?.capture(error,{detail:'Revision account sync'});
+      window.VaultBugReporter?.capture(error,{detail:'Revision account sync; keepalive='+String(keepalive)+'; payloadBytes='+String(payloadBytes)+'; online='+String(navigator.onLine)});
       state.accountMessageType='error';
     }
   }finally{
