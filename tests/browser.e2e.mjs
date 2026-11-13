@@ -103,7 +103,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
         if (path === "/revision/") {
           const menu = page.locator('select[aria-label="Tools navigation"]');
           await menu.selectOption("graph");
-          await page.getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
+          await page.locator("#page").getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
           await page.locator("#knowledge-map-search").waitFor({ timeout: 5000 });
           assert.ok(await page.locator("#knowledge-map-content").count());
         }
