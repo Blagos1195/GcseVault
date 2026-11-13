@@ -855,6 +855,7 @@ test("Revision queues sync while online and preserves changes locally while offl
     revisionUserKey: () => "account",
     revisionUsername: () => "student",
     VaultUser: { getAccountSession: () => "session" },
+    syncRevision() {},
     setTimeout() { scheduled++; return 1; }
   };
   vm.runInNewContext(app.slice(start, end), context);
