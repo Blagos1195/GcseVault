@@ -718,7 +718,7 @@ async function loadCourseSelection(){
  if(!Array.isArray(courseSelection))showCourseSelection();
 }
 function editCourseSelection(){showCourseSelection();}
-function allQ(){return trackedItems(allQincHidden().filter(q=>!S.hidden.has(q.id)));}
+function allQ(){return allQincHidden().filter(q=>!S.hidden.has(q.id));}
 function getQ(id){return allQincHidden().find(q=>q.id===id);}
 function qSRS(id){return S.srsData[id]||{};}
 function setQSRS(id,srs){S.srsData[id]={...srs,updatedAt:new Date().toISOString()};save();}
@@ -1661,7 +1661,7 @@ function render(){
 // DASHBOARD
 // ════════════════════════════════════════════════
 function rDash(){
-  const qs=allQ();
+  const qs=trackedItems(allQ());
   const ws=[...new Set(qs.map(q=>q.work))];
   const todayIdx=new Date().getDate()%qs.length;
   const qotd=qs[todayIdx];
@@ -2835,7 +2835,7 @@ async function deletePendingQuote(id){
 // STATISTICS — heatmap, accuracy over time, etc.
 // ════════════════════════════════════════════════
 function rStats(){
-  const qs=allQ();
+  const qs=trackedItems(allQ());
   const ws=[...new Set(qs.map(q=>q.work))];
 
   // Accuracy by work
@@ -2974,11 +2974,11 @@ function rStats(){
 // ════════════════════════════════════════════════
 function rAch(){
   const achs=[
-    {i:'01',n:'First Blood',d:'Mastered your first quote',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=1},
-    {i:'02',n:'Card Shark',d:'Mastered 5 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=5},
-    {i:'03',n:'Bibliophile',d:'Mastered 20 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=20},
-    {i:'04',n:'Scholar',d:'Mastered 40 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=40},
-    {i:'05',n:'Grand Master',d:'Mastered 80 quotes',e:[...S.mastered].filter(id=>allQ().some(q=>q.id===id)).length>=80},
+    {i:'01',n:'First Blood',d:'Mastered your first quote',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=1},
+    {i:'02',n:'Card Shark',d:'Mastered 5 quotes',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=5},
+    {i:'03',n:'Bibliophile',d:'Mastered 20 quotes',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=20},
+    {i:'04',n:'Scholar',d:'Mastered 40 quotes',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=40},
+    {i:'05',n:'Grand Master',d:'Mastered 80 quotes',e:[...S.mastered].filter(id=>trackedItems(allQ()).some(q=>q.id===id)).length>=80},
     {i:'06',n:'XP Earner',d:'Reached 100 XP',e:S.xp>=100},
     {i:'07',n:'XP Champion',d:'Reached 500 XP',e:S.xp>=500},
     {i:'08',n:'XP Legend',d:'Reached 1000 XP',e:S.xp>=1000},
