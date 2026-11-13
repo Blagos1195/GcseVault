@@ -272,10 +272,10 @@ export default {
         health: async () => {
           const row = await env.DB.prepare("SELECT 1 AS ok").first();
           if (Number(row?.ok) !== 1) throw new Error("D1 query returned an unexpected result");
-          const bindings = ["QUOTEVAULT", "PUBLIC_QUOTES", "DV_PENDING", "DV_PUBLIC", "REVISION", "FEEDBACK"];
+          const bindings = ["QUOTEVAULT", "PUBLIC_QUOTES", "DV_PENDING", "DV_PUBLIC", "REVISION", "FEEDBACK", "THEMES"];
           const missing = bindings.filter(name => !env[name] || typeof env[name].put !== "function");
           if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
-          return "D1 query passed; all six required KV bindings are available.";
+          return "D1 query passed; all seven required KV bindings are available.";
         },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
