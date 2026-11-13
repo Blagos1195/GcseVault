@@ -1188,8 +1188,8 @@ function updateSB(){
   const dc=dueCount();
   document.getElementById('sb-due').textContent=dc>0?`${dc} due for review`:'';
 }
-function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';document.getElementById('hbg')?.setAttribute('aria-expanded',String(isOpen));}
-function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';document.getElementById('hbg')?.setAttribute('aria-expanded','false');}
+function toggleSB(){const topbar=document.getElementById('topbar');const isOpen=topbar.classList.toggle('mobile-nav-open');document.getElementById('hbg')?.setAttribute('aria-expanded',String(isOpen));}
+function closeSB(){document.getElementById('topbar')?.classList.remove('mobile-nav-open');document.getElementById('hbg')?.setAttribute('aria-expanded','false');}
 document.addEventListener('keydown',event=>{if(event.key==='Escape')closeSB();});
 function openModal(html){document.getElementById('modal').innerHTML=html;document.getElementById('modal-bg').classList.add('open');}
 function openDateModal(id){
