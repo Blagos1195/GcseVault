@@ -222,6 +222,38 @@ function addRevisionSet(name = 'New set'){
   renderRevision();
   return newSet;
 }
+function duplicateRevisionSet(setId){
+  const source=state.accountSets.find(set=>set.id===setId);
+  if(!source)return;
+  const copy=JSON.parse(JSON.stringify(source));
+  const baseName=(source.name||'Revision set').slice(0,74)+' (copy)';
+  const names=new Set(state.accountSets.map(set=>set.name));
+  let name=baseName;
+  let suffix=2;
+  while(names.has(name)){
+    const ending=' (copy '+suffix+++')';
+    name=(source.name||'Revision set').slice(0,80-ending.length)+ending;
+  }
+  copy.id=globalThis.crypto?.randomUUID?.()||'set-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
+  copy.name=name;
+  copy.published=false;
+  const index=state.accountSets.findIndex(set=>set.id===setId);
+  state.accountSets.splice(index+1,0,normalizeRevisionSet(copy,copy.id));
+  state.setMessage='Created a copy of “'+source.name+'”.';
+  state.setMessageType='success';
+  saveRevision();
+  renderRevision();
+  return copy.id;
+}
+function moveRevisionSet(setId,direction){
+  const index=state.accountSets.findIndex(set=>set.id===setId);
+  const next=index+Number(direction);
+  if(index<0||next<0||next>=state.accountSets.length)return;
+  const [set]=state.accountSets.splice(index,1);
+  state.accountSets.splice(next,0,set);
+  saveRevision();
+  renderRevision();
+}
 function deleteRevisionSet(setId){
   if (state.accountSets.length <= 1) {
     state.accountSets = [normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''}, DEFAULT_REVISION_SET_ID)];
@@ -788,6 +820,9 @@ function renderSettings(){
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
               <button class="btn bsm" type="button" onclick="switchRevisionSet('${set.id}')">Switch</button>
+              <button class="btn bsm" type="button" onclick="duplicateRevisionSet('${set.id}')">Duplicate</button>
+              <button class="btn bsm" type="button" onclick="moveRevisionSet('${set.id}',-1)" ${state.accountSets.indexOf(set)===0?'disabled':''} aria-label="Move ${escapeRevision(set.name)} up">↑</button>
+              <button class="btn bsm" type="button" onclick="moveRevisionSet('${set.id}',1)" ${state.accountSets.indexOf(set)===state.accountSets.length-1?'disabled':''} aria-label="Move ${escapeRevision(set.name)} down">↓</button>
               ${state.editingSetId===set.id?`<button class="btn bsm bp" type="button" onclick="saveRevisionSetName('${set.id}')">Save name</button><button class="btn bsm" type="button" onclick="state.editingSetId=null;renderRevision()">Cancel</button>`:`<button class="btn bsm" type="button" onclick="renameRevisionSet('${set.id}')">Edit</button>`}
               ${state.confirmDeleteSetId===set.id?`<span class="knowledge-meta" style="align-self:center">Delete this set?</span><button class="btn bsm br" type="button" onclick="confirmDeleteRevisionSet('${set.id}')">Confirm</button><button class="btn bsm" type="button" onclick="cancelDeleteRevisionSet()">Cancel</button>`:`<button class="btn bsm br" type="button" onclick="requestDeleteRevisionSet('${set.id}')">Delete</button>`}
             </div>
