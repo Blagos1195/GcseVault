@@ -94,3 +94,40 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
     await new Promise(resolveClose => server.close(resolveClose));
   }
 });
+
+
+test("the main learning tools remain available after the device goes offline", async () => {
+  const server = createStaticServer();
+  await new Promise((resolveListen, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}/GcseVault`;
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ serviceWorkers: "allow" });
+  try {
+    const page = await context.newPage();
+    await mockWorker(page);
+    await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await context.setOffline(true);
+    for (const [path, title] of [["/quotes/", "QuoteVault"], ["/dates/", "DateVault"], ["/revision/", "Revision"]]) {
+      const offlinePage = await context.newPage();
+      await offlinePage.goto(base + path, { waitUntil: "domcontentloaded" });
+      assert.ok((await offlinePage.locator("body").innerText()).includes(title), path + " did not load from the offline shell");
+      await offlinePage.close();
+    }
+    await context.newPage().then(async offlinePage => {
+      await offlinePage.goto(base + "/", { waitUntil: "domcontentloaded" });
+      assert.ok((await offlinePage.locator("body").innerText()).includes("GCSE Vault"));
+      await offlinePage.close();
+    });
+  } finally {
+    await context.close();
+    await browser.close();
+    await new Promise(resolveClose => server.close(resolveClose));
+  }
+});
