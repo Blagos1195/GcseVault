@@ -1,0 +1,947 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-a-level-physics-particles-pack",
+  "catalogueId": "aqa-a-level-physics",
+  "subject": "Physics",
+  "examBoard": "AQA",
+  "qualification": "A-level Physics (7408)",
+  "topic": "Particles",
+  "catalogue": {
+    "type": "revision-catalogue",
+    "version": 1,
+    "id": "aqa-a-level-physics",
+    "subject": "Physics",
+    "examBoard": "AQA",
+    "qualification": "A-level Physics (7408)",
+    "source": "AQA A-level Physics 7408 specification, section 3.2.1 Particles",
+    "topics": [
+      {
+        "id": "physics-01",
+        "name": "Measurements and their errors",
+        "year": "Year 12",
+        "area": "Measurements and their errors",
+        "subtopics": [
+          "SI units and prefixes",
+          "Measurement uncertainties",
+          "Estimation"
+        ]
+      },
+      {
+        "id": "physics-02",
+        "name": "Particles",
+        "year": "Year 12",
+        "area": "Particles",
+        "subtopics": [
+          "Constituents of the atom",
+          "Stable and unstable nuclei",
+          "Particles, antiparticles and photons",
+          "Particle interactions",
+          "Classification of particles",
+          "Quarks and antiquarks",
+          "Applications of conservation laws"
+        ]
+      },
+      {
+        "id": "physics-03",
+        "name": "Waves",
+        "year": "Year 12",
+        "area": "Waves",
+        "subtopics": [
+          "Progressive waves",
+          "Refraction and diffraction",
+          "Superposition",
+          "Stationary waves"
+        ]
+      },
+      {
+        "id": "physics-04",
+        "name": "Mechanics and materials",
+        "year": "Year 12",
+        "area": "Mechanics and materials",
+        "subtopics": [
+          "Scalars and vectors",
+          "Projectile motion",
+          "Forces and momentum",
+          "Work, energy and power",
+          "Materials"
+        ]
+      },
+      {
+        "id": "physics-05",
+        "name": "Electricity",
+        "year": "Year 12",
+        "area": "Electricity",
+        "subtopics": [
+          "Current and potential difference",
+          "Resistance",
+          "Circuits",
+          "Resistivity",
+          "Potential dividers"
+        ]
+      },
+      {
+        "id": "physics-06",
+        "name": "Further mechanics and thermal physics",
+        "year": "Year 13",
+        "area": "Further mechanics and thermal physics",
+        "subtopics": [
+          "Circular motion",
+          "Simple harmonic motion",
+          "Thermal physics",
+          "Ideal gases"
+        ]
+      },
+      {
+        "id": "physics-07",
+        "name": "Fields and their consequences",
+        "year": "Year 13",
+        "area": "Fields and their consequences",
+        "subtopics": [
+          "Gravitational fields",
+          "Electric fields",
+          "Capacitance",
+          "Magnetic fields",
+          "Electromagnetic induction"
+        ]
+      },
+      {
+        "id": "physics-08",
+        "name": "Nuclear physics",
+        "year": "Year 13",
+        "area": "Nuclear physics",
+        "subtopics": [
+          "Radioactive decay",
+          "Nuclear energy",
+          "Mass and energy"
+        ]
+      },
+      {
+        "id": "physics-09",
+        "name": "Astrophysics",
+        "year": "Year 13",
+        "area": "Astrophysics",
+        "subtopics": [
+          "Telescopes",
+          "Stellar classification",
+          "Cosmology"
+        ]
+      },
+      {
+        "id": "physics-10",
+        "name": "Medical physics",
+        "year": "Year 13",
+        "area": "Medical physics",
+        "subtopics": [
+          "X-rays",
+          "Ultrasound",
+          "PET scanning",
+          "Imaging"
+        ]
+      },
+      {
+        "id": "physics-11",
+        "name": "Engineering physics",
+        "year": "Year 13",
+        "area": "Engineering physics",
+        "subtopics": [
+          "Rotational dynamics",
+          "Thermodynamics",
+          "Materials"
+        ]
+      },
+      {
+        "id": "physics-12",
+        "name": "Turning points in physics",
+        "year": "Year 13",
+        "area": "Turning points in physics",
+        "subtopics": [
+          "The discovery of the electron",
+          "Wave-particle duality",
+          "Special relativity"
+        ]
+      },
+      {
+        "id": "physics-13",
+        "name": "Electronics",
+        "year": "Year 13",
+        "area": "Electronics",
+        "subtopics": [
+          "Semiconductors",
+          "Diodes",
+          "Operational amplifiers"
+        ]
+      }
+    ]
+  },
+  "cards": [
+    {
+      "id": "p01",
+      "topicId": "physics-02",
+      "front": "What are the three constituents of an atom?",
+      "back": "Protons and neutrons in the nucleus, with electrons surrounding the nucleus.",
+      "difficulty": 3,
+      "links": [
+        "p02",
+        "p08",
+        "p12"
+      ]
+    },
+    {
+      "id": "p02",
+      "topicId": "physics-02",
+      "front": "What are the charges of a proton, neutron and electron?",
+      "back": "Proton: +1. Neutron: 0. Electron: −1.",
+      "difficulty": 3,
+      "links": [
+        "p01",
+        "p03"
+      ]
+    },
+    {
+      "id": "p03",
+      "topicId": "physics-02",
+      "front": "What are the relative masses of a proton, neutron and electron?",
+      "back": "Proton: 1. Neutron: 1. Electron: approximately 1/1836.",
+      "difficulty": 3,
+      "links": [
+        "p02",
+        "p04"
+      ]
+    },
+    {
+      "id": "p04",
+      "topicId": "physics-02",
+      "front": "What are the approximate SI masses of a proton, neutron and electron?",
+      "back": "Proton: 1.67 × 10⁻²⁷ kg; neutron: 1.675 × 10⁻²⁷ kg; electron: 9.11 × 10⁻³¹ kg.",
+      "difficulty": 3,
+      "links": [
+        "p03",
+        "p05"
+      ]
+    },
+    {
+      "id": "p05",
+      "topicId": "physics-02",
+      "front": "What are the SI charges of a proton, neutron and electron?",
+      "back": "Proton: +1.60 × 10⁻¹⁹ C; neutron: 0 C; electron: −1.60 × 10⁻¹⁹ C.",
+      "difficulty": 3,
+      "links": [
+        "p04",
+        "p06"
+      ]
+    },
+    {
+      "id": "p06",
+      "topicId": "physics-02",
+      "front": "What is specific charge?",
+      "back": "The charge of a particle or object divided by its mass. Its SI unit is C kg⁻¹.",
+      "difficulty": 3,
+      "links": [
+        "p05",
+        "p07",
+        "p22"
+      ]
+    },
+    {
+      "id": "p07",
+      "topicId": "physics-02",
+      "front": "How do you calculate the specific charge of a particle?",
+      "back": "Specific charge = charge ÷ mass. Keep the sign of the charge and use SI units.",
+      "difficulty": 3,
+      "links": [
+        "p06",
+        "p08"
+      ]
+    },
+    {
+      "id": "p08",
+      "topicId": "physics-02",
+      "front": "What do proton number Z and nucleon number A represent?",
+      "back": "Z is the number of protons. A is the total number of protons and neutrons.",
+      "difficulty": 3,
+      "links": [
+        "p07",
+        "p09"
+      ]
+    },
+    {
+      "id": "p09",
+      "topicId": "physics-02",
+      "front": "How many neutrons are in a nuclide with nucleon number A and proton number Z?",
+      "back": "A − Z neutrons.",
+      "difficulty": 3,
+      "links": [
+        "p08",
+        "p10"
+      ]
+    },
+    {
+      "id": "p10",
+      "topicId": "physics-02",
+      "front": "What does nuclide notation show?",
+      "back": "The element symbol, nucleon number A as the upper-left number and proton number Z as the lower-left number.",
+      "difficulty": 3,
+      "links": [
+        "p09",
+        "p11"
+      ]
+    },
+    {
+      "id": "p11",
+      "topicId": "physics-02",
+      "front": "What are isotopes?",
+      "back": "Nuclei of the same element with the same proton number but different numbers of neutrons.",
+      "difficulty": 3,
+      "links": [
+        "p10",
+        "p14",
+        "p15"
+      ]
+    },
+    {
+      "id": "p12",
+      "topicId": "physics-02",
+      "front": "What is the strong nuclear force responsible for?",
+      "back": "It binds protons and neutrons together in the nucleus, overcoming electrostatic repulsion between protons at nuclear distances.",
+      "difficulty": 3,
+      "links": [
+        "p13"
+      ]
+    },
+    {
+      "id": "p13",
+      "topicId": "physics-02",
+      "front": "What is the approximate range of the strong nuclear force?",
+      "back": "It is attractive up to about 3 fm and becomes strongly repulsive at separations below about 0.5 fm.",
+      "difficulty": 3,
+      "links": [
+        "p12",
+        "p14"
+      ]
+    },
+    {
+      "id": "p14",
+      "topicId": "physics-02",
+      "front": "What is alpha decay?",
+      "back": "A nucleus emits an alpha particle, which is a helium-4 nucleus containing two protons and two neutrons.",
+      "difficulty": 3,
+      "links": [
+        "p13",
+        "p15"
+      ]
+    },
+    {
+      "id": "p15",
+      "topicId": "physics-02",
+      "front": "How do A and Z change during alpha decay?",
+      "back": "Nucleon number A decreases by 4 and proton number Z decreases by 2.",
+      "difficulty": 3,
+      "links": [
+        "p14",
+        "p16"
+      ]
+    },
+    {
+      "id": "p16",
+      "topicId": "physics-02",
+      "front": "What happens in beta-minus decay?",
+      "back": "A neutron changes into a proton, emitting an electron and an electron antineutrino.",
+      "difficulty": 3,
+      "links": [
+        "p15",
+        "p17",
+        "p18",
+        "p33",
+        "p56",
+        "p58"
+      ]
+    },
+    {
+      "id": "p17",
+      "topicId": "physics-02",
+      "front": "How do A and Z change during beta-minus decay?",
+      "back": "A stays the same; Z increases by 1 because a neutron becomes a proton.",
+      "difficulty": 3,
+      "links": [
+        "p16",
+        "p18"
+      ]
+    },
+    {
+      "id": "p18",
+      "topicId": "physics-02",
+      "front": "Why is an antineutrino emitted in beta-minus decay?",
+      "back": "It allows energy, momentum and lepton number to be conserved in the decay.",
+      "difficulty": 3,
+      "links": [
+        "p17"
+      ]
+    },
+    {
+      "id": "p19",
+      "topicId": "physics-02",
+      "front": "What is an antiparticle?",
+      "back": "A particle with the same rest mass as its corresponding particle but opposite values of additive quantum properties such as charge.",
+      "difficulty": 3,
+      "links": [
+        "p20",
+        "p21",
+        "p23",
+        "p24"
+      ]
+    },
+    {
+      "id": "p20",
+      "topicId": "physics-02",
+      "front": "Name the antiparticles of the electron, proton, neutron and neutrino.",
+      "back": "Positron, antiproton, antineutron and antineutrino respectively.",
+      "difficulty": 3,
+      "links": [
+        "p19",
+        "p21"
+      ]
+    },
+    {
+      "id": "p21",
+      "topicId": "physics-02",
+      "front": "What are the charges of an electron and positron?",
+      "back": "Electron: −1. Positron: +1. Their masses and rest energies are equal.",
+      "difficulty": 3,
+      "links": [
+        "p20",
+        "p22"
+      ]
+    },
+    {
+      "id": "p22",
+      "topicId": "physics-02",
+      "front": "What are the approximate rest energies of the electron, proton and neutron?",
+      "back": "Electron: 0.511 MeV; proton: 938 MeV; neutron: 940 MeV. Antiparticles have the same rest energies.",
+      "difficulty": 3,
+      "links": [
+        "p21"
+      ]
+    },
+    {
+      "id": "p23",
+      "topicId": "physics-02",
+      "front": "What happens during particle-antiparticle annihilation?",
+      "back": "A particle and its antiparticle annihilate and their energy is transferred to other particles, commonly photons.",
+      "difficulty": 3,
+      "links": [
+        "p24",
+        "p25",
+        "p27"
+      ]
+    },
+    {
+      "id": "p24",
+      "topicId": "physics-02",
+      "front": "What happens during pair production?",
+      "back": "A sufficiently energetic photon produces a particle-antiparticle pair, typically near a nucleus so momentum can be conserved.",
+      "difficulty": 3,
+      "links": [
+        "p23",
+        "p25",
+        "p27"
+      ]
+    },
+    {
+      "id": "p25",
+      "topicId": "physics-02",
+      "front": "What is the minimum photon energy for electron-positron pair production?",
+      "back": "At least 1.022 MeV: 0.511 MeV for each particle's rest energy, with any extra becoming kinetic energy.",
+      "difficulty": 3,
+      "links": [
+        "p24",
+        "p26"
+      ]
+    },
+    {
+      "id": "p26",
+      "topicId": "physics-02",
+      "front": "What is the photon model of electromagnetic radiation?",
+      "back": "Electromagnetic radiation transfers energy in discrete packets called photons. Photon energy is proportional to frequency.",
+      "difficulty": 3,
+      "links": [
+        "p25",
+        "p27"
+      ]
+    },
+    {
+      "id": "p27",
+      "topicId": "physics-02",
+      "front": "What is the relationship between photon energy and frequency?",
+      "back": "E = hf, where h is the Planck constant and f is frequency.",
+      "difficulty": 3,
+      "links": [
+        "p26",
+        "p28"
+      ]
+    },
+    {
+      "id": "p28",
+      "topicId": "physics-02",
+      "front": "What is the relationship between photon energy and wavelength?",
+      "back": "E = hc/λ, where c is the speed of light and λ is wavelength.",
+      "difficulty": 3,
+      "links": [
+        "p27"
+      ]
+    },
+    {
+      "id": "p29",
+      "topicId": "physics-02",
+      "front": "What are the four fundamental interactions?",
+      "back": "Gravitational, electromagnetic, weak nuclear and strong nuclear interactions.",
+      "difficulty": 3,
+      "links": [
+        "p30",
+        "p31",
+        "p32"
+      ]
+    },
+    {
+      "id": "p30",
+      "topicId": "physics-02",
+      "front": "What is an exchange particle?",
+      "back": "A particle exchanged between interacting particles to transfer momentum and account for a force.",
+      "difficulty": 3,
+      "links": [
+        "p29",
+        "p31"
+      ]
+    },
+    {
+      "id": "p31",
+      "topicId": "physics-02",
+      "front": "Which exchange particle represents the electromagnetic interaction?",
+      "back": "A virtual photon.",
+      "difficulty": 3,
+      "links": [
+        "p30",
+        "p32",
+        "p26",
+        "p27"
+      ]
+    },
+    {
+      "id": "p32",
+      "topicId": "physics-02",
+      "front": "Which exchange particles represent the weak interaction in AQA particle physics?",
+      "back": "W⁺ and W⁻ bosons.",
+      "difficulty": 3,
+      "links": [
+        "p31",
+        "p33",
+        "p56",
+        "p57"
+      ]
+    },
+    {
+      "id": "p33",
+      "topicId": "physics-02",
+      "front": "Which interactions are involved in beta decay?",
+      "back": "The weak interaction. A W boson mediates the change in quark character.",
+      "difficulty": 3,
+      "links": [
+        "p32",
+        "p34"
+      ]
+    },
+    {
+      "id": "p34",
+      "topicId": "physics-02",
+      "front": "Which exchange particles are not required by AQA?",
+      "back": "Knowledge of the gluon, Z⁰ boson and graviton will not be tested.",
+      "difficulty": 3,
+      "links": [
+        "p33"
+      ]
+    },
+    {
+      "id": "p35",
+      "topicId": "physics-02",
+      "front": "What are hadrons?",
+      "back": "Particles that experience the strong interaction. They are divided into baryons and mesons.",
+      "difficulty": 3,
+      "links": [
+        "p36",
+        "p38",
+        "p43"
+      ]
+    },
+    {
+      "id": "p36",
+      "topicId": "physics-02",
+      "front": "What are baryons?",
+      "back": "Hadrons made from three quarks. The proton and neutron are the specified examples.",
+      "difficulty": 3,
+      "links": [
+        "p35",
+        "p37",
+        "p39",
+        "p40",
+        "p52"
+      ]
+    },
+    {
+      "id": "p37",
+      "topicId": "physics-02",
+      "front": "What are antibaryons?",
+      "back": "Antiparticles of baryons, made from three antiquarks. The antiproton and antineutron are specified.",
+      "difficulty": 3,
+      "links": [
+        "p36",
+        "p38"
+      ]
+    },
+    {
+      "id": "p38",
+      "topicId": "physics-02",
+      "front": "What are mesons?",
+      "back": "Hadrons made from a quark and an antiquark. The specified examples include pions and kaons.",
+      "difficulty": 3,
+      "links": [
+        "p37",
+        "p39",
+        "p54",
+        "p55"
+      ]
+    },
+    {
+      "id": "p39",
+      "topicId": "physics-02",
+      "front": "What is baryon number?",
+      "back": "A quantum number: +1 for a baryon, −1 for an antibaryon and 0 for a meson or lepton.",
+      "difficulty": 3,
+      "links": [
+        "p38",
+        "p40",
+        "p51"
+      ]
+    },
+    {
+      "id": "p40",
+      "topicId": "physics-02",
+      "front": "What is the conservation rule for baryon number?",
+      "back": "The total baryon number before an interaction equals the total afterwards.",
+      "difficulty": 3,
+      "links": [
+        "p39",
+        "p41"
+      ]
+    },
+    {
+      "id": "p41",
+      "topicId": "physics-02",
+      "front": "What is the only stable baryon into which other baryons eventually decay?",
+      "back": "The proton.",
+      "difficulty": 3,
+      "links": [
+        "p40",
+        "p42"
+      ]
+    },
+    {
+      "id": "p42",
+      "topicId": "physics-02",
+      "front": "What is the role of the pion in particle physics?",
+      "back": "Pions are mesons and act as exchange particles for the residual strong nuclear force between nucleons.",
+      "difficulty": 3,
+      "links": [
+        "p41"
+      ]
+    },
+    {
+      "id": "p43",
+      "topicId": "physics-02",
+      "front": "What are leptons?",
+      "back": "Particles that do not experience the strong interaction. AQA specifies electrons, muons and electron/muon neutrinos, plus antiparticles.",
+      "difficulty": 3,
+      "links": [
+        "p44",
+        "p45"
+      ]
+    },
+    {
+      "id": "p44",
+      "topicId": "physics-02",
+      "front": "What is lepton number?",
+      "back": "A quantum number conserved separately for electron-type and muon-type leptons in the interactions studied.",
+      "difficulty": 3,
+      "links": [
+        "p43",
+        "p45"
+      ]
+    },
+    {
+      "id": "p45",
+      "topicId": "physics-02",
+      "front": "What happens when a muon decays?",
+      "back": "A muon decays into an electron or positron and neutrinos/antineutrinos, with lepton numbers conserved.",
+      "difficulty": 3,
+      "links": [
+        "p44"
+      ]
+    },
+    {
+      "id": "p46",
+      "topicId": "physics-02",
+      "front": "What makes a particle strange?",
+      "back": "It contains a strange quark or antiquark and has non-zero strangeness.",
+      "difficulty": 3,
+      "links": [
+        "p47",
+        "p48",
+        "p55"
+      ]
+    },
+    {
+      "id": "p47",
+      "topicId": "physics-02",
+      "front": "How are strange particles produced and how do they decay?",
+      "back": "They are produced in pairs through the strong interaction and can decay through the weak interaction.",
+      "difficulty": 3,
+      "links": [
+        "p46",
+        "p48"
+      ]
+    },
+    {
+      "id": "p48",
+      "topicId": "physics-02",
+      "front": "What is the conservation rule for strangeness?",
+      "back": "Strangeness is conserved in strong interactions. In weak interactions it can change by 0, +1 or −1.",
+      "difficulty": 3,
+      "links": [
+        "p47"
+      ]
+    },
+    {
+      "id": "p49",
+      "topicId": "physics-02",
+      "front": "Which quarks and antiquarks must AQA students know?",
+      "back": "Up (u), down (d) and strange (s), together with their antiquarks.",
+      "difficulty": 3,
+      "links": [
+        "p50",
+        "p52",
+        "p54",
+        "p55",
+        "p56",
+        "p57"
+      ]
+    },
+    {
+      "id": "p50",
+      "topicId": "physics-02",
+      "front": "What are the charges of up, down and strange quarks?",
+      "back": "Up: +⅔e. Down: −⅓e. Strange: −⅓e. Antiquarks have the opposite charges.",
+      "difficulty": 3,
+      "links": [
+        "p49",
+        "p51"
+      ]
+    },
+    {
+      "id": "p51",
+      "topicId": "physics-02",
+      "front": "What are the baryon numbers of a quark and an antiquark?",
+      "back": "A quark has baryon number +⅓; an antiquark has −⅓.",
+      "difficulty": 3,
+      "links": [
+        "p50",
+        "p52"
+      ]
+    },
+    {
+      "id": "p52",
+      "topicId": "physics-02",
+      "front": "What are the quark compositions of a proton and neutron?",
+      "back": "Proton: uud. Neutron: udd.",
+      "difficulty": 3,
+      "links": [
+        "p51",
+        "p53",
+        "p56",
+        "p58"
+      ]
+    },
+    {
+      "id": "p53",
+      "topicId": "physics-02",
+      "front": "What are the quark compositions of an antiproton and antineutron?",
+      "back": "Antiproton: ūūđ. Antineutron: ūđđ.",
+      "difficulty": 3,
+      "links": [
+        "p52",
+        "p54"
+      ]
+    },
+    {
+      "id": "p54",
+      "topicId": "physics-02",
+      "front": "What are the quark compositions of the charged pions?",
+      "back": "π⁺ = u d̄. π⁻ = d ū.",
+      "difficulty": 3,
+      "links": [
+        "p53",
+        "p55"
+      ]
+    },
+    {
+      "id": "p55",
+      "topicId": "physics-02",
+      "front": "What are the quark compositions of the neutral pion and kaons?",
+      "back": "π⁰ is a combination of uū and dd̄ states; K⁺ = u s̄ and K⁻ = s ū.",
+      "difficulty": 3,
+      "links": [
+        "p54",
+        "p56"
+      ]
+    },
+    {
+      "id": "p56",
+      "topicId": "physics-02",
+      "front": "What happens to a down quark in beta-minus decay?",
+      "back": "A down quark changes into an up quark. In a neutron, udd becomes uud, so the neutron becomes a proton.",
+      "difficulty": 3,
+      "links": [
+        "p55",
+        "p57",
+        "p17",
+        "p33",
+        "p58"
+      ]
+    },
+    {
+      "id": "p57",
+      "topicId": "physics-02",
+      "front": "What happens to an up quark in beta-plus decay?",
+      "back": "An up quark changes into a down quark. This converts a proton's quark content towards that of a neutron.",
+      "difficulty": 3,
+      "links": [
+        "p56",
+        "p33"
+      ]
+    },
+    {
+      "id": "p58",
+      "topicId": "physics-02",
+      "front": "What is the neutron beta-minus decay equation?",
+      "back": "n → p + e⁻ + ν̄ₑ. A neutron becomes a proton, an electron and an electron antineutrino.",
+      "difficulty": 3,
+      "links": [
+        "p16",
+        "p18",
+        "p52",
+        "p56"
+      ]
+    },
+    {
+      "id": "p59",
+      "topicId": "physics-02",
+      "front": "Which quantities should be checked when balancing particle interactions?",
+      "back": "Charge, baryon number, electron lepton number, muon lepton number and strangeness; energy and momentum are also conserved.",
+      "difficulty": 3,
+      "links": [
+        "p60",
+        "p40",
+        "p44",
+        "p48"
+      ]
+    },
+    {
+      "id": "p60",
+      "topicId": "physics-02",
+      "front": "How do you test whether a proposed particle interaction is allowed?",
+      "back": "Add each conserved quantity on both sides. The totals must match; strangeness may change only in weak interactions.",
+      "difficulty": 3,
+      "links": [
+        "p59"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "Atomic constituents, nuclide notation and specific charge",
+      "content": "## Constituents of the atom\nAn atom contains a tiny nucleus of protons and neutrons, with electrons around it. A proton has charge +e and a neutron has zero charge. An electron has charge −e. The proton and neutron each have a relative mass close to 1; the electron has a relative mass of about 1/1836.\n\nApproximate SI values are: proton mass 1.67 × 10⁻²⁷ kg, neutron mass 1.675 × 10⁻²⁷ kg and electron mass 9.11 × 10⁻³¹ kg. The magnitude of the elementary charge is 1.60 × 10⁻¹⁹ C.\n\n## Nuclide notation\nIn nuclide notation, Z is the proton number and A is the nucleon number. The number of neutrons is A − Z. Isotopes have the same Z but different A because they contain different numbers of neutrons.\n\n## Specific charge\nSpecific charge is charge divided by mass, measured in C kg⁻¹. For a nucleus or ion, use its total charge and its mass. The sign matters: electrons and negatively charged ions have negative specific charge, while protons and positively charged ions have positive specific charge. Check that charge is in coulombs and mass is in kilograms before calculating."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "Nuclear stability, the strong force and radioactive decay",
+      "content": "## The strong nuclear force\nThe strong nuclear force binds nucleons together. It is attractive over short nuclear distances up to approximately 3 fm. At separations closer than approximately 0.5 fm it becomes strongly repulsive. The attractive part helps overcome the electrostatic repulsion between positively charged protons.\n\n## Alpha decay\nAn alpha particle is a helium-4 nucleus containing two protons and two neutrons. When a nucleus emits an alpha particle, its nucleon number decreases by 4 and its proton number decreases by 2. The daughter nucleus is therefore a different element.\n\n## Beta-minus decay\nIn beta-minus decay, a neutron changes into a proton. An electron and an electron antineutrino are emitted: n → p + e⁻ + ν̄ₑ. The nucleon number is unchanged, while the proton number increases by 1. The antineutrino was proposed to account for the continuous energy distribution and to allow conservation laws to hold.\n\nWhen writing nuclear equations, balance both the total nucleon number and the total proton number on the two sides. Do not confuse the emitted beta particle with an orbital electron."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "Antiparticles, annihilation, pair production and photons",
+      "content": "## Antiparticles\nEvery particle type has a corresponding antiparticle. A particle and its antiparticle have equal rest masses and rest energies, but opposite electric charges where charge is non-zero. The positron is the electron's antiparticle; the antiproton, antineutron and antineutrino are the antiparticles of the proton, neutron and neutrino.\n\nApproximate rest energies: electron/positron 0.511 MeV, proton/antiproton 938 MeV and neutron/antineutron 940 MeV. AQA expects comparison of masses, charges and rest energies in MeV.\n\n## Annihilation and pair production\nWhen a particle meets its antiparticle, they can annihilate and their energy is transferred to other particles, often photons. In pair production, a photon creates a particle-antiparticle pair. At least 1.022 MeV is needed to create an electron and positron at rest. Extra energy appears as kinetic energy. A nearby nucleus can take recoil momentum.\n\n## Photons\nElectromagnetic radiation can be modelled as photons. Each photon has energy E = hf = hc/λ, where h is Planck's constant, f is frequency, c is the speed of light and λ is wavelength. Higher frequency means greater photon energy."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "The four fundamental interactions and exchange particles",
+      "content": "The four fundamental interactions are gravitational, electromagnetic, weak nuclear and strong nuclear. An exchange-particle model describes interactions as particles exchanging another particle, transferring momentum.\n\nThe electromagnetic interaction is represented by the exchange of virtual photons. In the weak interaction, W⁺ and W⁻ bosons are the exchange particles. AQA limits the weak-interaction examples to beta-minus decay, beta-plus decay, electron capture and electron-proton collisions. Simple diagrams may show incoming particles, outgoing particles and the exchanged particle.\n\nThe strong interaction acts on hadrons and is responsible for binding nucleons in the nucleus. Gravity acts between objects with mass, but its exchange particle, the graviton, is not required. AQA also states that knowledge of the gluon and Z⁰ boson will not be tested. Do not spend revision time memorising details the specification explicitly excludes."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "Classifying hadrons, baryons, mesons and leptons",
+      "content": "## Hadrons\nHadrons experience the strong interaction. They are divided into baryons and mesons. Baryons are made from three quarks; the specified examples are the proton and neutron. Antibaryons are made from three antiquarks. Mesons are made from a quark-antiquark pair; the specified examples are pions and kaons.\n\nThe proton is the only stable baryon into which other baryons eventually decay. Pions act as exchange particles for the strong nuclear force between nucleons. Kaons can decay into pions.\n\n## Leptons\nLeptons do not experience the strong interaction. The specified leptons are the electron, muon, electron neutrino and muon neutrino, together with their antiparticles. A muon decays into an electron or positron and neutrinos/antineutrinos.\n\n## Quantum numbers\nBaryon number is +1 for a baryon, −1 for an antibaryon and 0 for mesons and leptons. Total baryon number is conserved in the interactions studied. Electron lepton number and muon lepton number are conserved separately."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "notes",
+      "title": "Quarks, antiquarks and particle compositions",
+      "content": "AQA requires the up (u), down (d) and strange (s) quarks and their antiquarks. Their charges are u = +2e/3, d = −e/3 and s = −e/3. Antiquarks have the opposite charges. A quark has baryon number +1/3 and an antiquark has −1/3.\n\nA proton is uud and a neutron is udd. The antiproton is ūūđ and the antineutron is ūđđ. Mesons contain one quark and one antiquark: π⁺ = u d̄, π⁻ = d ū, K⁺ = u s̄ and K⁻ = s ū. The neutral pion is a mixture of uū and dd̄ states.\n\nStrangeness is a quantum number associated with strange quarks. Strange particles are produced in pairs through the strong interaction, so total strangeness is conserved in strong interactions. They may subsequently decay through the weak interaction, in which strangeness can change by 0, +1 or −1."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "worked-examples",
+      "title": "Worked examples: particle equations and conservation checks",
+      "content": "## Example 1: beta-minus decay\nStart with a neutron, udd. One down quark changes into an up quark, giving uud, which is a proton. The full decay is n → p + e⁻ + ν̄ₑ. Check charge: 0 = +1 − 1 + 0. Check baryon number: 1 = 1 + 0 + 0. Check electron lepton number: 0 = +1 − 1, because the electron has +1 and the electron antineutrino has −1.\n\n## Example 2: alpha decay\nFor alpha decay, subtract 4 from A and 2 from Z. For example, a nucleus with A = 238 and Z = 92 becomes a daughter with A = 234 and Z = 90, plus an alpha particle with A = 4 and Z = 2. Both totals balance.\n\n## Example 3: photon energy\nUse E = hf. If frequency is supplied in hertz, use h = 6.63 × 10⁻³⁴ J s to obtain energy in joules. To express energy in electronvolts, divide by the elementary charge, 1.60 × 10⁻¹⁹ C. Alternatively use E = hc/λ when wavelength is given.\n\n## Conservation method\nMake a small table for charge, baryon number, electron lepton number, muon lepton number and strangeness. Add the values for every incoming and outgoing particle. The totals must agree, except that strangeness may change in a weak interaction by 0 or ±1."
+    },
+    {
+      "topicId": "physics-02",
+      "kind": "exam-guidance",
+      "title": "Exam technique: identifying particles and applying conservation laws",
+      "content": "Particle-physics questions often provide a table of particle properties. Use the supplied data for particles outside the ones explicitly specified. Do not assume an unfamiliar particle's properties from its name.\n\nFor a proposed reaction, write down the incoming and outgoing particles first. Check charge, baryon number, electron lepton number and muon lepton number separately. If strange particles are involved, also check strangeness. Strangeness must be unchanged in a strong interaction; in a weak interaction it may change by 0, +1 or −1. Energy and momentum are conserved in interactions too.\n\nFor quark questions, write the quark composition and compare it before and after the interaction. In beta-minus decay, d changes to u; in beta-plus decay, u changes to d. Keep track of antiquark bars and fractional charges.\n\nFor annihilation and pair-production calculations, compare photon energy with the combined rest energy of the pair. For an electron-positron pair the minimum is 1.022 MeV. Do not use E = mc² for numerical calculations in this AQA section; the specification explicitly says this is not required."
+    }
+  ],
+  "formulas": [
+    {
+      "topicId": "physics-02",
+      "name": "Photon energy and frequency",
+      "expression": "E = hf",
+      "units": "J",
+      "conditions": "h is the Planck constant; f is frequency in Hz."
+    },
+    {
+      "topicId": "physics-02",
+      "name": "Photon energy and wavelength",
+      "expression": "E = hc / λ",
+      "units": "J",
+      "conditions": "c is the speed of light; λ is wavelength in metres."
+    },
+    {
+      "topicId": "physics-02",
+      "name": "Specific charge",
+      "expression": "specific charge = Q / m",
+      "units": "C kg⁻¹",
+      "conditions": "Use total charge Q in coulombs and mass m in kilograms. Retain the sign of Q."
+    },
+    {
+      "topicId": "physics-02",
+      "name": "Electron-positron pair rest energy",
+      "expression": "E_min = 2 × 0.511 MeV = 1.022 MeV",
+      "units": "MeV",
+      "conditions": "Minimum photon energy for pair production when the electron and positron have no kinetic energy; recoil may require additional energy."
+    }
+  ]
+}
