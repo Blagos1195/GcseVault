@@ -974,9 +974,9 @@ test("the progress dashboard only requests account-scoped summary totals", () =>
   assert.ok(page.includes("/GcseVault/offline.js"));
   assert.ok(script.includes("/account/progress-summary"));
   assert.ok(script.includes("X-Account-Session"));
-  assert.ok(script.includes("QuoteVault"));
-  assert.ok(script.includes("DateVault"));
-  assert.ok(script.includes("Revision"));
+  assert.ok(page.includes("QuoteVault"));
+  assert.ok(page.includes("DateVault"));
+  assert.ok(page.includes("Revision"));
   assert.match(worker, /url\.pathname === "\/account\/progress-summary"/);
   assert.match(worker, /verifyPasswordAccountAccess\(session\.user_key, request\)/);
   assert.ok(!script.includes("revision_sync_data"));
