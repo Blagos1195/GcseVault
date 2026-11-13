@@ -893,9 +893,12 @@ test("review schedule routes authenticate and always scope writes to the signed-
 test("progress summary is account-scoped and returns aggregates without study content", async () => {
   const env = makeEnv();
   const token = "a".repeat(64);
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const schedules = {
-    qv: { quote1: { due: "2026-11-12" }, quote2: { due: "2026-11-20" } },
-    dv: { date1: { due: "2026-11-13" } }
+    qv: { quote1: { due: yesterday }, quote2: { due: tomorrow } },
+    dv: { date1: { due: today } }
   };
   const revisionData = {
     accountSets: [
