@@ -815,6 +815,12 @@ function renderGraph(){
     if(target&&String(node.card.id).localeCompare(String(link.id))<0)edges.push([node,target]);
   }));
   const nodeIndex=new Map(nodes.map((node,index)=>[node.card.id,index]));
+  const chainNeighbors=nodes.map(()=>[]);
+  edges.forEach(([a,b])=>{
+    const ai=nodeIndex.get(a.card.id),bi=nodeIndex.get(b.card.id);
+    chainNeighbors[ai].push(bi);
+    chainNeighbors[bi].push(ai);
+  });
   const iterations=150;
   for(let step=0;step<iterations;step++){
     const cooling=1-step/iterations;
@@ -843,6 +849,13 @@ function renderGraph(){
       const force=(distance-205)*.009;
       const x=dx/distance*force,y=dy/distance*force;
       fx[ai]+=x;fy[ai]+=y;fx[bi]-=x;fy[bi]-=y;
+    });
+    chainNeighbors.forEach((neighbors,index)=>{
+      if(neighbors.length!==2)return;
+      const first=nodes[neighbors[0]],second=nodes[neighbors[1]];
+      const node=nodes[index];
+      fx[index]+=(first.x+second.x-2*node.x)*.014;
+      fy[index]+=(first.y+second.y-2*node.y)*.014;
     });
     nodes.forEach((node,index)=>{
       const anchorPull=.0012;
