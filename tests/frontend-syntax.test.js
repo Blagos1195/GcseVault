@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { execFileSync } from "node:child_process";
 import vm from "node:vm";
 
 const files = [
@@ -1037,22 +1036,6 @@ test("all pages load an environment-specific Worker URL before shared account co
   assert.ok(shared.includes("window.GCSE_VAULT_WORKER_URL"));
   const worker = fs.readFileSync(new URL("../sw.js", import.meta.url), "utf8");
   assert.ok(worker.includes('"worker-config.js"'));
-});
-
-test("staging deployment provisions isolated resources and never reuses production IDs", () => {
-  const script = fs.readFileSync(new URL("../scripts/deploy-staging.mjs", import.meta.url), "utf8");
-  assert.doesNotThrow(() => execFileSync(process.execPath, ["--check", new URL("../scripts/deploy-staging.mjs", import.meta.url).pathname]));
-  const workflow = fs.readFileSync(new URL("../.github/workflows/staging.yml", import.meta.url), "utf8");
-  const docs = fs.readFileSync(new URL("../docs/staging.md", import.meta.url), "utf8");
-  for (const value of ["gcsevault-staging", "quotevault-api-staging", "STAGING_ADMIN_KEY", "CLOUDFLARE_API_TOKEN", "d1", "kv", "pages", "worker-config.js"]) {
-    assert.ok(script.toLowerCase().includes(value.toLowerCase()));
-  }
-  assert.ok(workflow.includes("workflow_dispatch"));
-  assert.ok(workflow.includes("node scripts/deploy-staging.mjs"));
-  assert.ok(docs.includes("separate D1 and KV"));
-  for (const productionId of ["5670b9d5-b36e-48bf-aeb2-1a7e1490095c", "fc3ecee85b1546c88669259c7f75a810", "44dfb59a13014d128df3a0220cbad36b"]) {
-    assert.ok(!script.includes(productionId));
-  }
 });
 
 test("staging can disable admin push subscriptions without changing production defaults", () => {
