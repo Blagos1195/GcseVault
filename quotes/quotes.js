@@ -2609,6 +2609,17 @@ function readSubmissionDraft(){
 function submissionDraftNotice(){
   return readSubmissionDraft()?'<div class="qfb" style="margin-bottom:10px">An unsuccessful submission draft is saved on this device. <button class="btn bsm" onclick="restoreSubmissionDraft()">Restore draft</button> <button class="btn bsm br" onclick="discardSubmissionDraft()">Discard</button></div>':'';
 }
+function getSubmissionRequestId(fields){
+  const draft=readSubmissionDraft();
+  const current=window.qvSubmissionDraftId||'';
+  if(draft&&current===draft.id&&JSON.stringify(draft.fields)!==JSON.stringify(fields)){
+    window.qvSubmissionDraftId=window.crypto?.randomUUID?.()||Date.now().toString()+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+    toast('This draft was edited and will be submitted as a new item.');
+    return window.qvSubmissionDraftId;
+  }
+  window.qvSubmissionDraftId=current||window.crypto?.randomUUID?.()||Date.now().toString()+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+  return window.qvSubmissionDraftId;
+}
 function persistSubmissionDraft(id,fields){
   const userKey=VaultUser.getKey();
   if(!userKey)return;
@@ -2671,9 +2682,10 @@ async function saveQuote(){
   if(!t||!c){toast('Fill in quote text and character');return;}
   const act=(document.getElementById('a-act')?.value||'').trim();
   const sc=(document.getElementById('a-sc')?.value||'').trim();
-  const tempId=window.qvSubmissionDraftId||Date.now().toString()+'-qv'+Math.random().toString(36).slice(2,6);
+  const draftFields={'a-t':t,'a-c':c,'a-w':document.getElementById('a-w').value,'a-act':act,'a-sc':sc,'a-th':document.getElementById('a-th').value,'a-me':document.getElementById('a-me').value,'a-an':document.getElementById('a-an').value,'a-st':document.getElementById('a-st').value,'a-ac':document.getElementById('a-ac').value,'a-no':document.getElementById('a-no').value};
+  const tempId=getSubmissionRequestId(draftFields);
   const q={
-    id:tempId,
+    id:tempId,submissionRequestId:tempId,
     work:document.getElementById('a-w').value,
     char:c,loc:`${act}${sc?', '+sc:''}`.trim()||'Unknown',
     themes:(document.getElementById('a-th').value||'').split(',').map(t=>t.trim()).filter(Boolean),
@@ -2689,7 +2701,7 @@ async function saveQuote(){
   const fbEl=document.getElementById('add-fb');
   const savedDraft=readSubmissionDraft();
   if(savedDraft&&!window.qvSubmissionDraftId){toast('Restore or discard your saved draft before submitting another quote.');return;}
-  persistSubmissionDraft(tempId,{'a-t':t,'a-c':c,'a-w':q.work,'a-act':act,'a-sc':sc,'a-th':document.getElementById('a-th').value,'a-me':document.getElementById('a-me').value,'a-an':q.analysis,'a-st':String(q.stars),'a-ac':q.acc,'a-no':q.note});
+  persistSubmissionDraft(tempId,draftFields);
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
     const resp=await fetch(WORKER_URL+'/submit',{
