@@ -460,6 +460,7 @@ test("Revision knowledge map includes every card and filters results", () => {
       selected: null,
       graphQuery: ""
     },
+    graphViewport: {scale:1,x:24,y:24},
     escapeRevision: value => String(value || ""),
     linkedCards: () => []
   };
