@@ -92,6 +92,50 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("owner Test Centre verifies migration-managed tables and account columns", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({ results: values.map(name => ({ name })) });
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({ results: [{ name: "role" }, { name: "ai_access" }] });
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run", env, { test: "migrations" }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.results[0].status, "passed");
+  assert.match(data.results[0].detail, /six migration-managed tables/);
+});
+
+test("Test Centre reports missing migrations without altering the database", async () => {
+  const env = makeEnv();
+  const originalPrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = originalPrepare(sql);
+    const originalBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = originalBind(...values);
+      if (sql.includes("sqlite_master")) bound.all = async () => ({ results: [{ name: "account_sessions" }] });
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({ results: [{ name: "role" }] });
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/admin/test-run", env, { test: "migrations" }, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.results[0].status, "failed");
+  assert.match(data.results[0].detail, /missing tables/);
+  assert.match(data.results[0].detail, /ai_access/);
+  assert.equal(env.updates.length, 0);
+});
+
 test("admin push subscriptions require an admin session and are stored per account", async () => {
   const env = makeEnv();
   const denied = await call("/admin/push/subscribe", env, {
