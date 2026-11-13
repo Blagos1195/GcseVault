@@ -1,131 +1,147 @@
 {
-  "type": "revision-resource-links",
-  "version": 1,
-  "id": "aqa-a-level-chemistry-atomic-structure",
-  "title": "Atomic structure",
-  "subject": "Chemistry",
-  "examBoard": "AQA",
-  "qualification": "A-level Chemistry (7405)",
-  "specificationSection": "3.1.1",
-  "topicId": "chemistry-01",
-  "description": "External learning and practice resources for AQA A-level Chemistry Atomic structure.",
-  "sections": [
+  "name": "AQA A-level Chemistry: Atomic structure",
+  "cards": [
     {
-      "id": "specification",
-      "title": "Specification",
-      "resources": [
-        {
-          "title": "AQA official specification",
-          "type": "specification",
-          "url": "https://www.aqa.org.uk/subjects/chemistry/a-level/chemistry-7405/specification/subject-content/physical-chemistry",
-          "description": "The definitive list of examinable content for section 3.1.1."
-        }
+      "id": "atomic-01",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What are the three fundamental subatomic particles?",
+      "answer": "Protons, neutrons and electrons. Protons and neutrons are in the nucleus; electrons occupy shells, subshells and orbitals around it.",
+      "links": [
+        "atomic-02",
+        "atomic-03"
       ]
     },
     {
-      "id": "revision-notes",
-      "title": "Revision notes",
-      "resources": [
-        {
-          "title": "Physics & Maths Tutor: detailed atomic structure notes",
-          "type": "notes",
-          "url": "https://www.physicsandmathstutor.com/download/Chemistry/A-level/Notes/AQA/Physical-I/Detailed/1.1.%20Atomic%20Structure.pdf",
-          "description": "Detailed notes covering fundamental particles, isotopes, mass spectrometry, electron configuration and ionisation energy."
-        },
-        {
-          "title": "Whiteboard Chemistry: AQA A-level Chemistry",
-          "type": "notes",
-          "url": "https://www.whiteboardchemistry.com/revision/aqa-a-level-chemistry/",
-          "description": "Free AQA-organised revision notes, including a dedicated section 3.1.1 Atomic Structure."
-        },
-        {
-          "title": "InThinking: Atomic structure",
-          "type": "notes",
-          "url": "https://inklearning.co.uk/chemistry/atomic-structure/",
-          "description": "Illustrated notes and worked examples covering the AQA 3.1.1 specification points."
-        },
-        {
-          "title": "Marlbridge: Atomic structure study guide",
-          "type": "notes",
-          "url": "https://marlbridge.com/resources/a-level-aqa-chemistry-atomic-structure/",
-          "description": "Topic-specific study guide aligned to AQA Chemistry 7405."
-        }
+      "id": "atomic-02",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What are the relative charges and masses of protons, neutrons and electrons?",
+      "answer": "Proton: charge +1, relative mass 1. Neutron: charge 0, relative mass 1. Electron: charge −1, relative mass approximately 1/1836.",
+      "links": [
+        "atomic-01",
+        "atomic-03",
+        "atomic-04"
       ]
     },
     {
-      "id": "practice",
-      "title": "Exam questions and practice",
-      "resources": [
-        {
-          "title": "Physics & Maths Tutor: atomic structure questions",
-          "type": "exam_questions",
-          "url": "https://pmt.physicsandmathstutor.co.uk/download/Chemistry/A-level/Topic-Qs/AQA/Physical-I/1.1-Atomic-Structure/Set-I/Atomic%20Structure%20QP.pdf",
-          "description": "AQA-style topic questions for atomic structure."
-        },
-        {
-          "title": "InThinking: AQA atomic structure questions",
-          "type": "exam_questions",
-          "url": "https://inklearning.co.uk/chemistry/practise/questions/aqa/",
-          "description": "Topic-organised AQA Chemistry practice questions."
-        },
-        {
-          "title": "Marlbridge: Atomic structure practice",
-          "type": "practice_questions",
-          "url": "https://marlbridge.com/resources/aqa-a-level-chemistry-atomic-structure-practice/",
-          "description": "Original practice questions with worked answers."
-        }
+      "id": "atomic-03",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What do atomic number and mass number tell you?",
+      "answer": "Atomic number is the number of protons. Mass number is the total number of protons and neutrons. In a neutral atom, electrons equal protons.",
+      "links": [
+        "atomic-01",
+        "atomic-02",
+        "atomic-04",
+        "atomic-05"
       ]
     },
     {
-      "id": "videos",
-      "title": "Videos and walkthroughs",
-      "resources": [
-        {
-          "title": "The Chemistry Tutor: A-level Chemistry",
-          "type": "video_lessons",
-          "url": "https://www.thechemistrytutor.uk/a-level-chemistry",
-          "description": "Atomic structure topic guide, mass spectrometry lessons, exam-question walkthroughs and multiple-choice practice."
-        }
+      "id": "atomic-04",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "How do you calculate the number of neutrons in an atom?",
+      "answer": "Number of neutrons = mass number − atomic number.",
+      "links": [
+        "atomic-02",
+        "atomic-03",
+        "atomic-05"
+      ]
+    },
+    {
+      "id": "atomic-05",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What are isotopes?",
+      "answer": "Atoms of the same element with the same number of protons but different numbers of neutrons. They have the same atomic number but different mass numbers.",
+      "links": [
+        "atomic-03",
+        "atomic-04",
+        "atomic-06",
+        "atomic-07"
+      ]
+    },
+    {
+      "id": "atomic-06",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What does a time-of-flight mass spectrometer measure?",
+      "answer": "It measures the mass-to-charge ratio (m/z) of ions. Ions are accelerated and their flight times are used to determine m/z.",
+      "links": [
+        "atomic-05",
+        "atomic-07",
+        "atomic-08"
+      ]
+    },
+    {
+      "id": "atomic-07",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "How is relative atomic mass calculated from isotopic abundances?",
+      "answer": "Use the weighted mean: relative atomic mass = Σ(isotopic mass × percentage abundance) ÷ 100.",
+      "links": [
+        "atomic-05",
+        "atomic-06"
+      ]
+    },
+    {
+      "id": "atomic-08",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "How are electrons arranged in atoms?",
+      "answer": "Electrons occupy shells containing subshells and orbitals. The order of filling follows increasing orbital energy, giving configurations for atoms up to calcium (Z = 20) and beyond.",
+      "links": [
+        "atomic-06",
+        "atomic-09",
+        "atomic-10"
+      ]
+    },
+    {
+      "id": "atomic-09",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What are s, p and d subshells and how many electrons can they hold?",
+      "answer": "An s subshell contains one orbital and holds 2 electrons; a p subshell contains three orbitals and holds 6; a d subshell contains five orbitals and holds 10. Each orbital holds up to 2 electrons.",
+      "links": [
+        "atomic-08",
+        "atomic-10"
+      ]
+    },
+    {
+      "id": "atomic-10",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "What is first ionisation energy?",
+      "answer": "The energy required to remove one electron from each atom in one mole of gaseous atoms to form one mole of gaseous 1+ ions.",
+      "links": [
+        "atomic-08",
+        "atomic-09",
+        "atomic-11",
+        "atomic-12"
+      ]
+    },
+    {
+      "id": "atomic-11",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "Why does first ionisation energy generally increase across a period?",
+      "answer": "Nuclear charge increases while shielding changes relatively little. The outer electron is attracted more strongly, so more energy is needed to remove it.",
+      "links": [
+        "atomic-10",
+        "atomic-12"
+      ]
+    },
+    {
+      "id": "atomic-12",
+      "subject": "Chemistry",
+      "topic": "Atomic structure",
+      "title": "Why are there exceptions to the general first-ionisation-energy trend?",
+      "answer": "Subshell energy differences and repulsion between paired electrons can make an electron easier to remove at particular points in a period.",
+      "links": [
+        "atomic-10",
+        "atomic-11"
       ]
     }
-  ],
-  "specificationSubtopics": [
-    {
-      "code": "3.1.1.1",
-      "title": "Fundamental particles",
-      "points": [
-        "Evolution of atomic models",
-        "Relative charge and relative mass of protons, neutrons and electrons",
-        "Structure of the atom"
-      ]
-    },
-    {
-      "code": "3.1.1.2",
-      "title": "Mass number and isotopes",
-      "points": [
-        "Atomic number and mass number",
-        "Numbers of protons, neutrons and electrons in atoms and ions",
-        "Isotopes",
-        "Time-of-flight mass spectrometry",
-        "Relative isotopic mass and relative atomic mass",
-        "Interpreting simple mass spectra",
-        "Calculating relative atomic mass from isotopic abundance"
-      ]
-    },
-    {
-      "code": "3.1.1.3",
-      "title": "Electron configuration",
-      "points": [
-        "Electron configurations up to Z = 36",
-        "Shells, subshells and s, p and d orbitals",
-        "First and successive ionisation energies",
-        "Ionisation-energy trends in Period 3 and Group 2"
-      ]
-    }
-  ],
-  "notes": [
-    "The AQA specification is the definitive source for required content.",
-    "External resources may include material beyond the AQA specification.",
-    "Check access and pricing on third-party sites; availability can change."
   ]
 }
