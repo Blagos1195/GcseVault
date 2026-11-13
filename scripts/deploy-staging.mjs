@@ -125,4 +125,4 @@ writeFileSync(resolve(distRoot, "worker-config.js"),
 );
 
 run("npx", ["wrangler", "pages", "deploy", resolve("dist"), "--project-name", pagesProject, "--branch", "staging"]);
-console.log(`Staging site: https://${pagesProject}.pages.dev/GcseVault/\nStaging API: ${workerUrl}`);
+console.log(`Staging site: https://staging.${pagesProject}.pages.dev/GcseVault/\nStaging API: ${workerUrl}`);
