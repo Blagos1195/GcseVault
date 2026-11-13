@@ -778,50 +778,99 @@ function renderGraph(){
   const query=String(state.graphQuery||'').trim().toLowerCase();
   const cards=state.cards.filter(card=>!query||[card.title,card.answer,card.subject,card.topic,card.source,...linkedCards(card).map(link=>link.title)].some(value=>String(value||'').toLowerCase().includes(query)));
   if(!cards.length)return '<div class="map-empty">'+(query?'No cards match this search.':'No cards in this revision set yet. Add or import cards to build your knowledge map.')+'</div>';
-  const subjectGapX=88,subjectGapY=64,subjectWidth=970,topicWidth=470,topicGapX=30,topicGapY=22,nodeWidth=220,nodeHeight=82,nodeGapX=12,nodeGapY=12;
-  const grouped=[...new Set(cards.map(card=>card.subject||'General'))].sort((a,b)=>a.localeCompare(b)).map(subject=>{
-    const subjectCards=cards.filter(card=>(card.subject||'General')===subject);
-    const topics=[...new Set(subjectCards.map(card=>card.topic||'General'))].sort((a,b)=>a.localeCompare(b));
-    const lanes=[0,0],items=[];
-    topics.forEach(topic=>{
-      const lane=lanes[0]<=lanes[1]?0:1;
-      const topicCards=subjectCards.filter(card=>(card.topic||'General')===topic).sort((a,b)=>a.title.localeCompare(b.title));
-      const x=lane*(topicWidth+topicGapX),y=lanes[lane]+36;
-      items.push({topic,x,y,cards:topicCards});
-      const rows=Math.ceil(topicCards.length/2);
-      lanes[lane]+=36+rows*(nodeHeight+nodeGapY)+topicGapY;
+  const nodeWidth=220,nodeHeight=82,padding=180;
+  const subjects=[...new Set(cards.map(card=>card.subject||'General'))].sort((a,b)=>a.localeCompare(b));
+  const groups=subjects.map(subject=>({subject,topics:[...new Set(cards.filter(card=>(card.subject||'General')===subject).map(card=>card.topic||'General'))].sort((a,b)=>a.localeCompare(b))}));
+  const topicCount=groups.reduce((sum,group)=>sum+group.topics.length,0);
+  const subjectRadius=Math.max(0,groups.length*105);
+  const topicAnchors=new Map(),subjectAnchors=new Map();
+  let topicIndex=0;
+  groups.forEach((group,subjectIndex)=>{
+    const subjectAngle=groups.length===1?0:(Math.PI*2*subjectIndex/groups.length)-Math.PI/2;
+    const sx=Math.cos(subjectAngle)*subjectRadius,sy=Math.sin(subjectAngle)*subjectRadius;
+    subjectAnchors.set(group.subject,{x:sx,y:sy});
+    const topicRadius=group.topics.length===1?0:Math.max(145,group.topics.length*58);
+    group.topics.forEach((topic,index)=>{
+      const angle=group.topics.length===1?0:(Math.PI*2*index/group.topics.length)-Math.PI/2;
+      topicAnchors.set(group.subject+'\u0000'+topic,{x:sx+Math.cos(angle)*topicRadius,y:sy+Math.sin(angle)*topicRadius,subject:group.subject,topic});
+      topicIndex++;
     });
-    return {subject,items,height:Math.max(...lanes)-topicGapY+42};
   });
-  const subjectLanes=[0,0],positions=[],headers=[],topicGroups=[];
-  grouped.forEach(group=>{
-    const lane=subjectLanes[0]<=subjectLanes[1]?0:1;
-    group.x=lane*(subjectWidth+subjectGapX);
-    group.y=subjectLanes[lane];
-    headers.push('<div class="graph-subject" style="left:'+group.x+'px;top:'+group.y+'px;width:'+subjectWidth+'px">'+escapeRevision(group.subject)+'</div>');
-    group.items.forEach(item=>{
-      const x=group.x+item.x,y=group.y+item.y;
-      topicGroups.push('<div class="graph-topic-group" style="left:'+x+'px;top:'+y+'px;width:'+topicWidth+'px;height:'+(36+Math.ceil(item.cards.length/2)*(nodeHeight+nodeGapY))+'px"></div>');
-      headers.push('<div class="graph-topic" style="left:'+(x+10)+'px;top:'+(y+4)+'px;width:'+(topicWidth-20)+'px">'+escapeRevision(item.topic)+'</div>');
-      item.cards.forEach((card,index)=>{
-        positions.push({x:x+10+(index%2)*(nodeWidth+nodeGapX),y:y+38+Math.floor(index/2)*(nodeHeight+nodeGapY),card});
-      });
-    });
-    subjectLanes[lane]+=group.height+subjectGapY;
+  const hash=value=>{let h=2166136261;for(let i=0;i<String(value).length;i++)h=Math.imul(h^String(value).charCodeAt(i),16777619);return h>>>0;};
+  const nodes=cards.map(card=>{
+    const key=(card.subject||'General')+'\u0000'+(card.topic||'General');
+    const anchor=topicAnchors.get(key);
+    const siblings=cards.filter(other=>(other.subject||'General')===(card.subject||'General')&&(other.topic||'General')===(card.topic||'General'));
+    const index=siblings.findIndex(other=>other.id===card.id);
+    const angle=(Math.PI*2*index/Math.max(1,siblings.length))+(hash(card.id)%1000)/1000*.35;
+    const radius=Math.max(155,Math.sqrt(siblings.length)*92);
+    return {card,x:anchor.x+Math.cos(angle)*radius,y:anchor.y+Math.sin(angle)*radius,anchorX:anchor.x,anchorY:anchor.y};
   });
-  const width=Math.max(subjectWidth,subjectLanes[0]?subjectWidth:0,subjectLanes[1]?subjectWidth*2+subjectGapX:0);
-  const graphHeight=Math.max(260,Math.max(...subjectLanes)-subjectGapY+24);
-  const byId=new Map(positions.map(node=>[node.card.id,node]));
-  const paths=positions.flatMap(node=>linkedCards(node.card).map(link=>{
+  const byId=new Map(nodes.map(node=>[node.card.id,node]));
+  const edges=[];
+  nodes.forEach(node=>linkedCards(node.card).forEach(link=>{
     const target=byId.get(link.id);
-    if(!target||String(node.card.id).localeCompare(String(link.id))>0)return '';
-    const x1=node.x+nodeWidth/2,y1=node.y+nodeHeight/2,x2=target.x+nodeWidth/2,y2=target.y+nodeHeight/2;
-    const bend=Math.max(36,Math.abs(x2-x1)*.35);
-    const direction=x2>=x1?1:-1;
-    return '<path d="M '+x1+' '+y1+' C '+(x1+direction*bend)+' '+y1+', '+(x2-direction*bend)+' '+y2+', '+x2+' '+y2+'"></path>';
-  })).join('');
-  const nodes=positions.map(node=>'<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" data-card-id="'+escapeRevision(node.card.id)+'" style="left:'+node.x+'px;top:'+node.y+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(this.dataset.cardId)"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong><small>'+linkedCards(node.card).length+' connected ideas</small></button>').join('');
-  return '<div class="graph-controls"><div class="graph-zoom-controls"><button type="button" class="btn bsm" aria-label="Zoom out" onclick="zoomGraphBy(.8)">−</button><span id="graph-zoom-level">'+Math.round(graphViewport.scale*100)+'%</span><button type="button" class="btn bsm" aria-label="Zoom in" onclick="zoomGraphBy(1.25)">+</button></div><button type="button" class="btn bsm" onclick="fitGraphToView()">Fit map</button><span class="graph-help">Scroll to zoom · Drag to move</span></div><div id="knowledge-map-viewport" class="graph-viewport" onpointerdown="startGraphPan(event)" onpointermove="moveGraphPan(event)" onpointerup="endGraphPan(event)" onpointercancel="endGraphPan(event)" onwheel="zoomGraph(event)"><div id="knowledge-map-stage" class="graph-stage" data-width="'+width+'" data-height="'+graphHeight+'" style="width:'+width+'px;height:'+graphHeight+'px;transform:translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')"><svg viewBox="0 0 '+width+' '+graphHeight+'" preserveAspectRatio="none">'+paths+'</svg>'+topicGroups.join('')+headers.join('')+nodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Grouped into subject and topic clusters · Lines show linked ideas</div>';
+    if(target&&String(node.card.id).localeCompare(String(link.id))<0)edges.push([node,target]);
+  }));
+  const iterations=150;
+  for(let step=0;step<iterations;step++){
+    const cooling=1-step/iterations;
+    const fx=new Float64Array(nodes.length),fy=new Float64Array(nodes.length);
+    for(let i=0;i<nodes.length;i++){
+      const a=nodes[i];
+      for(let j=i+1;j<nodes.length;j++){
+        const b=nodes[j];
+        let dx=b.x-a.x,dy=b.y-a.y;
+        const distance=Math.max(1,Math.hypot(dx,dy));
+        const ux=dx/distance,uy=dy/distance;
+        const overlapX=nodeWidth+30-Math.abs(dx),overlapY=nodeHeight+26-Math.abs(dy);
+        let force=0;
+        if(overlapX>0&&overlapY>0)force=Math.min(18,Math.min(overlapX,overlapY)*.16+2);
+        else force=Math.min(2.8,5200/(distance*distance));
+        fx[i]-=ux*force;fy[i]-=uy*force;fx[j]+=ux*force;fy[j]+=uy*force;
+      }
+      const radialX=a.x-a.anchorX,radialY=a.y-a.anchorY;
+      const radial=Math.max(1,Math.hypot(radialX,radialY));
+      const radialForce=(radial-205)*.0024;
+      fx[i]-=radialX/radial*radialForce;fy[i]-=radialY/radial*radialForce;
+    }
+    edges.forEach(([a,b])=>{
+      const ai=nodes.indexOf(a),bi=nodes.indexOf(b);
+      const dx=b.x-a.x,dy=b.y-a.y,distance=Math.max(1,Math.hypot(dx,dy));
+      const force=(distance-205)*.009;
+      const x=dx/distance*force,y=dy/distance*force;
+      fx[ai]+=x;fy[ai]+=y;fx[bi]-=x;fy[bi]-=y;
+    });
+    nodes.forEach((node,index)=>{
+      const anchorPull=.0012;
+      fx[index]+=(node.anchorX-node.x)*anchorPull;
+      fy[index]+=(node.anchorY-node.y)*anchorPull;
+      node.x+=Math.max(-18,Math.min(18,fx[index]*cooling));
+      node.y+=Math.max(-18,Math.min(18,fy[index]*cooling));
+    });
+  }
+  const minX=Math.min(...nodes.map(node=>node.x-nodeWidth/2),...Array.from(topicAnchors.values(),anchor=>anchor.x-80))-padding;
+  const maxX=Math.max(...nodes.map(node=>node.x+nodeWidth/2),...Array.from(topicAnchors.values(),anchor=>anchor.x+80))+padding;
+  const minY=Math.min(...nodes.map(node=>node.y-nodeHeight/2),...Array.from(topicAnchors.values(),anchor=>anchor.y-30))-padding;
+  const maxY=Math.max(...nodes.map(node=>node.y+nodeHeight/2),...Array.from(topicAnchors.values(),anchor=>anchor.y+30))+padding;
+  const width=Math.ceil(maxX-minX),height=Math.ceil(maxY-minY);
+  const point=node=>({x:node.x-minX,y:node.y-minY});
+  const paths=edges.map(([a,b])=>{
+    const p=point(a),q=point(b),dx=q.x-p.x,dy=q.y-p.y;
+    const bend=Math.min(110,Math.max(35,Math.hypot(dx,dy)*.24));
+    const direction=dx>=0?1:-1;
+    return '<path d="M '+p.x+' '+p.y+' C '+(p.x+direction*bend)+' '+p.y+', '+(q.x-direction*bend)+' '+q.y+', '+q.x+' '+q.y+'"></path>';
+  }).join('');
+  const subjectLabels=groups.map(group=>{
+    const anchor=subjectAnchors.get(group.subject);
+    return '<div class="graph-subject" style="left:'+(anchor.x-minX-72)+'px;top:'+(anchor.y-minY-18)+'px">'+escapeRevision(group.subject)+'</div>';
+  }).join('');
+  const topicLabels=Array.from(topicAnchors.values()).map(anchor=>'<div class="graph-topic" style="left:'+(anchor.x-minX-65)+'px;top:'+(anchor.y-minY-14)+'px">'+escapeRevision(anchor.topic)+'</div>').join('');
+  const cardNodes=nodes.map(node=>{
+    const p=point(node);
+    return '<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" data-card-id="'+escapeRevision(node.card.id)+'" style="left:'+(p.x-nodeWidth/2)+'px;top:'+(p.y-nodeHeight/2)+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(this.dataset.cardId)"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong><small>'+linkedCards(node.card).length+' connected ideas</small></button>';
+  }).join('');
+  return '<div class="graph-controls"><div class="graph-zoom-controls"><button type="button" class="btn bsm" aria-label="Zoom out" onclick="zoomGraphBy(.8)">−</button><span id="graph-zoom-level">'+Math.round(graphViewport.scale*100)+'%</span><button type="button" class="btn bsm" aria-label="Zoom in" onclick="zoomGraphBy(1.25)">+</button></div><button type="button" class="btn bsm" onclick="fitGraphToView()">Fit map</button><span class="graph-help">Scroll to zoom · Drag to move</span></div><div id="knowledge-map-viewport" class="graph-viewport" onpointerdown="startGraphPan(event)" onpointermove="moveGraphPan(event)" onpointerup="endGraphPan(event)" onpointercancel="endGraphPan(event)" onwheel="zoomGraph(event)"><div id="knowledge-map-stage" class="graph-stage" data-width="'+width+'" data-height="'+height+'" style="width:'+width+'px;height:'+height+'px;transform:translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none">'+paths+'</svg>'+subjectLabels+topicLabels+cardNodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Cards pull towards linked ideas and form topic clusters · Lines show linked ideas</div>';
 }
 function filterKnowledgeMap(value){
   state.graphQuery=value;
