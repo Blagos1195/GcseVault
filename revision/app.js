@@ -131,6 +131,7 @@ function restoreRevisionSnapshot(userKey){
   if(snapshot){
     state.accountSets=Array.isArray(snapshot.accountSets)?snapshot.accountSets.map(set=>normalizeRevisionSet(set,DEFAULT_REVISION_SET_ID)):initialRevisionSets;
     state.activeSetId=snapshot.activeSetId||state.accountSets[0]?.id||DEFAULT_REVISION_SET_ID;
+    state.publishSetId=state.activeSetId;
     state.cards=Array.isArray(snapshot.cards)?snapshot.cards:[];
     state.progress=snapshot.progress&&typeof snapshot.progress==='object'?snapshot.progress:{};
     state.xp=Number(snapshot.xp)||0;
@@ -141,6 +142,7 @@ function restoreRevisionSnapshot(userKey){
   }else{
     state.accountSets=[normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''},DEFAULT_REVISION_SET_ID)];
     state.activeSetId=DEFAULT_REVISION_SET_ID;
+    state.publishSetId=DEFAULT_REVISION_SET_ID;
     state.cards=[];
     state.progress={};
     state.xp=0;
@@ -210,6 +212,7 @@ function addRevisionSet(name = 'New set'){
   const newSet = normalizeRevisionSet({id:`set-${Date.now()}`,name,name,cards:[],progress:{},xp:0,streak:0,lastReview:''}, `set-${Date.now()}`);
   state.accountSets.push(newSet);
   state.activeSetId = newSet.id;
+  state.publishSetId = newSet.id;
   state.cards = [];
   state.progress = {};
   state.xp = 0;
@@ -223,6 +226,7 @@ function deleteRevisionSet(setId){
   if (state.accountSets.length <= 1) {
     state.accountSets = [normalizeRevisionSet({id:DEFAULT_REVISION_SET_ID,name:'My main set',cards:[],progress:{},xp:0,streak:0,lastReview:''}, DEFAULT_REVISION_SET_ID)];
     state.activeSetId = DEFAULT_REVISION_SET_ID;
+    state.publishSetId = DEFAULT_REVISION_SET_ID;
     state.cards = [];
     state.progress = {};
     state.xp = 0;
@@ -237,6 +241,7 @@ function deleteRevisionSet(setId){
   const [removed] = state.accountSets.splice(index, 1);
   const fallback = state.accountSets[0];
   state.activeSetId = fallback.id;
+  state.publishSetId = fallback.id;
   state.cards = Array.isArray(fallback.cards) ? fallback.cards : [];
   state.progress = fallback.progress && typeof fallback.progress === 'object' ? fallback.progress : {};
   state.xp = Number(fallback.xp) || 0;
@@ -1009,7 +1014,7 @@ function importAIResult(){
     state.cards.push(...cards);state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Added ${cards.length} flashcards and ${result.links.length} connections to “${getActiveRevisionSet().name}”.`;
   }else{
     const newSet=normalizeRevisionSet({id:`set-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,name,cards,progress:{},xp:0,streak:0,lastReview:'',published:false});
-    state.accountSets.push(newSet);state.activeSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
+    state.accountSets.push(newSet);state.activeSetId=newSet.id;state.publishSetId=newSet.id;state.cards=newSet.cards;state.progress={};state.xp=0;state.streak=0;state.lastReview='';
     state.selected=cards[0].id;state.aiResult=null;state.setMessage=`Saved ${cards.length} flashcards with ${result.links.length} connections in “${name}”.`;
   }
   state.view='overview';
