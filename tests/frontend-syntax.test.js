@@ -885,7 +885,7 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
   assert.match(html, /app\.js\?v=20261114-map-navigation-v2/);
-  assert.match(html, /revision\.css\?v=20261114-connected-map-v1/);
+  assert.match(html, /revision\.css\?v=20261114-map-navigation-v2/);
 });
 
 
