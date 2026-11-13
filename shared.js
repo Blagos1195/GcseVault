@@ -1143,6 +1143,7 @@ const AdminManager = {
   statusChecked: false,
   statusChecking: false,
   ownerInitialized: true,
+  deploymentInfo: null,
   error: '',
 
   getToken() {
@@ -1157,6 +1158,7 @@ const AdminManager = {
       if (!response.ok) throw new Error('Status check failed');
       const data = await response.json();
       this.ownerInitialized = Boolean(data.initialized);
+      this.deploymentInfo = data.deployment || null;
     } catch {
       this.ownerInitialized = true;
     } finally {
@@ -1466,6 +1468,7 @@ const AdminManager = {
         <div><div class="pt">Admin Panel</div><div class="knowledge-meta"><a href="/GcseVault/admin/" style="color:var(--gold)">Open full moderation workspace</a></div><div class="ps">${UI.escapeHTML(this.username || '')} · ${UI.escapeHTML(this.role || 'Admin')}</div></div>
         <div style="display:flex;gap:6px"><button class="btn bsm" onclick="AdminManager.refresh()">🔄 Refresh</button><button class="btn bsm" onclick="AdminManager.logout()">🔒 Logout</button></div>
       </div>
+      <div class="knowledge-meta" style="margin:7px 0">Worker deployment: ${this.deploymentInfo?.versionId ? UI.escapeHTML(this.deploymentInfo.versionId) + (this.deploymentInfo.timestamp ? ' · ' + UI.escapeHTML(new Date(this.deploymentInfo.timestamp).toLocaleString()) : '') : 'Version metadata unavailable. The deployed Worker may need the latest version-metadata binding.'}</div>
       ${this.error ? `<div class="qfb qwr">${UI.escapeHTML(this.error)}</div>` : ''}
       ${userManagement}
       <div class="g4" style="margin:10px 0 12px">
