@@ -797,10 +797,12 @@ function renderGraph(){
     });
   });
   const hash=value=>{let h=2166136261;for(let i=0;i<String(value).length;i++)h=Math.imul(h^String(value).charCodeAt(i),16777619);return h>>>0;};
+  const cardsByTopic=new Map();
+  cards.forEach(card=>{const key=(card.subject||'General')+'\u0000'+(card.topic||'General');if(!cardsByTopic.has(key))cardsByTopic.set(key,[]);cardsByTopic.get(key).push(card);});
   const nodes=cards.map(card=>{
     const key=(card.subject||'General')+'\u0000'+(card.topic||'General');
     const anchor=topicAnchors.get(key);
-    const siblings=cards.filter(other=>(other.subject||'General')===(card.subject||'General')&&(other.topic||'General')===(card.topic||'General'));
+    const siblings=cardsByTopic.get(key);
     const index=siblings.findIndex(other=>other.id===card.id);
     const angle=(Math.PI*2*index/Math.max(1,siblings.length))+(hash(card.id)%1000)/1000*.35;
     const radius=Math.max(155,Math.sqrt(siblings.length)*92);
@@ -850,10 +852,10 @@ function renderGraph(){
       node.y+=Math.max(-18,Math.min(18,fy[index]*cooling));
     });
   }
-  const minX=Math.min(...nodes.map(node=>node.x-nodeWidth/2),...Array.from(topicAnchors.values(),anchor=>anchor.x-80))-padding;
-  const maxX=Math.max(...nodes.map(node=>node.x+nodeWidth/2),...Array.from(topicAnchors.values(),anchor=>anchor.x+80))+padding;
-  const minY=Math.min(...nodes.map(node=>node.y-nodeHeight/2),...Array.from(topicAnchors.values(),anchor=>anchor.y-30))-padding;
-  const maxY=Math.max(...nodes.map(node=>node.y+nodeHeight/2),...Array.from(topicAnchors.values(),anchor=>anchor.y+30))+padding;
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  nodes.forEach(node=>{minX=Math.min(minX,node.x-nodeWidth/2);maxX=Math.max(maxX,node.x+nodeWidth/2);minY=Math.min(minY,node.y-nodeHeight/2);maxY=Math.max(maxY,node.y+nodeHeight/2);});
+  topicAnchors.forEach(anchor=>{minX=Math.min(minX,anchor.x-80);maxX=Math.max(maxX,anchor.x+80);minY=Math.min(minY,anchor.y-30);maxY=Math.max(maxY,anchor.y+30);});
+  minX-=padding;maxX+=padding;minY-=padding;maxY+=padding;
   const width=Math.ceil(maxX-minX),height=Math.ceil(maxY-minY);
   const point=node=>({x:node.x-minX,y:node.y-minY});
   const paths=edges.map(([a,b])=>{
