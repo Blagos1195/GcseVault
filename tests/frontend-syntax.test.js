@@ -392,7 +392,7 @@ test("Atomic structure resource pack is self-contained and contains course mater
   assert.ok(pack.resources.every(resource => topicIds.has(resource.topicId) && resource.content.length > 500));
   assert.ok(pack.formulas.every(formula => topicIds.has(formula.topicId) && formula.name && formula.expression));
   assert.ok(!JSON.stringify(pack).includes("http://") && !JSON.stringify(pack).includes("https://"));
-  assert.match(practice, /if\\(!catalogue&&c\\.catalogue&&c\\.catalogue\\.id===catalogueId/);
+  assert.ok(practice.includes("if(!catalogue&&c.catalogue&&c.catalogue.id===catalogueId"));
 });
 
 test("Revision sync retains private exam-practice data", () => {
