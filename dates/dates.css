@@ -265,3 +265,13 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150}
  #main{height:calc(100dvh - 44px)!important}
 }
+
+
+.pt{font-family:'DM Sans',sans-serif;font-size:1.65rem;font-weight:700;letter-spacing:-.045em;line-height:1.15;color:var(--text);margin:0 0 5px}
+.ps{font-size:.88rem;line-height:1.55;color:var(--text2);max-width:760px;margin:0 0 18px}
+.sec{font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:650;letter-spacing:-.01em;text-transform:none;color:var(--text);margin:20px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.card>.sec:first-child,.card>.sec[style*="margin-top:0"]{margin-top:0}
+#page>.pt{margin-top:2px}
+.g4{gap:10px}
+.scard{padding:12px 14px}
+@media(max-width:620px){.pt{font-size:1.45rem}.ps{font-size:.82rem;margin-bottom:14px}.sec{font-size:.86rem;margin-top:17px}}
