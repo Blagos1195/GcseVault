@@ -2455,7 +2455,15 @@ export default {
     return new Response("Not found", { status: 404, headers: cors });
     } catch (error) {
       const requestId = crypto.randomUUID();
-      console.error("Worker request failed", requestId, error);
+      console.error(JSON.stringify({
+        event: "worker_request_failed",
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        errorName: error?.name || "Error",
+        errorMessage: String(error?.message || error),
+        errorStack: String(error?.stack || "")
+      }));
       return new Response(JSON.stringify({ error: "The API request failed. Please try again.", requestId }), {
         status: 500,
         headers: { ...cors, "Content-Type": "application/json", "X-Request-Id": requestId }
