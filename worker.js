@@ -1749,9 +1749,14 @@ export default {
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
-      if (Number(request.headers.get("content-length") || 0) > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
+      const rateKey = "feedback-submit:" + await hashValue(request.headers.get("CF-Connecting-IP") || "unknown");
+      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      if (attempts >= 5) return new Response("Too many feedback submissions. Try again in 15 minutes.", { status: 429, headers: cors });
+      const rawBody = await request.text();
+      if (new TextEncoder().encode(rawBody).byteLength > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
       let body;
-      try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      try { body = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
       const type = sanitize(body.type, 80);
       const title = sanitize(body.title, 300);
