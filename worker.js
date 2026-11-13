@@ -2030,20 +2030,23 @@ export default {
         return new Response("Sign in with a password account to view synced progress.", { status: 401, headers: cors });
       }
       await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
-      const [quoteRow, dateRow, revisionRow] = await Promise.all([
+      const [quoteRow, dateRow, revisionRow, accountRow] = await Promise.all([
         env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "qv").first(),
         env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "dv").first(),
-        env.DB.prepare("SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?").bind(session.user_key).first()
+        env.DB.prepare("SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?").bind(session.user_key).first(),
+        env.DB.prepare("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp, streak, max_streak, updated_at FROM users WHERE user_key = ?").bind(session.user_key).first()
       ]);
       const today = new Date().toISOString().slice(0, 10);
-      const summarizeSchedules = row => {
+      const summarizeSchedules = (row, mastered, xp) => {
         let schedules = {};
         try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
         const values = Object.values(schedules).filter(item => item && typeof item === "object" && !Array.isArray(item));
         return {
           scheduled: values.length,
           due: values.filter(item => !item.due || String(item.due).slice(0, 10) <= today).length,
-          updatedAt: row?.updated_at || null
+          mastered: Number(mastered) || 0,
+          xp: Number(xp) || 0,
+          updatedAt: [row?.updated_at, accountRow?.updated_at].filter(Boolean).sort().at(-1) || null
         };
       };
       let revisionData = {};
@@ -2061,9 +2064,9 @@ export default {
         revision.xp += Number(set?.xp) || 0;
       }
       return new Response(JSON.stringify({
-        account: { username: session.username || "" },
-        quoteVault: summarizeSchedules(quoteRow),
-        dateVault: summarizeSchedules(dateRow),
+        account: { username: accountRow?.username || session.username || "", streak: Number(accountRow?.streak) || 0, maxStreak: Number(accountRow?.max_streak) || 0 },
+        quoteVault: summarizeSchedules(quoteRow, accountRow?.qv_mastered, accountRow?.qv_xp),
+        dateVault: summarizeSchedules(dateRow, accountRow?.dv_mastered, accountRow?.dv_xp),
         revision
       }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
