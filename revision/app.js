@@ -55,13 +55,15 @@ const fallbackSet = normalizeRevisionSet({
 }, activeSetId);
 const initialRevisionSets = existingSetList.length ? existingSetList : [fallbackSet];
 const selectedRevisionSet = initialRevisionSets.find(set => set.id === activeSetId) || initialRevisionSets[0];
+const REVISION_VIEWS = new Set('overview,resources,cards,create,edit,link,graph,library,analytics,connection,ai,public,leaderboard,settings'.split(','));
+const REVISION_SAVED_VIEW = localStorage.getItem('revision_last_view');
 const state = {
   cards: Array.isArray(selectedRevisionSet?.cards) ? selectedRevisionSet.cards : (revisionStartupSnapshot?.cards || (revisionUseLegacyLocal && !onlyDemoCards ? (storedCards || []) : [])),
   progress: selectedRevisionSet && selectedRevisionSet.progress ? selectedRevisionSet.progress : (revisionStartupSnapshot?.progress || (revisionUseLegacyLocal ? JSON.parse(localStorage.getItem(REVISION_PROGRESS_KEY) || '{}') : {})),
   accountSets: initialRevisionSets,
   activeSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
   publishSetId: selectedRevisionSet ? selectedRevisionSet.id : DEFAULT_REVISION_SET_ID,
-  view: 'overview', selected: null, studyIndex: 0, revealed: false,
+  view: REVISION_VIEWS.has(REVISION_SAVED_VIEW)?REVISION_SAVED_VIEW:'overview', selected: null, studyIndex: 0, revealed: false,
   xp: Number(selectedRevisionSet?.xp ?? revisionStartupSnapshot?.xp ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_xp') : 0)),
   streak: Number(selectedRevisionSet?.streak ?? revisionStartupSnapshot?.streak ?? (revisionUseLegacyLocal ? localStorage.getItem('revision_streak') : 0)),
   lastReview: selectedRevisionSet?.lastReview || revisionStartupSnapshot?.lastReview || (revisionUseLegacyLocal ? localStorage.getItem('revision_last_review') : '') || '',
@@ -1076,6 +1078,7 @@ function closeModal(){
 window.openModal=openModal;
 window.closeModal=closeModal;
 function renderRevision(){
+  if(REVISION_VIEWS.has(state.view))localStorage.setItem('revision_last_view',state.view);
   const setSwitcher=document.getElementById('revision-set-switcher');
   if(setSwitcher){setSwitcher.innerHTML=state.accountSets.map(set=>`<option value="${escapeRevision(set.id)}">${escapeRevision(set.name)} · ${(set.cards||[]).length}</option>`).join('');setSwitcher.value=state.activeSetId;setSwitcher.title=`Current set: ${getActiveRevisionSet().name}`;}
   document.querySelectorAll('#revision-nav select').forEach(select=>{select.value=[...select.options].some(option=>option.value===state.view)?state.view:'';});
