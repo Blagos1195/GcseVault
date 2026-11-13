@@ -92,6 +92,36 @@ async function call(path, env, body, extraHeaders = {}) {
   return worker.fetch(request, env);
 }
 
+test("account-wide sign-out revokes every session for the authenticated account", async () => {
+  const env = makeEnv();
+  const updates = [];
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => sql.includes("FROM account_sessions s JOIN users") ? {
+        user_key: "student-key",
+        username: "student",
+        role: "user"
+      } : null,
+      run: async () => {
+        updates.push({ sql, values });
+        return { success: true, meta: { changes: 3 } };
+      }
+    })
+  });
+  const denied = await worker.fetch(new Request("https://example.test/account/logout-all", { method: "POST" }), env);
+  assert.equal(denied.status, 401);
+  const response = await worker.fetch(new Request("https://example.test/account/logout-all", {
+    method: "POST",
+    headers: { "X-Account-Session": "a".repeat(64) }
+  }), env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true });
+  assert.deepEqual(updates, [{
+    sql: "DELETE FROM account_sessions WHERE user_key = ?",
+    values: ["student-key"]
+  }]);
+});
+
 test("admin push subscriptions require an admin session and are stored per account", async () => {
   const env = makeEnv();
   const denied = await call("/admin/push/subscribe", env, {

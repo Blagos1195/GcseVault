@@ -385,6 +385,24 @@ const VaultUser = {
     return data;
   },
 
+  async logoutAllAccounts() {
+    const token = this.getAccountSession();
+    if (!token) return;
+    if (typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
+    if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+    const response = await fetch(`${this.WORKER_URL}/account/logout-all`, {
+      method: 'POST',
+      headers: { 'X-Account-Session': token }
+    });
+    if (response.status !== 401) {
+      const data = await this.readResponse(response);
+      if (!response.ok) throw new Error(data.error || data.message || 'Could not sign out of all devices. Please try again.');
+    }
+    if (this.getAccountSession() === token) localStorage.removeItem('vault_account_session');
+    if (typeof window !== 'undefined' && typeof window.finishRevisionAccountLogout === 'function') window.finishRevisionAccountLogout();
+    if (typeof window !== 'undefined' && typeof window.syncReviewSchedules === 'function') await window.syncReviewSchedules();
+  },
+
   async logoutAccount() {
     const token = this.getAccountSession();
     if (token && typeof window !== 'undefined' && typeof window.prepareRevisionAccountLogout === 'function') window.prepareRevisionAccountLogout();
@@ -418,8 +436,26 @@ const VaultUser = {
               <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:6px">GCSE Vault account</div>
               <div style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Signed in as <strong style="color:var(--gold)">${usernameValue()}</strong></div>
               <button class="btn" id="vault-account-logout">Sign out</button>
+              <button class="btn" id="vault-account-logout-all">Sign out of all devices</button>
               <button class="btn" onclick="closeModal()">Close</button>
             </div>`);
+            document.getElementById('vault-account-logout-all').onclick = async () => {
+              if (!window.confirm('Sign out of GCSE Vault on every device? You will need to sign in again.')) return;
+              const button = document.getElementById('vault-account-logout-all');
+              button.disabled = true;
+              try {
+                await this.logoutAllAccounts();
+                window.closeModal();
+                if (typeof window.render === 'function') window.render();
+                if (typeof window.renderRevision === 'function') window.renderRevision();
+              } catch (error) {
+                button.disabled = false;
+                const message = document.createElement('div');
+                message.style.cssText = 'font-size:.72rem;margin:8px 0;color:var(--coral)';
+                message.textContent = error.message;
+                button.before(message);
+              }
+            };
             document.getElementById('vault-account-logout').onclick = async () => {
               const button = document.getElementById('vault-account-logout');
               button.disabled = true;
