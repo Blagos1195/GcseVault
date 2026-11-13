@@ -913,8 +913,8 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.match(html, /app\.js\?v=20261114-chain-straightening-v1/);
-  assert.match(html, /revision\.css\?v=20261114-site-switcher-v1/);
+  assert.match(html, /app\\.js\\?v=20261114-two-row-header-v1/);
+  assert.match(html, /revision\\.css\\?v=20261114-two-row-header-v1/);
 });
 
 
