@@ -1218,3 +1218,102 @@ test("owner account permission changes are written to the admin audit log", asyn
     write.values[0] === "student" && write.values[1] === "owner" &&
     write.values[2] === "Role changed from user to admin"));
 });
+
+
+test("QuoteVault submission retries reuse the same server item and admin notification", async () => {
+  const env = makeEnv();
+  const storage = new Map();
+  const notices = new Set();
+  let puts = 0;
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      if (sql.includes("INSERT OR IGNORE INTO admin_notifications")) bound.run = async () => {
+        const key = values[0];
+        const changes = notices.has(key) ? 0 : 1;
+        notices.add(key);
+        return { meta: { changes } };
+      };
+      return bound;
+    };
+    if (sql.includes("SELECT user_key FROM users WHERE role IN")) statement.all = async () => ({ results: [{ user_key: "owner-key" }] });
+    return statement;
+  };
+  env.QUOTEVAULT.get = async (key, type) => {
+    if (key === "session:test-session") return JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" });
+    const value = storage.get(key);
+    return type === "json" && value ? JSON.parse(value) : value || null;
+  };
+  env.QUOTEVAULT.put = async (key, value) => { puts++; storage.set(key, value); };
+  const body = { userKey: "student-key", submissionRequestId: "8f7e6d5c-4b3a-2910-8f7e-6d5c4b3a2910", text: "A test quote", char: "A character" };
+  const headers = { "X-Account-Session": "a".repeat(64) };
+  const first = await call("/submit", env, body, headers);
+  const second = await call("/submit", env, body, headers);
+  const firstData = await first.json();
+  const secondData = await second.json();
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(firstData.id, secondData.id);
+  assert.equal(puts, 1);
+  assert.equal(notices.size, 1);
+});
+
+test("DateVault submission retries reuse the same server item", async () => {
+  const env = makeEnv();
+  const storage = new Map();
+  let puts = 0;
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      return bound;
+    };
+    if (sql.includes("SELECT user_key FROM users WHERE role IN")) statement.all = async () => ({ results: [] });
+    return statement;
+  };
+  env.DV_PENDING = {
+    get: async (key, type) => { const value = storage.get(key); return type === "json" && value ? JSON.parse(value) : value || null; },
+    put: async (key, value) => { puts++; storage.set(key, value); }
+  };
+  const body = { userKey: "student-key", submissionRequestId: "9f8e7d6c-5b4a-3921-9f8e-7d6c5b4a3921", event: "A test date" };
+  const headers = { "X-Account-Session": "b".repeat(64) };
+  const first = await call("/dv/submit", env, body, headers);
+  const second = await call("/dv/submit", env, body, headers);
+  const firstData = await first.json();
+  const secondData = await second.json();
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(firstData.id, secondData.id);
+  assert.equal(puts, 1);
+});
+
+test("QuoteVault rejects malformed idempotency request IDs", async () => {
+  const env = makeEnv();
+  const basePrepare = env.DB.prepare.bind(env.DB);
+  env.DB.prepare = sql => {
+    const statement = basePrepare(sql);
+    const baseBind = statement.bind;
+    statement.bind = (...values) => {
+      const bound = baseBind(...values);
+      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
+      return bound;
+    };
+    return statement;
+  };
+  const response = await call("/submit", env, {
+    userKey: "student-key",
+    submissionRequestId: "invalid",
+    text: "A test quote"
+  }, { "X-Account-Session": "c".repeat(64) });
+  assert.equal(response.status, 400);
+});
