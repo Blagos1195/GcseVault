@@ -567,6 +567,30 @@ export default {
       return row ? { ...row, token } : null;
     }
 
+    if (url.pathname === "/account/course-selections" && ["GET", "PUT"].includes(request.method)) {
+      const session = await getAccountSession(request);
+      if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS account_course_selections (user_key TEXT NOT NULL, site TEXT NOT NULL, selections_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, site))").run();
+      if (request.method === "GET") {
+        const rows = await env.DB.prepare("SELECT site, selections_json, updated_at FROM account_course_selections WHERE user_key = ?").bind(session.user_key).all();
+        const selections = {};
+        for (const row of rows.results || []) {
+          try { selections[row.site] = JSON.parse(row.selections_json); } catch {}
+        }
+        return new Response(JSON.stringify({ selections }), { headers: { ...cors, "Content-Type": "application/json" } });
+      }
+      const parsed = await readBoundedJson(request, 8192);
+      if (parsed.error) return new Response(parsed.error, { status: parsed.status, headers: cors });
+      const site = String(parsed.data.site || "");
+      const values = parsed.data.selections;
+      if (!["quotes", "dates", "revision"].includes(site) || !Array.isArray(values) || values.length > 300) {
+        return new Response("Invalid course selections.", { status: 400, headers: cors });
+      }
+      const selections = [...new Set(values.map(value => String(value).trim()).filter(value => value && value.length <= 160))];
+      await env.DB.prepare("INSERT INTO account_course_selections (user_key, site, selections_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET selections_json = excluded.selections_json, updated_at = excluded.updated_at").bind(session.user_key, site, JSON.stringify(selections), new Date().toISOString()).run();
+      return new Response(JSON.stringify({ success: true, selections }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     async function verifyPasswordAccountAccess(userKey, req) {
       const credential = await env.DB.prepare(
         "SELECT user_key FROM account_credentials WHERE user_key = ?"
