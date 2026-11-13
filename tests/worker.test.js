@@ -1015,7 +1015,7 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
   assert.equal(updateData.notifications.length, 1);
   assert.equal(updateData.notifications[0].item_id, submission.id);
   assert.equal(updateData.notifications[0].status, "approved");
-  assert.equal(JSON.parse(updateData.notifications[0].payload).original.text, "A synthetic quote for the lifecycle test");
+  assert.equal(updateData.notifications[0].payload.original.text, "A synthetic quote for the lifecycle test");
 
   assert.equal(moderation.length, 1);
   assert.equal(moderation[0].action, "approved");
