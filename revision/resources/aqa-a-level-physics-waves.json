@@ -1,0 +1,1119 @@
+{
+  "type": "revision-course-pack",
+  "version": 1,
+  "id": "aqa-a-level-physics-waves-pack",
+  "catalogueId": "aqa-a-level-physics",
+  "subject": "Physics",
+  "examBoard": "AQA",
+  "qualification": "A-level Physics (7408)",
+  "topic": "Waves",
+  "catalogue": {
+    "type": "revision-catalogue",
+    "version": 1,
+    "id": "aqa-a-level-physics",
+    "subject": "Physics",
+    "examBoard": "AQA",
+    "qualification": "A-level Physics (7408)",
+    "source": "AQA A-level Physics 7408 specification, section 3.3 Waves",
+    "topics": [
+      {
+        "id": "physics-01",
+        "name": "Measurements and their errors",
+        "year": "Year 12",
+        "area": "Measurements and their errors",
+        "subtopics": [
+          "SI units and prefixes",
+          "Measurement uncertainties",
+          "Estimation"
+        ]
+      },
+      {
+        "id": "physics-02",
+        "name": "Particles",
+        "year": "Year 12",
+        "area": "Particles",
+        "subtopics": [
+          "Constituents of the atom",
+          "Stable and unstable nuclei",
+          "Particles, antiparticles and photons",
+          "Particle interactions",
+          "Classification of particles",
+          "Quarks and antiquarks",
+          "Applications of conservation laws"
+        ]
+      },
+      {
+        "id": "physics-03",
+        "name": "Waves",
+        "year": "Year 12",
+        "area": "Waves",
+        "subtopics": [
+          "Progressive waves",
+          "Longitudinal and transverse waves",
+          "Polarisation",
+          "Superposition and stationary waves",
+          "Interference and Young's double-slit experiment",
+          "Diffraction and diffraction gratings",
+          "Refraction and total internal reflection",
+          "Optical fibres, dispersion and attenuation"
+        ]
+      },
+      {
+        "id": "physics-04",
+        "name": "Mechanics and materials",
+        "year": "Year 12",
+        "area": "Mechanics and materials",
+        "subtopics": [
+          "Scalars and vectors",
+          "Projectile motion",
+          "Forces and momentum",
+          "Work, energy and power",
+          "Materials"
+        ]
+      },
+      {
+        "id": "physics-05",
+        "name": "Electricity",
+        "year": "Year 12",
+        "area": "Electricity",
+        "subtopics": [
+          "Current and potential difference",
+          "Resistance",
+          "Circuits",
+          "Resistivity",
+          "Potential dividers"
+        ]
+      },
+      {
+        "id": "physics-06",
+        "name": "Further mechanics and thermal physics",
+        "year": "Year 13",
+        "area": "Further mechanics and thermal physics",
+        "subtopics": [
+          "Circular motion",
+          "Simple harmonic motion",
+          "Thermal physics",
+          "Ideal gases"
+        ]
+      },
+      {
+        "id": "physics-07",
+        "name": "Fields and their consequences",
+        "year": "Year 13",
+        "area": "Fields and their consequences",
+        "subtopics": [
+          "Gravitational fields",
+          "Electric fields",
+          "Capacitance",
+          "Magnetic fields",
+          "Electromagnetic induction"
+        ]
+      },
+      {
+        "id": "physics-08",
+        "name": "Nuclear physics",
+        "year": "Year 13",
+        "area": "Nuclear physics",
+        "subtopics": [
+          "Radioactive decay",
+          "Nuclear energy",
+          "Mass and energy"
+        ]
+      },
+      {
+        "id": "physics-09",
+        "name": "Astrophysics",
+        "year": "Year 13",
+        "area": "Astrophysics",
+        "subtopics": [
+          "Telescopes",
+          "Stellar classification",
+          "Cosmology"
+        ]
+      },
+      {
+        "id": "physics-10",
+        "name": "Medical physics",
+        "year": "Year 13",
+        "area": "Medical physics",
+        "subtopics": [
+          "X-rays",
+          "Ultrasound",
+          "PET scanning",
+          "Imaging"
+        ]
+      },
+      {
+        "id": "physics-11",
+        "name": "Engineering physics",
+        "year": "Year 13",
+        "area": "Engineering physics",
+        "subtopics": [
+          "Rotational dynamics",
+          "Thermodynamics",
+          "Materials"
+        ]
+      },
+      {
+        "id": "physics-12",
+        "name": "Turning points in physics",
+        "year": "Year 13",
+        "area": "Turning points in physics",
+        "subtopics": [
+          "The discovery of the electron",
+          "Wave-particle duality",
+          "Special relativity"
+        ]
+      },
+      {
+        "id": "physics-13",
+        "name": "Electronics",
+        "year": "Year 13",
+        "area": "Electronics",
+        "subtopics": [
+          "Semiconductors",
+          "Diodes",
+          "Operational amplifiers"
+        ]
+      }
+    ]
+  },
+  "cards": [
+    {
+      "id": "w01",
+      "topicId": "physics-03",
+      "front": "What is a progressive wave?",
+      "back": "A travelling disturbance that transfers energy from one place to another without net transfer of matter.",
+      "difficulty": 3,
+      "links": [
+        "w02"
+      ]
+    },
+    {
+      "id": "w02",
+      "topicId": "physics-03",
+      "front": "What happens to particles of the medium as a progressive wave passes?",
+      "back": "They oscillate about fixed equilibrium positions. The disturbance and energy travel, but the medium has no overall displacement.",
+      "difficulty": 3,
+      "links": [
+        "w01",
+        "w03"
+      ]
+    },
+    {
+      "id": "w03",
+      "topicId": "physics-03",
+      "front": "Define amplitude.",
+      "back": "The maximum displacement of a point on a wave from its equilibrium position.",
+      "difficulty": 3,
+      "links": [
+        "w02",
+        "w04"
+      ]
+    },
+    {
+      "id": "w04",
+      "topicId": "physics-03",
+      "front": "Define wavelength.",
+      "back": "The distance between two adjacent points that are in phase, such as neighbouring crests.",
+      "difficulty": 3,
+      "links": [
+        "w03",
+        "w05"
+      ]
+    },
+    {
+      "id": "w05",
+      "topicId": "physics-03",
+      "front": "Define frequency.",
+      "back": "The number of complete oscillations or cycles passing a point per second. Unit: hertz (Hz).",
+      "difficulty": 3,
+      "links": [
+        "w04",
+        "w06"
+      ]
+    },
+    {
+      "id": "w06",
+      "topicId": "physics-03",
+      "front": "Define period.",
+      "back": "The time taken for one complete oscillation or cycle. Unit: seconds (s).",
+      "difficulty": 3,
+      "links": [
+        "w05",
+        "w07"
+      ]
+    },
+    {
+      "id": "w07",
+      "topicId": "physics-03",
+      "front": "What is the relationship between frequency and period?",
+      "back": "f = 1/T.",
+      "difficulty": 3,
+      "links": [
+        "w06",
+        "w08"
+      ]
+    },
+    {
+      "id": "w08",
+      "topicId": "physics-03",
+      "front": "What is wave speed?",
+      "back": "The distance travelled by a wave per unit time, measured in m s⁻¹.",
+      "difficulty": 3,
+      "links": [
+        "w07",
+        "w09"
+      ]
+    },
+    {
+      "id": "w09",
+      "topicId": "physics-03",
+      "front": "State the wave equation.",
+      "back": "v = fλ, where v is wave speed, f is frequency and λ is wavelength.",
+      "difficulty": 3,
+      "links": [
+        "w08",
+        "w10",
+        "w07",
+        "w13",
+        "w43",
+        "w51",
+        "w55"
+      ]
+    },
+    {
+      "id": "w10",
+      "topicId": "physics-03",
+      "front": "What is phase?",
+      "back": "A measure of the position within a wave cycle, often expressed as an angle in radians or degrees.",
+      "difficulty": 3,
+      "links": [
+        "w09",
+        "w11"
+      ]
+    },
+    {
+      "id": "w11",
+      "topicId": "physics-03",
+      "front": "What does it mean for two points to be in phase?",
+      "back": "They have the same displacement from equilibrium and are moving in the same direction. Their phase difference is a whole number of cycles, or 0 modulo 2π.",
+      "difficulty": 3,
+      "links": [
+        "w10",
+        "w12"
+      ]
+    },
+    {
+      "id": "w12",
+      "topicId": "physics-03",
+      "front": "What is phase difference?",
+      "back": "The difference in phase between two oscillations, measured in radians, degrees or fractions of a cycle.",
+      "difficulty": 3,
+      "links": [
+        "w11",
+        "w13"
+      ]
+    },
+    {
+      "id": "w13",
+      "topicId": "physics-03",
+      "front": "How is phase difference related to path difference?",
+      "back": "Phase difference = 2π × path difference / wavelength, in radians.",
+      "difficulty": 3,
+      "links": [
+        "w12",
+        "w11",
+        "w40",
+        "w41",
+        "w42"
+      ]
+    },
+    {
+      "id": "w14",
+      "topicId": "physics-03",
+      "front": "What is a transverse wave?",
+      "back": "A wave in which oscillations are perpendicular to the direction of energy transfer.",
+      "difficulty": 3,
+      "links": [
+        "w15"
+      ]
+    },
+    {
+      "id": "w15",
+      "topicId": "physics-03",
+      "front": "What is a longitudinal wave?",
+      "back": "A wave in which oscillations are parallel to the direction of energy transfer.",
+      "difficulty": 3,
+      "links": [
+        "w14",
+        "w16"
+      ]
+    },
+    {
+      "id": "w16",
+      "topicId": "physics-03",
+      "front": "Give examples of transverse and longitudinal waves from the AQA specification.",
+      "back": "Transverse: electromagnetic waves and waves on a string. Longitudinal: sound waves in air.",
+      "difficulty": 3,
+      "links": [
+        "w15",
+        "w17"
+      ]
+    },
+    {
+      "id": "w17",
+      "topicId": "physics-03",
+      "front": "What are compressions and rarefactions?",
+      "back": "Compressions are regions where particles are close together; rarefactions are regions where particles are spread further apart in a longitudinal wave.",
+      "difficulty": 3,
+      "links": [
+        "w16"
+      ]
+    },
+    {
+      "id": "w18",
+      "topicId": "physics-03",
+      "front": "What is polarisation?",
+      "back": "The restriction of oscillations of a transverse wave to one plane or direction.",
+      "difficulty": 3,
+      "links": [
+        "w19",
+        "w14",
+        "w20",
+        "w23"
+      ]
+    },
+    {
+      "id": "w19",
+      "topicId": "physics-03",
+      "front": "Why is polarisation evidence that a wave is transverse?",
+      "back": "Only transverse waves can have their oscillations restricted to a plane perpendicular to the direction of travel. Longitudinal oscillations are along the direction of travel.",
+      "difficulty": 3,
+      "links": [
+        "w18",
+        "w20"
+      ]
+    },
+    {
+      "id": "w20",
+      "topicId": "physics-03",
+      "front": "What happens when unpolarised light passes through an ideal polariser?",
+      "back": "The transmitted light is plane-polarised, with its electric field oscillating in one direction.",
+      "difficulty": 3,
+      "links": [
+        "w19",
+        "w21"
+      ]
+    },
+    {
+      "id": "w21",
+      "topicId": "physics-03",
+      "front": "What happens when two polarising filters have parallel transmission axes?",
+      "back": "The polarised wave can pass through the second filter with maximum transmission.",
+      "difficulty": 3,
+      "links": [
+        "w20",
+        "w22"
+      ]
+    },
+    {
+      "id": "w22",
+      "topicId": "physics-03",
+      "front": "What happens when two polarising filters have perpendicular transmission axes?",
+      "back": "The second filter blocks the plane-polarised light, so ideally no light is transmitted.",
+      "difficulty": 3,
+      "links": [
+        "w21",
+        "w23"
+      ]
+    },
+    {
+      "id": "w23",
+      "topicId": "physics-03",
+      "front": "How can aerial alignment use polarisation?",
+      "back": "A receiving aerial responds most strongly when aligned with the electric-field oscillation of the incoming radio wave. Aerials can therefore be aligned to match the transmitted polarisation.",
+      "difficulty": 3,
+      "links": [
+        "w22"
+      ]
+    },
+    {
+      "id": "w24",
+      "topicId": "physics-03",
+      "front": "What is the principle of superposition?",
+      "back": "When waves overlap, the resultant displacement is the algebraic sum of the individual displacements at that point.",
+      "difficulty": 3,
+      "links": [
+        "w25",
+        "w26",
+        "w27"
+      ]
+    },
+    {
+      "id": "w25",
+      "topicId": "physics-03",
+      "front": "What is constructive interference?",
+      "back": "Superposition that produces a larger resultant amplitude because the waves arrive in phase.",
+      "difficulty": 3,
+      "links": [
+        "w24",
+        "w26"
+      ]
+    },
+    {
+      "id": "w26",
+      "topicId": "physics-03",
+      "front": "What is destructive interference?",
+      "back": "Superposition that reduces or cancels the resultant amplitude because the waves arrive out of phase.",
+      "difficulty": 3,
+      "links": [
+        "w25"
+      ]
+    },
+    {
+      "id": "w27",
+      "topicId": "physics-03",
+      "front": "What is a stationary wave?",
+      "back": "A wave pattern formed by two waves of the same frequency travelling in opposite directions, producing fixed nodes and antinodes.",
+      "difficulty": 3,
+      "links": [
+        "w28",
+        "w29",
+        "w30",
+        "w31",
+        "w32"
+      ]
+    },
+    {
+      "id": "w28",
+      "topicId": "physics-03",
+      "front": "What is a node?",
+      "back": "A point on a stationary wave that always has zero displacement.",
+      "difficulty": 3,
+      "links": [
+        "w27",
+        "w29"
+      ]
+    },
+    {
+      "id": "w29",
+      "topicId": "physics-03",
+      "front": "What is an antinode?",
+      "back": "A point on a stationary wave that oscillates with maximum amplitude.",
+      "difficulty": 3,
+      "links": [
+        "w28",
+        "w30"
+      ]
+    },
+    {
+      "id": "w30",
+      "topicId": "physics-03",
+      "front": "What is the separation between adjacent nodes on a stationary wave?",
+      "back": "λ/2. The separation between a node and its nearest antinode is λ/4.",
+      "difficulty": 3,
+      "links": [
+        "w29",
+        "w31"
+      ]
+    },
+    {
+      "id": "w31",
+      "topicId": "physics-03",
+      "front": "How is a stationary wave formed on a string fixed at both ends?",
+      "back": "A wave travelling along the string reflects at an end. The incident and reflected waves travel in opposite directions and superpose. The fixed ends are nodes.",
+      "difficulty": 3,
+      "links": [
+        "w30",
+        "w32"
+      ]
+    },
+    {
+      "id": "w32",
+      "topicId": "physics-03",
+      "front": "What is a harmonic in a stationary wave on a string?",
+      "back": "A permitted mode of vibration. For a string fixed at both ends, the nth harmonic has n half-wavelengths along the string.",
+      "difficulty": 3,
+      "links": [
+        "w31",
+        "w33"
+      ]
+    },
+    {
+      "id": "w33",
+      "topicId": "physics-03",
+      "front": "What is the first-harmonic frequency for a stretched string?",
+      "back": "f = (1/2L)√(T/μ), where L is vibrating length, T is tension and μ is mass per unit length.",
+      "difficulty": 3,
+      "links": [
+        "w32",
+        "w34",
+        "w35",
+        "w36"
+      ]
+    },
+    {
+      "id": "w34",
+      "topicId": "physics-03",
+      "front": "How does the first-harmonic frequency change if string length increases?",
+      "back": "It decreases in inverse proportion to length, if tension and mass per unit length stay constant.",
+      "difficulty": 3,
+      "links": [
+        "w33",
+        "w35"
+      ]
+    },
+    {
+      "id": "w35",
+      "topicId": "physics-03",
+      "front": "How does the first-harmonic frequency change if tension increases?",
+      "back": "It increases in proportion to the square root of tension, if length and mass per unit length stay constant.",
+      "difficulty": 3,
+      "links": [
+        "w34",
+        "w36"
+      ]
+    },
+    {
+      "id": "w36",
+      "topicId": "physics-03",
+      "front": "How does the first-harmonic frequency change if mass per unit length increases?",
+      "back": "It decreases in proportion to the inverse square root of mass per unit length, if length and tension stay constant.",
+      "difficulty": 3,
+      "links": [
+        "w35",
+        "w37"
+      ]
+    },
+    {
+      "id": "w37",
+      "topicId": "physics-03",
+      "front": "How can stationary waves be produced using sound or microwaves?",
+      "back": "Waves reflect from a boundary and superpose with the incident wave. Nodes and antinodes form at fixed positions.",
+      "difficulty": 3,
+      "links": [
+        "w36"
+      ]
+    },
+    {
+      "id": "w38",
+      "topicId": "physics-03",
+      "front": "What is coherence?",
+      "back": "Two sources are coherent if they have the same frequency and a constant phase difference.",
+      "difficulty": 3,
+      "links": [
+        "w39",
+        "w41",
+        "w42"
+      ]
+    },
+    {
+      "id": "w39",
+      "topicId": "physics-03",
+      "front": "Why is a single source and double slit used in Young's experiment?",
+      "back": "Both slits are illuminated by the same source, so they act as coherent sources with a constant phase relationship.",
+      "difficulty": 3,
+      "links": [
+        "w38",
+        "w40"
+      ]
+    },
+    {
+      "id": "w40",
+      "topicId": "physics-03",
+      "front": "What is path difference?",
+      "back": "The difference between the distances travelled by two waves from their sources to the same observation point.",
+      "difficulty": 3,
+      "links": [
+        "w39",
+        "w41"
+      ]
+    },
+    {
+      "id": "w41",
+      "topicId": "physics-03",
+      "front": "What path difference gives constructive interference?",
+      "back": "An integer number of wavelengths: path difference = nλ, where n is an integer.",
+      "difficulty": 3,
+      "links": [
+        "w40",
+        "w42"
+      ]
+    },
+    {
+      "id": "w42",
+      "topicId": "physics-03",
+      "front": "What path difference gives destructive interference?",
+      "back": "An odd number of half-wavelengths: path difference = (n + 1/2)λ.",
+      "difficulty": 3,
+      "links": [
+        "w41",
+        "w43"
+      ]
+    },
+    {
+      "id": "w43",
+      "topicId": "physics-03",
+      "front": "What is the fringe-spacing equation for Young's double-slit experiment?",
+      "back": "w = λD/s, where w is fringe spacing, λ is wavelength, D is slit-to-screen distance and s is slit separation.",
+      "difficulty": 3,
+      "links": [
+        "w42",
+        "w44",
+        "w45",
+        "w46"
+      ]
+    },
+    {
+      "id": "w44",
+      "topicId": "physics-03",
+      "front": "How does fringe spacing change when wavelength increases?",
+      "back": "It increases in direct proportion to wavelength, if D and s stay constant.",
+      "difficulty": 3,
+      "links": [
+        "w43",
+        "w45"
+      ]
+    },
+    {
+      "id": "w45",
+      "topicId": "physics-03",
+      "front": "How does fringe spacing change when slit separation increases?",
+      "back": "It decreases in inverse proportion to slit separation, if wavelength and D stay constant.",
+      "difficulty": 3,
+      "links": [
+        "w44",
+        "w46"
+      ]
+    },
+    {
+      "id": "w46",
+      "topicId": "physics-03",
+      "front": "What happens to the Young's double-slit pattern when white light is used?",
+      "back": "A central white fringe is produced because all wavelengths have zero path difference there. Coloured fringes appear on either side, with violet nearer the centre and red further out.",
+      "difficulty": 3,
+      "links": [
+        "w45"
+      ]
+    },
+    {
+      "id": "w47",
+      "topicId": "physics-03",
+      "front": "What is diffraction?",
+      "back": "The spreading of waves as they pass through a gap or around an obstacle. It is most noticeable when the gap size is comparable to the wavelength.",
+      "difficulty": 3,
+      "links": [
+        "w48",
+        "w49",
+        "w50"
+      ]
+    },
+    {
+      "id": "w48",
+      "topicId": "physics-03",
+      "front": "How does the width of a single-slit diffraction central maximum change with wavelength?",
+      "back": "It becomes wider as wavelength increases, for the same slit width.",
+      "difficulty": 3,
+      "links": [
+        "w47",
+        "w49"
+      ]
+    },
+    {
+      "id": "w49",
+      "topicId": "physics-03",
+      "front": "How does the width of a single-slit diffraction central maximum change with slit width?",
+      "back": "It becomes wider as slit width decreases, for the same wavelength.",
+      "difficulty": 3,
+      "links": [
+        "w48",
+        "w50"
+      ]
+    },
+    {
+      "id": "w50",
+      "topicId": "physics-03",
+      "front": "What is a diffraction grating?",
+      "back": "A plate containing many equally spaced parallel slits, producing sharp principal maxima by interference.",
+      "difficulty": 3,
+      "links": [
+        "w49",
+        "w51"
+      ]
+    },
+    {
+      "id": "w51",
+      "topicId": "physics-03",
+      "front": "State the diffraction-grating equation at normal incidence.",
+      "back": "d sinθ = nλ, where d is slit spacing, θ is angle to the normal, n is diffraction order and λ is wavelength.",
+      "difficulty": 3,
+      "links": [
+        "w50",
+        "w52",
+        "w53",
+        "w54"
+      ]
+    },
+    {
+      "id": "w52",
+      "topicId": "physics-03",
+      "front": "How is grating spacing related to the number of lines per metre?",
+      "back": "d = 1/N, where N is the number of lines per metre.",
+      "difficulty": 3,
+      "links": [
+        "w51",
+        "w53"
+      ]
+    },
+    {
+      "id": "w53",
+      "topicId": "physics-03",
+      "front": "What is the zero-order maximum for a diffraction grating?",
+      "back": "The central maximum at θ = 0, where the path difference between adjacent slits is zero.",
+      "difficulty": 3,
+      "links": [
+        "w52",
+        "w54"
+      ]
+    },
+    {
+      "id": "w54",
+      "topicId": "physics-03",
+      "front": "Why are diffraction gratings useful for analysing light?",
+      "back": "Different wavelengths are diffracted through different angles, so the grating separates light into its component wavelengths.",
+      "difficulty": 3,
+      "links": [
+        "w53"
+      ]
+    },
+    {
+      "id": "w55",
+      "topicId": "physics-03",
+      "front": "What is refractive index?",
+      "back": "The ratio of the speed of light in a vacuum to its speed in the substance: n = c/v. It has no unit.",
+      "difficulty": 3,
+      "links": [
+        "w56",
+        "w57",
+        "w58",
+        "w60",
+        "w62"
+      ]
+    },
+    {
+      "id": "w56",
+      "topicId": "physics-03",
+      "front": "What is the approximate refractive index of air?",
+      "back": "Approximately 1.",
+      "difficulty": 3,
+      "links": [
+        "w55",
+        "w57"
+      ]
+    },
+    {
+      "id": "w57",
+      "topicId": "physics-03",
+      "front": "State Snell's law for a boundary between two media.",
+      "back": "n₁ sinθ₁ = n₂ sinθ₂, where angles are measured from the normal.",
+      "difficulty": 3,
+      "links": [
+        "w56",
+        "w58",
+        "w59"
+      ]
+    },
+    {
+      "id": "w58",
+      "topicId": "physics-03",
+      "front": "What happens to a light ray entering a medium with a higher refractive index?",
+      "back": "Its speed decreases and it bends towards the normal, unless it enters along the normal.",
+      "difficulty": 3,
+      "links": [
+        "w57",
+        "w59"
+      ]
+    },
+    {
+      "id": "w59",
+      "topicId": "physics-03",
+      "front": "What is the critical angle?",
+      "back": "The angle of incidence in the higher-index medium for which the refracted ray travels along the boundary at 90° to the normal.",
+      "difficulty": 3,
+      "links": [
+        "w58",
+        "w60",
+        "w61"
+      ]
+    },
+    {
+      "id": "w60",
+      "topicId": "physics-03",
+      "front": "State the critical-angle equation for light travelling from medium 1 to medium 2, where n₁ > n₂.",
+      "back": "sinθc = n₂/n₁.",
+      "difficulty": 3,
+      "links": [
+        "w59",
+        "w61"
+      ]
+    },
+    {
+      "id": "w61",
+      "topicId": "physics-03",
+      "front": "What are the two conditions for total internal reflection?",
+      "back": "Light must travel from a medium of higher refractive index to one of lower refractive index, and the angle of incidence must exceed the critical angle.",
+      "difficulty": 3,
+      "links": [
+        "w60",
+        "w62"
+      ]
+    },
+    {
+      "id": "w62",
+      "topicId": "physics-03",
+      "front": "What is the purpose of the cladding in a step-index optical fibre?",
+      "back": "The cladding has a lower refractive index than the core, helping confine light in the core by total internal reflection and reducing light loss at the boundary.",
+      "difficulty": 3,
+      "links": [
+        "w63",
+        "w64",
+        "w65",
+        "w66"
+      ]
+    },
+    {
+      "id": "w63",
+      "topicId": "physics-03",
+      "front": "What is material dispersion in an optical fibre?",
+      "back": "Different wavelengths travel at different speeds in the material, so a pulse containing a range of wavelengths spreads out in time.",
+      "difficulty": 3,
+      "links": [
+        "w62",
+        "w64"
+      ]
+    },
+    {
+      "id": "w64",
+      "topicId": "physics-03",
+      "front": "What is modal dispersion in an optical fibre?",
+      "back": "Different paths or modes through the fibre have different travel times, causing a pulse to spread out.",
+      "difficulty": 3,
+      "links": [
+        "w63",
+        "w65"
+      ]
+    },
+    {
+      "id": "w65",
+      "topicId": "physics-03",
+      "front": "What is pulse broadening and why is it a problem?",
+      "back": "A pulse spreads out in time as it travels through a fibre. Adjacent pulses can overlap, making signals harder to distinguish and limiting data rate.",
+      "difficulty": 3,
+      "links": [
+        "w64",
+        "w66"
+      ]
+    },
+    {
+      "id": "w66",
+      "topicId": "physics-03",
+      "front": "What is attenuation in an optical fibre?",
+      "back": "A reduction in signal intensity as light travels along the fibre, mainly due to absorption and scattering.",
+      "difficulty": 3,
+      "links": [
+        "w65"
+      ]
+    },
+    {
+      "id": "w67",
+      "topicId": "physics-03",
+      "front": "How can the speed of sound in air be measured using stationary waves?",
+      "back": "Use a tube or resonance arrangement, identify a known separation between nodes or resonances, determine wavelength, then calculate speed using v = fλ.",
+      "difficulty": 3,
+      "links": [
+        "w68",
+        "w09",
+        "w27",
+        "w33"
+      ]
+    },
+    {
+      "id": "w68",
+      "topicId": "physics-03",
+      "front": "What is investigated in AQA Required Practical 1?",
+      "back": "How the frequency of stationary waves on a stretched string varies with length, tension and mass per unit length.",
+      "difficulty": 3,
+      "links": [
+        "w67",
+        "w69",
+        "w33",
+        "w34",
+        "w35",
+        "w36"
+      ]
+    },
+    {
+      "id": "w69",
+      "topicId": "physics-03",
+      "front": "What is investigated in AQA Required Practical 2?",
+      "back": "Interference effects, including Young's double-slit experiment and interference using a diffraction grating.",
+      "difficulty": 3,
+      "links": [
+        "w68",
+        "w70",
+        "w43",
+        "w50",
+        "w51"
+      ]
+    },
+    {
+      "id": "w70",
+      "topicId": "physics-03",
+      "front": "What safety precautions matter when using a laser in wave experiments?",
+      "back": "Never look directly into the beam or at specular reflections. Keep the beam below eye level and follow the laboratory instructions.",
+      "difficulty": 3,
+      "links": [
+        "w69",
+        "w39",
+        "w43",
+        "w50",
+        "w51"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Progressive waves, wave quantities and phase",
+      "content": "## Progressive waves\nA progressive wave is a travelling disturbance that transfers energy without net transfer of matter. Particles in a medium oscillate about equilibrium positions as the wave passes. The wave's amplitude is the maximum displacement; wavelength is the distance between adjacent points in phase; frequency is the number of cycles per second; period is the time for one cycle.\n\nThe wave equation is v = fλ and frequency is f = 1/T. Use SI units: speed in m s⁻¹, wavelength in metres, frequency in hertz and period in seconds.\n\n## Phase and phase difference\nPhase describes the position in an oscillation cycle. Points one wavelength apart are in phase. A path difference Δx produces phase difference Δφ = 2πΔx/λ radians, or 360°Δx/λ degrees. A path difference of λ gives 2π (360°); λ/2 gives π (180°); λ/4 gives π/2 (90°).\n\nWhen solving problems, distinguish phase difference from path difference and time delay. Check whether the question uses radians, degrees or fractions of a cycle."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Transverse waves, longitudinal waves and polarisation",
+      "content": "## Wave types\nIn a transverse wave, oscillations are perpendicular to the direction of energy transfer. Examples include electromagnetic waves and waves on a string. In a longitudinal wave, oscillations are parallel to the direction of energy transfer. Sound in air is longitudinal and consists of compressions and rarefactions.\n\nAll electromagnetic waves travel at the same speed in a vacuum, approximately 3.00 × 10⁸ m s⁻¹.\n\n## Polarisation\nPolarisation restricts a transverse wave's oscillations to one plane or direction. It is evidence that electromagnetic waves are transverse: longitudinal waves cannot be polarised because their oscillations are along the direction of travel.\n\nA Polaroid filter transmits one component of the electric-field oscillation. Two filters with parallel transmission axes transmit the polarised wave; crossed filters ideally block it. Aerials can be aligned to match the polarisation of an incoming radio wave. AQA does not require Malus's law."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Superposition, interference and stationary waves",
+      "content": "## Superposition\nWhen waves overlap, the resultant displacement is the algebraic sum of their individual displacements. In-phase waves produce constructive interference; out-of-phase waves can produce destructive interference.\n\n## Stationary waves\nA stationary wave forms when two waves of the same frequency travel in opposite directions and superpose. The pattern does not travel along the medium. Nodes always have zero displacement; antinodes oscillate with maximum amplitude. Adjacent nodes are separated by λ/2, and a node and nearest antinode by λ/4.\n\nOn a string fixed at both ends, each end is a node. The allowed patterns are harmonics. For the first harmonic, the string length is λ/2. AQA gives the first-harmonic frequency as f = (1/2L)√(T/μ), where L is vibrating length, T is tension and μ is mass per unit length. Increasing tension raises frequency; increasing length or mass per unit length lowers it.\n\nAQA expects graphical explanations of stationary-wave formation and considers patterns formed on strings, with microwaves and with sound waves."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "worked-examples",
+      "title": "Worked examples: stationary waves and string frequency",
+      "content": "## Example 1: wavelength on a string\nA string fixed at both ends vibrates in its first harmonic. The vibrating length is 0.80 m. The ends are nodes, so L = λ/2. Therefore λ = 2L = 1.60 m.\n\n## Example 2: frequency of a stretched string\nUse f = (1/2L)√(T/μ). Suppose L = 0.80 m, T = 64 N and μ = 0.0040 kg m⁻¹. Then f = (1/1.60)√(64/0.0040) = 0.625 × 126.5 ≈ 79 Hz. Keep μ in kg m⁻¹ and T in newtons.\n\n## Proportional reasoning\nAt fixed T and μ, doubling L halves f. At fixed L and μ, multiplying T by four doubles f. At fixed L and T, multiplying μ by four halves f. These proportional relationships are often quicker than repeating the full calculation."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Coherence, Young's double-slit interference and path difference",
+      "content": "## Coherent sources\nTwo sources are coherent when they have the same frequency and a constant phase difference. In Young's double-slit experiment, both slits are illuminated by the same monochromatic source so they act as coherent sources.\n\n## Interference pattern\nAt a point where the path difference is nλ, the waves arrive in phase and produce a maximum. At a path difference of (n + 1/2)λ, they arrive in antiphase and produce a minimum. The pattern is a series of alternating bright and dark fringes.\n\nThe fringe-spacing equation is w = λD/s. Here w is the distance between adjacent bright (or dark) fringes, λ is wavelength, D is the slit-to-screen distance and s is slit separation. Increase λ or D to increase fringe spacing; increase s to reduce it.\n\nWith white light, the central fringe is white. Coloured fringes appear either side because different wavelengths have different fringe spacings; violet is nearer the centre and red further out. AQA expects interference explanations for sound and electromagnetic waves as well as light."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "worked-examples",
+      "title": "Worked examples: Young's slits and diffraction gratings",
+      "content": "## Example 1: fringe spacing\nA laser of wavelength 600 nm illuminates two slits separated by 0.30 mm. The screen is 2.0 m away. Convert units: λ = 6.0 × 10⁻⁷ m and s = 3.0 × 10⁻⁴ m. Then w = λD/s = (6.0 × 10⁻⁷ × 2.0)/(3.0 × 10⁻⁴) = 4.0 × 10⁻³ m, or 4.0 mm.\n\n## Example 2: grating spacing\nA grating has 500 lines per millimetre. Convert to lines per metre: N = 5.0 × 10⁵ m⁻¹. Therefore d = 1/N = 2.0 × 10⁻⁶ m.\n\n## Example 3: grating angle\nFor first order, d sinθ = λ. If d = 2.0 × 10⁻⁶ m and λ = 5.0 × 10⁻⁷ m, sinθ = 0.25, so θ ≈ 14.5°. Check that the calculated sine is between −1 and +1 and that the order is physically possible."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Diffraction, single slits and diffraction gratings",
+      "content": "## Diffraction\nDiffraction is the spreading of waves at a gap or around an obstacle. It is strongest when the gap width is similar to the wavelength. For a single slit, the central maximum becomes wider when wavelength increases or slit width decreases. AQA requires a qualitative treatment; the intensity-versus-angle graph is not required.\n\n## Diffraction gratings\nA plane transmission grating has many equally spaced slits. At normal incidence, principal maxima satisfy d sinθ = nλ. Here d is slit spacing, θ is the angle from the normal, n is the order (an integer) and λ is wavelength. If a grating has N lines per metre, d = 1/N.\n\nA grating separates wavelengths because each wavelength produces maxima at different angles. The zero order is straight through at θ = 0. Higher orders occur at larger angles, provided |nλ/d| does not exceed 1. AQA expects derivation of the grating equation but not use of a spectrometer."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Refraction, critical angle and total internal reflection",
+      "content": "## Refractive index\nThe refractive index of a substance is n = c/v, where c is the speed of light in a vacuum and v is its speed in the substance. It has no unit. Air has refractive index approximately 1. Light slows down when it enters a medium with a higher refractive index and, except at normal incidence, bends towards the normal.\n\n## Snell's law\nAt a boundary, n₁ sinθ₁ = n₂ sinθ₂. Measure both angles from the normal, not from the surface. The equation can be rearranged to find an unknown refractive index or angle.\n\n## Total internal reflection\nThe critical angle is the angle of incidence in the higher-index medium that gives a refracted ray at 90° to the normal. For n₁ > n₂, sinθc = n₂/n₁. Total internal reflection occurs only when light travels from higher to lower refractive index and the angle of incidence exceeds the critical angle."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "notes",
+      "title": "Optical fibres, dispersion, pulse broadening and attenuation",
+      "content": "## Step-index optical fibres\nA step-index fibre has a core surrounded by cladding. The core has a higher refractive index than the cladding. Light is guided along the core by repeated total internal reflection at the core-cladding boundary. The cladding helps maintain the conditions for total internal reflection and reduces loss at the boundary.\n\n## Dispersion\nMaterial dispersion occurs because different wavelengths travel at different speeds in the fibre material. Modal dispersion occurs because different modes follow different paths and take different times to travel along the fibre.\n\nBoth can cause pulse broadening: a short input pulse becomes longer in time. If neighbouring pulses spread into one another, the receiver may not distinguish them reliably, limiting the data rate.\n\n## Attenuation\nAttenuation is the reduction in signal intensity as light travels through the fibre. Absorption and scattering contribute to the loss. Dispersion spreads a pulse; attenuation reduces its intensity. Do not confuse these two effects."
+    },
+    {
+      "topicId": "physics-03",
+      "kind": "exam-guidance",
+      "title": "Required practicals and exam technique for AQA Waves",
+      "content": "## Required Practical 1: stationary waves on a string\nInvestigate how the frequency of a stationary-wave pattern varies with vibrating length, tension and mass per unit length. Keep two variables constant while changing the third. Identify a clear resonance pattern, measure the vibrating length and record the tension and linear density. Repeat readings and use a graph or proportional relationships to test f = (1/2L)√(T/μ). Reduce timing uncertainty by measuring several cycles where relevant.\n\n## Required Practical 2: interference\nInvestigate interference using Young's double slits and a diffraction grating. Measure fringe spacing over several fringes and divide by the number of spacings to reduce percentage uncertainty. Measure slit separation and screen distance carefully. For a grating, convert line density to slit spacing using d = 1/N.\n\n## Exam technique\nFor Snell's law and critical-angle questions, draw the normal and measure angles from it. For interference, state whether the path difference gives a maximum or minimum. For grating questions, identify the order n and use consistent SI units. For wave equations, define every symbol and include units in the final answer.\n\nLaser safety matters: never look into a direct or reflected beam. Follow the laboratory's controls and keep the beam away from eye level."
+    }
+  ],
+  "formulas": [
+    {
+      "topicId": "physics-03",
+      "name": "Wave speed",
+      "expression": "v = fλ",
+      "units": "m s⁻¹",
+      "conditions": "Use frequency f in Hz and wavelength λ in metres."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Frequency and period",
+      "expression": "f = 1 / T",
+      "units": "Hz",
+      "conditions": "T is the period in seconds."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Phase difference from path difference",
+      "expression": "Δφ = 2πΔx / λ",
+      "units": "rad",
+      "conditions": "Δx is path difference and λ is wavelength. For degrees use 360°Δx/λ."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "First-harmonic frequency of a stretched string",
+      "expression": "f = (1 / 2L) √(T / μ)",
+      "units": "Hz",
+      "conditions": "L is vibrating length in metres, T is tension in newtons and μ is mass per unit length in kg m⁻¹."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Young's double-slit fringe spacing",
+      "expression": "w = λD / s",
+      "units": "m",
+      "conditions": "λ is wavelength, D is slit-to-screen distance and s is slit separation, all in metres."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Diffraction grating",
+      "expression": "d sinθ = nλ",
+      "units": "m for d and λ",
+      "conditions": "Normal incidence; d is slit spacing, θ is angle from the normal and n is an integer order."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Refractive index",
+      "expression": "n = c / v",
+      "units": "None",
+      "conditions": "c is speed of light in vacuum and v is speed in the medium."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Snell's law",
+      "expression": "n₁ sinθ₁ = n₂ sinθ₂",
+      "units": "None",
+      "conditions": "Angles are measured from the normal."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Critical angle",
+      "expression": "sinθc = n₂ / n₁",
+      "units": "None",
+      "conditions": "Light travels from medium 1 to medium 2 with n₁ greater than n₂."
+    },
+    {
+      "topicId": "physics-03",
+      "name": "Grating line spacing",
+      "expression": "d = 1 / N",
+      "units": "m",
+      "conditions": "N is the number of lines per metre."
+    }
+  ]
+}
