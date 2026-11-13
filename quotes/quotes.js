@@ -891,10 +891,11 @@ async function checkSubmissionNotifications(){
     const notice=(payload.notifications||[]).find(item=>item.site==='qv');
     if(!notice)return false;
     const approved=notice.status==='approved';
+    const title=String(notice.title||'Untitled quote').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const message=approved
-      ?'Your quote was approved. If an admin edited it, choose which version you want to keep in your own library.'
-      :'Your quote was not approved. You can keep your original privately in your account or remove it.';
-    openModal(`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">${message}<br><strong>${String(notice.title||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong></div><div style="display:flex;gap:8px;flex-wrap:wrap">${approved?'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(&quot;replace&quot;)">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(&quot;remove&quot;)">Remove it</button>'}</div></div>`);
+      ?`Your quote “${title}” was approved. If it was edited, choose which version to keep in your library.`
+      :`Your quote “${title}” was not approved. You can keep the original privately or remove it.`;
+    openModal(`<div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:8px">Submission update</div><div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:14px">${message}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${approved?'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep my original</button><button class="btn bg" onclick="resolveSubmissionNotification(&quot;replace&quot;)">Use approved version</button>':'<button class="btn" onclick="resolveSubmissionNotification(&quot;keep&quot;)">Keep in my account</button><button class="btn br" onclick="resolveSubmissionNotification(&quot;remove&quot;)">Remove it</button>'}</div></div>`);
     window._activeSubmissionNotification=notice;
     return true;
   }catch(error){return false;}
