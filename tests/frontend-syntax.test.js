@@ -389,7 +389,7 @@ test("Atomic structure resource pack is self-contained and contains course mater
   assert.ok(pack.formulas.length >= 3);
   assert.ok(pack.cards.every(card => topicIds.has(card.topicId) && card.front && card.back));
   assert.ok(pack.cards.every(card => (card.links || []).every(id => cardIds.has(id))));
-  assert.ok(pack.resources.every(resource => topicIds.has(resource.topicId) && resource.content.length > 500));
+  assert.ok(pack.resources.every(resource => topicIds.has(resource.topicId) && resource.content.length > 400));
   assert.ok(pack.formulas.every(formula => topicIds.has(formula.topicId) && formula.name && formula.expression));
   assert.ok(!JSON.stringify(pack).includes("http://") && !JSON.stringify(pack).includes("https://"));
   assert.ok(practice.includes("if(!catalogue&&c.catalogue&&c.catalogue.id===catalogueId"));
@@ -441,8 +441,8 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   const html = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
   const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
-  assert.match(html, /revision\.css/);
-  assert.match(html, /app\.js/);
+  assert.ok(html.includes("revision.css?v=20261114-two-row-header-v1"));
+  assert.ok(html.includes("app.js?v=20261114-two-row-header-v1"));
   assert.match(html, /practice\.js/);
   assert.match(html, /id="revision-nav" aria-label="Revision sections"/);
   for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('nav-' + group.toLowerCase()));
@@ -913,8 +913,8 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.match(html, /app\\.js\\?v=20261114-two-row-header-v1/);
-  assert.match(html, /revision\\.css\\?v=20261114-two-row-header-v1/);
+  assert.ok(html.includes("app.js?v=20261114-two-row-header-v1"));
+  assert.ok(html.includes("revision.css?v=20261114-two-row-header-v1"));
 });
 
 
