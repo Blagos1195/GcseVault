@@ -301,13 +301,13 @@ let globalSearchIndexPromise=null;
 function loadGlobalSearchIndex(){
   if(globalSearchIndexPromise)return globalSearchIndexPromise;
   globalSearchIndexPromise=Promise.all([
-    fetch(\`\${WORKER_URL}/quotes\`).then(response=>response.ok?response.json():{items:[]}),
-    fetch(\`\${WORKER_URL}/dv/quotes\`).then(response=>response.ok?response.json():{items:[]}),
-    fetch(\`\${WORKER_URL}/revision/public\`).then(response=>response.ok?response.json():{notes:[]})
+    fetch(`${WORKER_URL}/quotes`).then(response=>response.ok?response.json():{items:[]}),
+    fetch(`${WORKER_URL}/dv/quotes`).then(response=>response.ok?response.json():{items:[]}),
+    fetch(`${WORKER_URL}/revision/public`).then(response=>response.ok?response.json():{notes:[]})
   ]).then(([quotes,dates,notes])=>[
     ...(quotes.items||[]).map(item=>({type:'QuoteVault',title:item.text||'Untitled quote',detail:[item.char,item.work,item.loc].filter(Boolean).join(' · '),url:'/GcseVault/quotes/'})),
     ...(dates.items||[]).map(item=>({type:'DateVault',title:item.event||'Untitled date',detail:[item.year,item.topic].filter(Boolean).join(' · '),url:'/GcseVault/dates/'})),
-    ...(notes.notes||[]).map(item=>({type:'Revision',title:item.title||'Untitled notes',detail:[item.subject,item.level,\`\${item.cards?.length||0} cards\`].filter(Boolean).join(' · '),url:'/GcseVault/revision/'}))
+    ...(notes.notes||[]).map(item=>({type:'Revision',title:item.title||'Untitled notes',detail:[item.subject,item.level,`${item.cards?.length||0} cards`].filter(Boolean).join(' · '),url:'/GcseVault/revision/'}))
   ]).catch(()=>{globalSearchIndexPromise=null;throw new Error('Search is temporarily unavailable.');});
   return globalSearchIndexPromise;
 }
@@ -319,9 +319,9 @@ async function runGlobalSearch(query){
   results.innerHTML='<div class="global-search-message">Searching public content…</div>';
   try{
     const index=await loadGlobalSearchIndex();
-    const matches=index.filter(item=>\`\${item.title} \${item.detail} \${item.type}\`.toLowerCase().includes(term)).slice(0,12);
-    results.innerHTML=matches.map(item=>\`<a class="global-search-result" href="\${item.url}"><strong>\${UI.escapeHTML(item.title)}</strong><span>\${UI.escapeHTML(item.type)} · \${UI.escapeHTML(item.detail)}</span></a>\`).join('')||'<div class="global-search-message">No matching public content found.</div>';
-  }catch(error){results.innerHTML=\`<div class="global-search-message">\${UI.escapeHTML(error.message)}</div>\`;}
+    const matches=index.filter(item=>`${item.title} ${item.detail} ${item.type}`.toLowerCase().includes(term)).slice(0,12);
+    results.innerHTML=matches.map(item=>`<a class="global-search-result" href="${item.url}"><strong>${UI.escapeHTML(item.title)}</strong><span>${UI.escapeHTML(item.type)} · ${UI.escapeHTML(item.detail)}</span></a>`).join('')||'<div class="global-search-message">No matching public content found.</div>';
+  }catch(error){results.innerHTML=`<div class="global-search-message">${UI.escapeHTML(error.message)}</div>`;}
 }
 let globalSearchTimer;
 document.getElementById('global-search-input')?.addEventListener('input',event=>{
