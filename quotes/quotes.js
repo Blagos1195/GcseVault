@@ -1308,12 +1308,10 @@ const PAGES=[
 ];
 
 function buildNav(){
-  let h='',ls='';
-  PAGES.forEach(p=>{
-    if(p.sec&&p.sec!==ls){h+=`<div class="sb-sec">${p.sec}</div>`;ls=p.sec;}
-    h+=`<button type="button" class="ni${S.page===p.id?' active':''}" aria-current="${S.page===p.id?'page':'false'}" onclick="go('${p.id}')">${p.label}</button>`;
-  });
-  document.getElementById('nav').innerHTML=h;
+  const groups={Study:['dashboard','srs','flashcards','fill','quiz','timed','braindump','timeline'],Library:['library'],Progress:['stats','leaderboard','achievements'],Tools:['add','settings']};
+  const options=Object.entries(groups).map(([label,ids])=>{const pages=PAGES.filter(page=>ids.includes(page.id));return pages.length?'<optgroup label="'+label+'">'+pages.map(page=>'<option value="'+page.id+'">'+page.label+'</option>').join('')+'</optgroup>':'';}).join('');
+  document.getElementById('nav').innerHTML='<select id="site-page-select" aria-label="Navigate to a section" onchange="go(this.value)">'+options+'</select>';
+  document.getElementById('site-page-select').value=S.page;
 }
 
 function go(page){
