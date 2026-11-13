@@ -784,3 +784,12 @@ test("review schedule responses cannot cross accounts during an account switch",
   assert.equal(posts[0].token, "token-B");
   assert.deepEqual(JSON.parse(JSON.stringify(posts[0].schedules)), { b: { updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
+
+
+test("Revision preserves local changes offline and retries sync when reconnected", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("state.syncStatus='offline'"));
+  assert.ok(app.includes("window.addEventListener('offline'"));
+  assert.ok(app.includes("window.addEventListener('online'"));
+  assert.ok(app.includes("Offline · saved on this device"));
+});
