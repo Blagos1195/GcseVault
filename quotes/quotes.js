@@ -1298,8 +1298,9 @@ function updateSB(){
   document.getElementById('sb-due').textContent=dc>0?`${dc} due for review`:'';
 }
 
-function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';}
-function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';}
+function toggleSB(){const sb=document.getElementById('sidebar');const isOpen=sb.classList.toggle('open');document.getElementById('overlay').style.display=isOpen?'block':'none';document.getElementById('hbg')?.setAttribute('aria-expanded',String(isOpen));}
+function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').style.display='none';document.getElementById('hbg')?.setAttribute('aria-expanded','false');}
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeSB();});
 
 // ════════════════════════════════════════════════
 // MODAL
