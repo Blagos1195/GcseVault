@@ -2823,6 +2823,8 @@ async function saveFact(privateOnly=false){
   const sig=(document.getElementById('a-sig')?.value||'').trim();
   if(!yr||!ev||!sig){toast('Fill in year, event, and significance');return;}
   const draftFields={'a-yr':yr,'a-ev':ev,'a-sig':sig,'a-to':document.getElementById('a-to').value,'a-pe':document.getElementById('a-pe').value,'a-sec':document.getElementById('a-sec').value,'a-cat':document.getElementById('a-cat').value,'a-st':document.getElementById('a-st').value,'a-no':document.getElementById('a-no').value};
+  const savedDraft=readSubmissionDraft(),currentDraftId=window.dvSubmissionDraftId||'';
+  if(!privateOnly&&savedDraft&&!currentDraftId){toast('Restore or discard your saved draft before submitting another date.');return;}
   const tempId=getSubmissionRequestId(draftFields);
   const q={id:tempId,submissionRequestId:tempId,year:yr,event:ev,significance:sig,
     topic:document.getElementById('a-to').value,period:document.getElementById('a-pe').value,
@@ -2845,8 +2847,6 @@ async function saveFact(privateOnly=false){
     return;
   }
   const fbEl=document.getElementById('add-fb');
-  const savedDraft=readSubmissionDraft();
-  if(savedDraft&&!window.dvSubmissionDraftId){toast('Restore or discard your saved draft before submitting another date.');return;}
   persistSubmissionDraft(tempId,draftFields);
   fbEl.innerHTML=`<div class="qfb" style="background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.25);color:var(--blue)"> Submitting…</div>`;
   try{
