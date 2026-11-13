@@ -788,6 +788,8 @@ test("review schedule responses cannot cross accounts during an account switch",
 test("Revision makes multiple sets visible and requires explicit publish selection", () => {
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   const html = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
+  assert.match(html, /id="revision-set-switcher"/);
+  assert.match(app, /const setSwitcher=document\.getElementById\('revision-set-switcher'\)/);
   assert.match(app, /function renderRevisionSetOverview\(\)/);
   assert.match(app, /\$\{renderRevisionSetOverview\(\)\}/);
   assert.match(app, /Keep different subjects, courses or revision projects separate/);
@@ -798,4 +800,5 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
   assert.match(html, /app\.js\?v=20261113-multi-set-workspace/);
+  assert.match(html, /revision\.css\?v=20261113-multi-set-workspace/);
 });
