@@ -367,7 +367,13 @@ export default {
       const owner = await env.DB.prepare(
         "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
       ).first();
-      return new Response(JSON.stringify({ initialized: Boolean(owner) }), {
+      const metadata = env.CF_VERSION_METADATA || {};
+      const deployment = metadata.id ? {
+        versionId: String(metadata.id),
+        tag: metadata.tag ? String(metadata.tag) : null,
+        timestamp: metadata.timestamp ? new Date(metadata.timestamp).toISOString() : null
+      } : null;
+      return new Response(JSON.stringify({ initialized: Boolean(owner), deployment }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
     }
