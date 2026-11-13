@@ -953,3 +953,14 @@ test("offline support registers on every site application and caches only static
   assert.ok(worker.includes("request.mode === \"navigate\""));
   assert.ok(registration.includes('navigator.serviceWorker.register(workerUrl, { scope })'));
 });
+
+
+test("the admin push worker also keeps its static workspace available offline", () => {
+  const worker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
+  for (const asset of ["./", "editor.html", "admin.js", "admin.css", "editor.js", "../shared.js", "../offline.js"]) {
+    assert.ok(worker.includes(JSON.stringify(asset)));
+  }
+  assert.ok(worker.includes('request.method !== "GET"'));
+  assert.ok(worker.includes("self.registration.showNotification"));
+  assert.ok(worker.includes("self.addEventListener(\"fetch\""));
+});
