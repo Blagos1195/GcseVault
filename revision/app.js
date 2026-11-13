@@ -1230,6 +1230,7 @@ function closeRevisionSidebar(){
   if(revisionMobileMenu)revisionMobileMenu.setAttribute('aria-expanded','false');
 }
 
+document.querySelectorAll('#revision-nav select').forEach(select=>select.addEventListener('change',closeRevisionSidebar));
 document.querySelectorAll('.ni').forEach(item => {
   item.addEventListener('click', () => {
     const nextView = item.dataset.view || 'overview';
