@@ -1358,8 +1358,21 @@ function updateSB(){
   document.getElementById('sb-due').textContent=dc>0?`${dc} due for review`:'';
 }
 
-function toggleSB(){const topbar=document.getElementById('topbar');const isOpen=topbar.classList.toggle('mobile-nav-open');document.getElementById('hbg')?.setAttribute('aria-expanded',String(isOpen));}
-function closeSB(){document.getElementById('topbar')?.classList.remove('mobile-nav-open');document.getElementById('hbg')?.setAttribute('aria-expanded','false');}
+function toggleSB(){
+  const topbar=document.getElementById('topbar');
+  const button=document.getElementById('hbg');
+  const isOpen=topbar.classList.toggle('mobile-nav-open');
+  button?.setAttribute('aria-expanded',String(isOpen));
+  button?.setAttribute('aria-label',isOpen?'Close navigation menu':'Open navigation menu');
+  if(button)button.textContent=isOpen?'×':'☰';
+}
+function closeSB(){
+  document.getElementById('topbar')?.classList.remove('mobile-nav-open');
+  const button=document.getElementById('hbg');
+  button?.setAttribute('aria-expanded','false');
+  button?.setAttribute('aria-label','Open navigation menu');
+  if(button)button.textContent='☰';
+}
 document.addEventListener('keydown',event=>{if(event.key==='Escape')closeSB();});
 
 // ════════════════════════════════════════════════

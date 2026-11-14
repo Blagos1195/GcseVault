@@ -733,8 +733,9 @@ function fitGraphToView(){
   const viewport=document.getElementById('knowledge-map-viewport');
   const stage=document.getElementById('knowledge-map-stage');
   if(!viewport||!stage)return;
-  const scale=Math.min((viewport.clientWidth-48)/Number(stage.dataset.width),(viewport.clientHeight-48)/Number(stage.dataset.height),1);
-  graphViewport={scale:Math.max(.25,scale),x:(viewport.clientWidth-Number(stage.dataset.width)*Math.max(.25,scale))/2,y:(viewport.clientHeight-Number(stage.dataset.height)*Math.max(.25,scale))/2};
+  const width=Number(stage.dataset.width),height=Number(stage.dataset.height);
+  const scale=Math.max(.05,Math.min((viewport.clientWidth-48)/width,(viewport.clientHeight-48)/height,1));
+  graphViewport={scale,x:(viewport.clientWidth-width*scale)/2,y:(viewport.clientHeight-height*scale)/2};
   applyGraphViewport();
 }
 function zoomGraphAt(clientX,clientY,nextScale){
@@ -742,7 +743,7 @@ function zoomGraphAt(clientX,clientY,nextScale){
   if(!viewport)return;
   const rect=viewport.getBoundingClientRect();
   const px=clientX-rect.left,py=clientY-rect.top;
-  const scale=Math.max(.25,Math.min(2.5,nextScale));
+  const scale=Math.max(.05,Math.min(2.5,nextScale));
   const ratio=scale/graphViewport.scale;
   graphViewport={scale,x:px-(px-graphViewport.x)*ratio,y:py-(py-graphViewport.y)*ratio};
   applyGraphViewport();
@@ -781,10 +782,8 @@ function renderGraph(){
   const nodeWidth=220,nodeHeight=82,padding=180;
   const subjects=[...new Set(cards.map(card=>card.subject||'General'))].sort((a,b)=>a.localeCompare(b));
   const groups=subjects.map(subject=>({subject,topics:[...new Set(cards.filter(card=>(card.subject||'General')===subject).map(card=>card.topic||'General'))].sort((a,b)=>a.localeCompare(b))}));
-  const topicCount=groups.reduce((sum,group)=>sum+group.topics.length,0);
   const subjectRadius=Math.max(0,groups.length*105);
   const topicAnchors=new Map(),subjectAnchors=new Map();
-  let topicIndex=0;
   groups.forEach((group,subjectIndex)=>{
     const subjectAngle=groups.length===1?0:(Math.PI*2*subjectIndex/groups.length)-Math.PI/2;
     const sx=Math.cos(subjectAngle)*subjectRadius,sy=Math.sin(subjectAngle)*subjectRadius;
@@ -793,7 +792,6 @@ function renderGraph(){
     group.topics.forEach((topic,index)=>{
       const angle=group.topics.length===1?0:(Math.PI*2*index/group.topics.length)-Math.PI/2;
       topicAnchors.set(group.subject+'\u0000'+topic,{x:sx+Math.cos(angle)*topicRadius,y:sy+Math.sin(angle)*topicRadius,subject:group.subject,topic});
-      topicIndex++;
     });
   });
   const hash=value=>{let h=2166136261;for(let i=0;i<String(value).length;i++)h=Math.imul(h^String(value).charCodeAt(i),16777619);return h>>>0;};
@@ -879,19 +877,19 @@ function renderGraph(){
   }).join('');
   const subjectLabels=groups.map(group=>{
     const anchor=subjectAnchors.get(group.subject);
-    return '<div class="graph-subject" style="left:'+(anchor.x-minX-72)+'px;top:'+(anchor.y-minY-76)+'px">'+escapeRevision(group.subject)+'</div>';
+    return '<div class="graph-subject" title="'+escapeRevision(group.subject)+'" style="left:'+(anchor.x-minX-72)+'px;top:'+(anchor.y-minY-76)+'px">'+escapeRevision(group.subject)+'</div>';
   }).join('');
-  const topicLabels=Array.from(topicAnchors.values()).map(anchor=>'<div class="graph-topic" style="left:'+(anchor.x-minX-65)+'px;top:'+(anchor.y-minY-14)+'px">'+escapeRevision(anchor.topic)+'</div>').join('');
+  const topicLabels=Array.from(topicAnchors.values()).map(anchor=>'<div class="graph-topic" title="'+escapeRevision(anchor.topic)+'" style="left:'+(anchor.x-minX-65)+'px;top:'+(anchor.y-minY-14)+'px">'+escapeRevision(anchor.topic)+'</div>').join('');
   const cardNodes=nodes.map(node=>{
     const p=point(node);
-    return '<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" data-card-id="'+escapeRevision(node.card.id)+'" style="left:'+(p.x-nodeWidth/2)+'px;top:'+(p.y-nodeHeight/2)+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(this.dataset.cardId)"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong><small>'+linkedCards(node.card).length+' connected ideas</small></button>';
+    return '<button type="button" class="graph-node'+(state.selected===node.card.id?' active':'')+'" data-card-id="'+escapeRevision(node.card.id)+'" title="'+escapeRevision(node.card.title)+'" style="left:'+(p.x-nodeWidth/2)+'px;top:'+(p.y-nodeHeight/2)+'px;width:'+nodeWidth+'px;height:'+nodeHeight+'px" aria-pressed="'+String(state.selected===node.card.id)+'" onclick="selectRevisionCard(this.dataset.cardId)"><span>'+escapeRevision(node.card.topic||node.card.subject||'')+'</span><strong>'+escapeRevision(node.card.title)+'</strong><small>'+linkedCards(node.card).length+' connected ideas</small></button>';
   }).join('');
-  return '<div class="graph-controls"><div class="graph-zoom-controls"><button type="button" class="btn bsm" aria-label="Zoom out" onclick="zoomGraphBy(.8)">−</button><span id="graph-zoom-level">'+Math.round(graphViewport.scale*100)+'%</span><button type="button" class="btn bsm" aria-label="Zoom in" onclick="zoomGraphBy(1.25)">+</button></div><button type="button" class="btn bsm" onclick="fitGraphToView()">Fit map</button><span class="graph-help">Scroll to zoom · Drag to move</span></div><div id="knowledge-map-viewport" class="graph-viewport" onpointerdown="startGraphPan(event)" onpointermove="moveGraphPan(event)" onpointerup="endGraphPan(event)" onpointercancel="endGraphPan(event)" onwheel="zoomGraph(event)"><div id="knowledge-map-stage" class="graph-stage" data-width="'+width+'" data-height="'+height+'" style="width:'+width+'px;height:'+height+'px;transform:translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none">'+paths+'</svg>'+subjectLabels+topicLabels+cardNodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Cards pull towards linked ideas and form topic clusters · Lines show linked ideas</div>';
+  return '<div class="graph-controls"><div class="graph-zoom-controls"><button type="button" class="btn bsm" aria-label="Zoom out" onclick="zoomGraphBy(.8)">−</button><span id="graph-zoom-level">'+Math.round(graphViewport.scale*100)+'%</span><button type="button" class="btn bsm" aria-label="Zoom in" onclick="zoomGraphBy(1.25)">+</button></div><button type="button" class="btn bsm" onclick="fitGraphToView()">Fit map</button><span class="graph-help">Scroll or use +/− to zoom · Drag to move</span></div><div id="knowledge-map-viewport" class="graph-viewport" role="region" aria-label="Knowledge map canvas" onpointerdown="startGraphPan(event)" onpointermove="moveGraphPan(event)" onpointerup="endGraphPan(event)" onpointercancel="endGraphPan(event)" onwheel="zoomGraph(event)"><div id="knowledge-map-stage" class="graph-stage" data-width="'+width+'" data-height="'+height+'" style="width:'+width+'px;height:'+height+'px;transform:translate('+graphViewport.x+'px,'+graphViewport.y+'px) scale('+graphViewport.scale+')"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none" aria-hidden="true">'+paths+'</svg>'+subjectLabels+topicLabels+cardNodes+'</div></div><div class="map-summary">Showing '+cards.length+' of '+state.cards.length+' cards · Cards pull towards linked ideas and form topic clusters · Lines show linked ideas</div>';
 }
 function filterKnowledgeMap(value){
   state.graphQuery=value;
   const map=document.getElementById('knowledge-map-content');
-  if(map){map.innerHTML=renderGraph();applyGraphViewport();}
+  if(map){map.innerHTML=renderGraph();fitGraphToView();}
   const selection=document.getElementById('knowledge-map-selection');
   if(selection)selection.innerHTML=renderGraphSelection(cardById(state.selected));
 }
@@ -1398,7 +1396,11 @@ function closeRevisionSidebar(){
   if(revisionOverlay)revisionOverlay.style.display='none';
   document.querySelector('.revision-header')?.classList.remove('menu-open');
   if(revisionHbg)revisionHbg.setAttribute('aria-expanded','false');
-  if(revisionMobileMenu)revisionMobileMenu.setAttribute('aria-expanded','false');
+  if(revisionMobileMenu){
+    revisionMobileMenu.setAttribute('aria-expanded','false');
+    revisionMobileMenu.setAttribute('aria-label','Open navigation menu');
+    revisionMobileMenu.textContent='☰';
+  }
 }
 
 document.querySelectorAll('#revision-nav .revision-nav-menu').forEach(menu=>{
@@ -1423,7 +1425,14 @@ document.querySelectorAll('.ni').forEach(item => {
     closeRevisionSidebar();
   });
 });
-if(revisionMobileMenu){revisionMobileMenu.addEventListener('click',()=>{const header=document.querySelector('.revision-header');const isOpen=header.classList.toggle('menu-open');revisionMobileMenu.setAttribute('aria-expanded',String(isOpen));});}
+if(revisionMobileMenu){revisionMobileMenu.addEventListener('click',()=>{
+  const header=document.querySelector('.revision-header');
+  if(!header)return;
+  const isOpen=header.classList.toggle('menu-open');
+  revisionMobileMenu.setAttribute('aria-expanded',String(isOpen));
+  revisionMobileMenu.setAttribute('aria-label',isOpen?'Close navigation menu':'Open navigation menu');
+  revisionMobileMenu.textContent=isOpen?'×':'☰';
+});}
 if (revisionHbg) {
   revisionHbg.addEventListener('click', () => {
     if (!revisionSidebar) return;

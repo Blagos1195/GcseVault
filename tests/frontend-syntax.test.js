@@ -479,8 +479,8 @@ test("Revision uses separate files, accessible navigation and contained lists", 
   const html = fs.readFileSync(new URL("../revision/index.html", import.meta.url), "utf8");
   const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
   const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
-  assert.ok(html.includes("revision.css?v=20261114-two-row-header-v1"));
-  assert.ok(html.includes("app.js?v=20261114-two-row-header-v1"));
+  assert.match(html,/href="revision\.css\?v=[^"]+"/);
+  assert.match(html,/src="app\.js\?v=[^"]+"/);
   assert.match(html, /practice\.js/);
   assert.match(html, /id="revision-nav" aria-label="Revision sections"/);
   for (const group of ["Study", "Library", "Progress", "Tools"]) assert.ok(html.includes('nav-' + group.toLowerCase()));
@@ -548,6 +548,33 @@ test("Revision knowledge map includes every card and filters results", () => {
   assert.match(css, /\.graph-stage svg path\{fill:none;stroke:/);
   assert.match(css, /\.graph-subject\{position:absolute/);
   assert.match(css, /\.graph-node\{position:absolute/);
+});
+
+test("Revision knowledge map fits large layouts and keeps long labels contained", () => {
+  const app = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../revision/revision.css", import.meta.url), "utf8");
+  const start = app.indexOf("function fitGraphToView(){");
+  const end = app.indexOf("\nfunction zoomGraphAt", start);
+  assert.ok(start >= 0 && end > start);
+  const elements = {
+    "knowledge-map-viewport": { clientWidth: 400, clientHeight: 300 },
+    "knowledge-map-stage": { dataset: { width: "4000", height: "3000" }, style: {} }
+  };
+  const context = {
+    graphViewport: { scale: 1, x: 24, y: 24 },
+    document: { getElementById: id => elements[id] || null },
+    applyGraphViewport() {}
+  };
+  vm.createContext(context);
+  vm.runInContext(app.slice(start, end), context);
+  context.fitGraphToView();
+  assert.ok(context.graphViewport.scale < 0.25);
+  assert.ok(context.graphViewport.x >= 0);
+  assert.ok(context.graphViewport.y >= 0);
+  assert.match(app, /map\.innerHTML=renderGraph\(\);fitGraphToView\(\)/);
+  assert.match(app, /Math\.max\(\.05,Math\.min\(2\.5,nextScale\)\)/);
+  assert.match(css, /-webkit-line-clamp:2/);
+  assert.match(css, /\.graph-subject,\.graph-topic\{max-width:144px/);
 });
 
 test("Revision product tools provide search, daily planning, resource tracking and sync status", () => {
@@ -951,8 +978,8 @@ test("Revision makes multiple sets visible and requires explicit publish selecti
   assert.match(app, /Publish selected set/);
   assert.match(app, /function publishRevisionSet\(setId\)\{\s*const target = state\.accountSets\.find\(set => set\.id === setId\);\s*if \(!target\)/);
   assert.doesNotMatch(app, /onclick="publishRevisionSet\('\$\{set\.id\}'\)"/);
-  assert.ok(html.includes("app.js?v=20261114-two-row-header-v1"));
-  assert.ok(html.includes("revision.css?v=20261114-two-row-header-v1"));
+  assert.match(html,/src="app\.js\?v=[^"]+"/);
+  assert.match(html,/href="revision\.css\?v=[^"]+"/);
 });
 
 
@@ -1137,22 +1164,44 @@ test("the progress dashboard only requests account-scoped summary totals", () =>
 
 
 test("learning-tool mobile navigation exposes state and supports Escape", () => {
-  for (const file of ["../quotes/index.html", "../dates/index.html", "../revision/index.html"]) {
-    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
-    assert.ok(html.includes('aria-controls="sidebar"'));
+  const pages = [
+    { html: "../quotes/index.html", button: 'id="hbg"', controls: 'aria-controls="nav"', nav: '<nav id="nav" aria-label="Page navigation">' },
+    { html: "../dates/index.html", button: 'id="hbg"', controls: 'aria-controls="nav"', nav: '<nav id="nav" aria-label="Page navigation">' },
+    { html: "../revision/index.html", button: 'id="revision-mobile-menu"', controls: 'aria-controls="revision-nav"', nav: '<nav id="revision-nav" aria-label="Revision sections">' }
+  ];
+  for (const page of pages) {
+    const html = fs.readFileSync(new URL(page.html, import.meta.url), "utf8");
+    assert.ok(html.includes(page.button));
+    assert.ok(html.includes(page.controls));
     assert.ok(html.includes('aria-expanded="false"'));
+    assert.ok(html.includes(page.nav));
   }
   for (const file of ["../quotes/quotes.js", "../dates/dates.js", "../revision/app.js"]) {
     const script = fs.readFileSync(new URL(file, import.meta.url), "utf8");
     assert.ok(script.includes("event.key==='Escape'") || script.includes("event.key === 'Escape'"));
     assert.ok(script.includes("aria-expanded"));
+    assert.ok(script.includes("Close navigation menu"));
   }
   for (const file of ["../quotes/quotes.css", "../dates/dates.css", "../revision/revision.css"]) {
     const css = fs.readFileSync(new URL(file, import.meta.url), "utf8");
     assert.ok(css.includes("button:focus-visible,a:focus-visible"));
+    assert.ok(css.trimEnd().endsWith("#sidebar{display:none!important}"));
+  }
+  for (const file of ["../quotes/index.html", "../dates/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.equal((html.match(/id="overlay"/g) || []).length, 0);
   }
 });
 
+
+test("site switchers retain the main study and utility destinations", () => {
+  for (const file of ["../quotes/index.html", "../dates/index.html", "../revision/index.html"]) {
+    const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    for (const path of ["/GcseVault/quotes/", "/GcseVault/dates/", "/GcseVault/revision/", "/GcseVault/", "/GcseVault/progress/", "/GcseVault/admin/", "/GcseVault/feedback/"]) {
+      assert.ok(html.includes('value="' + path + '"'), file + " is missing " + path);
+    }
+  }
+});
 
 test("all pages load an environment-specific Worker URL before shared account code", () => {
   for (const file of ["../index.html", "../quotes/index.html", "../dates/index.html", "../revision/index.html", "../admin/index.html", "../admin/editor.html", "../feedback/index.html", "../progress/index.html"]) {

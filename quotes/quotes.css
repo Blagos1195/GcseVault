@@ -41,7 +41,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 
 /* HAMBURGER */
 #hbg{display:none;background:none;border:none;color:var(--text);font-size:1.1rem;cursor:pointer;padding:4px}
-#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150}
 @media(max-width:620px){#hbg{display:block}#sidebar{position:fixed;left:0;top:0;height:100vh;background:#12111f;background:var(--bg2);transform:translateX(-100%);box-shadow:4px 0 24px rgba(0,0,0,.6)}#sidebar.open{transform:translateX(0)}}
 
 /* CARDS */
@@ -309,8 +308,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  .nav-group select{min-width:0!important;max-width:none!important;flex:1;height:30px!important;font-size:.8rem!important}
  #sidebar>.sb-link{display:flex!important;padding:8px 10px}
  #sidebar .sb-foot{display:block!important;margin-top:auto}
- #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150}
- #main{height:calc(100dvh - 44px)!important}
+  #main{height:calc(100dvh - 44px)!important}
 }
 
 
@@ -408,7 +406,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  .nav-menu-name{color:var(--gold2)}
 }
 
-@media(min-width:761px){
+@media(min-width:1100px){
  #app{display:block;min-height:100vh}
  #sidebar{display:none!important}
  #main{display:block;width:100%;height:auto;min-height:100vh;overflow:visible}
@@ -431,7 +429,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #topbar .nav-menu-name{color:var(--gold2)}
  #topbar .nav-menu-current{color:var(--text)}
 }
-@media(max-width:760px){
+@media(max-width:1099px){
  #topbar{display:flex;flex-wrap:wrap;gap:7px;padding:8px 12px}
  #topbar .sb-logo{order:0;flex:1 1 auto}
  #topbar .site-switcher{order:1;margin-left:auto}
@@ -448,7 +446,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 #topbar .nav-menu:hover>.nav-options,#topbar .nav-menu:focus-within>.nav-options,#topbar .nav-menu[open]>.nav-options{display:block!important}
 #topbar .nav-menu>.nav-options{border-top:0;border-top-left-radius:0;border-top-right-radius:0}
 
-@media(max-width:760px){
+@media(max-width:1099px){
  #topbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 12px}
  #topbar #hbg{display:inline-flex!important;align-items:center;justify-content:center;order:2;width:38px;height:38px;margin:0;border:1px solid var(--border2);border-radius:8px;background:var(--bg3);color:var(--text);font-size:1.15rem}
  #topbar .sb-logo{order:0;flex:1 1 auto;min-width:0;padding:0;border:0}
@@ -458,3 +456,4 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #topbar.mobile-nav-open #nav{display:grid!important}
  #topbar>.btn{order:4}
 }
+#sidebar{display:none!important}

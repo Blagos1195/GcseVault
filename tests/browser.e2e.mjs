@@ -70,7 +70,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
   const browser = await chromium.launch({ headless: true });
   const failures = [];
   try {
-    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 1100, height: 900 }, { width: 1024, height: 900 }, { width: 768, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 740 }]) {
       const context = await browser.newContext({ viewport });
       for (const path of ["/", "/quotes/", "/dates/", "/revision/", "/progress/"]) {
         const page = await context.newPage();
@@ -96,6 +96,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/quotes/" || path === "/dates/") {
+          assert.equal(await page.locator("#sidebar").isVisible(), false);
           const courseOverlay = page.locator("#course-selection-overlay");
           if (await courseOverlay.count()) {
             await courseOverlay.locator("[data-course-option]").first().check();
@@ -104,7 +105,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
           const menu = page.locator("#nav .nav-menu").filter({ has: page.locator(".nav-menu-name", { hasText: "Library" }) });
           const trigger = menu.locator("summary");
-          if (viewport.width >= 761) {
+          if (viewport.width >= 1100) {
             await trigger.hover();
             await menu.locator(".nav-options").waitFor({ state: "visible" });
             assert.equal(await menu.evaluate(element => element.open), true, path + " Library menu did not open on hover");
@@ -112,12 +113,17 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             const mobileMenu = page.locator("#hbg");
             await mobileMenu.click();
             assert.equal(await mobileMenu.getAttribute("aria-expanded"), "true");
+            assert.equal(await mobileMenu.getAttribute("aria-label"), "Close navigation menu");
+            await page.keyboard.press("Escape");
+            assert.equal(await mobileMenu.getAttribute("aria-expanded"), "false");
+            assert.equal(await mobileMenu.getAttribute("aria-label"), "Open navigation menu");
+            await mobileMenu.click();
             await menu.waitFor({ state: "visible" });
             await trigger.click();
           }
           await menu.locator(".nav-option").filter({ hasText: /^Library$/ }).click();
-          assert.equal(await page.locator("#tb-title").innerText(), "Library", path + " navigation did not change sections");
-          if (viewport.width >= 761) {
+          assert.equal(await page.locator("#tb-title").textContent(), "Library", path + " navigation did not change sections");
+          if (viewport.width >= 1100) {
             const positions = await page.evaluate(() => {
               const selectors = [".sb-logo", "#tb-title", "#nav", ".site-switcher"];
               return selectors.map(selector => {
@@ -129,9 +135,10 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           }
         }
         if (path === "/revision/") {
+          assert.equal(await page.locator("#sidebar").isVisible(), false);
           const menu = page.locator("#revision-nav .revision-nav-menu").filter({ has: page.locator("summary", { hasText: "Tools" }) });
           const trigger = menu.locator("summary");
-          if (viewport.width >= 761) {
+          if (viewport.width >= 1100) {
             await trigger.hover();
             await menu.locator(".revision-nav-options").waitFor({ state: "visible" });
             assert.equal(await menu.evaluate(element => element.open), true, "Revision Tools menu did not open on hover");
@@ -139,6 +146,11 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             const mobileMenu = page.locator("#revision-mobile-menu");
             await mobileMenu.click();
             assert.equal(await mobileMenu.getAttribute("aria-expanded"), "true");
+            assert.equal(await mobileMenu.getAttribute("aria-label"), "Close navigation menu");
+            await page.keyboard.press("Escape");
+            assert.equal(await mobileMenu.getAttribute("aria-expanded"), "false");
+            assert.equal(await mobileMenu.getAttribute("aria-label"), "Open navigation menu");
+            await mobileMenu.click();
             await menu.waitFor({ state: "visible" });
             await trigger.click();
           }
@@ -147,10 +159,8 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           await page.locator("#knowledge-map-search").waitFor({ timeout: 5000 });
           assert.ok(await page.locator("#knowledge-map-content").count());
         }
-        if (viewport.width === 390) {
-          const width = await page.evaluate(() => document.documentElement.scrollWidth);
-          assert.ok(width <= viewport.width + 2, path + " overflows horizontally at mobile width (" + width + "px)");
-        }
+        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+        assert.ok(documentWidth <= viewport.width + 2, path + " overflows horizontally at " + viewport.width + "px (" + documentWidth + "px"));
         await page.close();
       }
       await context.close();

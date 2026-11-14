@@ -6,10 +6,10 @@
 <title>QuoteVault – GCSE English Literature</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="quotes.css?v=20261113-mobile-hamburger-v1">
+<link rel="stylesheet" href="quotes.css?v=20261114-navigation-polish-v1">
 </head>
 <body>
-<div id="overlay" onclick="closeSB()"></div>
+
 <div id="modal-bg" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
 
 <div id="app">
@@ -18,7 +18,7 @@
     <div class="sb-logo-main">QuoteVault</div>
     <div class="sb-logo-sub">GCSE English Lit · AQA</div>
   </a>
-  <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label>
+  <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option><optgroup label="More"><option value="/GcseVault/progress/">Progress dashboard</option><option value="/GcseVault/admin/">Admin workspace</option><option value="/GcseVault/feedback/">Feedback &amp; Bugs</option></optgroup></select></label>
 
   <a class="sb-link" href="/GcseVault/">⌂ GCSE Vault</a>
   <a class="sb-link" href="/GcseVault/quotes/">QuoteVault</a>
@@ -42,8 +42,8 @@
     <div class="sb-logo-sub">GCSE English Lit · AQA</div>
   </a>
     <span class="tb-title" id="tb-title">Dashboard</span>
-    <div id="nav" aria-label="Page navigation"></div>
-    <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option></select></label>
+    <nav id="nav" aria-label="Page navigation"></nav>
+    <label class="site-switcher"><span>Switch site</span><select aria-label="Switch site" onchange="if(this.value)location.href=this.value"><option value="" selected disabled>Switch site</option><option value="/GcseVault/quotes/">QuoteVault</option><option value="/GcseVault/dates/">DateVault</option><option value="/GcseVault/revision/">Revision</option><option value="/GcseVault/">GCSE Vault home</option><optgroup label="More"><option value="/GcseVault/progress/">Progress dashboard</option><option value="/GcseVault/admin/">Admin workspace</option><option value="/GcseVault/feedback/">Feedback &amp; Bugs</option></optgroup></select></label>
 
     <button class="btn bsm" type="button" onclick="exportJSON()" title="Export" aria-label="Export data">⬇</button>
     <label class="btn bsm" title="Import" aria-label="Import data from a JSON file" style="cursor:pointer">⬆<input type="file" accept=".json" aria-label="Choose JSON file to import" style="display:none" onchange="importJSON(event)"></label>
@@ -51,11 +51,11 @@
   <div id="page"></div>
 </div>
 </div>
-<div id="overlay" onclick="closeSB()"></div><div id="toast"></div>
+<div id="toast"></div>
 
 <script src="/GcseVault/worker-config.js?v=20261113-staging-config"></script>
 <script src="../shared.js?v=20261109-ai-permissions"></script>
-<script src="quotes.js?v=20261113-mobile-hamburger-v1"></script>
+<script src="quotes.js?v=20261114-navigation-polish-v1"></script>
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "342ab992b7ac4a8fa52d8111c5e84cd0"}'></script><!-- End Cloudflare Web Analytics -->
 <script src="/GcseVault/offline.js?v=20261113-offline-shell-v1"></script>
 </body>
