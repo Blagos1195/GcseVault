@@ -136,6 +136,14 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
         }
         if (path === "/revision/") {
           assert.equal(await page.locator("#sidebar").isVisible(), false);
+          const courseSelection = page.locator("#revision-course-selection");
+          await courseSelection.waitFor({ state: "visible", timeout: 5000 });
+          const courseOptions = courseSelection.locator("[data-revision-course]");
+          assert.ok(await courseOptions.count() > 0);
+          await courseOptions.first().check();
+          await courseSelection.getByRole("button", { name: "Save course sets" }).click();
+          await courseSelection.waitFor({ state: "detached" });
+          assert.ok(await page.evaluate(() => JSON.parse(localStorage.getItem("revision_course_selection") || "[]").length > 0));
           const menu = page.locator("#revision-nav .revision-nav-menu").filter({ has: page.locator("summary", { hasText: "Tools" }) });
           const trigger = menu.locator("summary");
           if (viewport.width >= 1100) {
