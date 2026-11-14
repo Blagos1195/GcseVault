@@ -1324,7 +1324,7 @@ function buildNav(){
     menu.addEventListener('pointerleave',event=>{
       if(event.pointerType!=='touch'&&!menu.contains(event.relatedTarget)&&!menu.matches(':focus-within'))menu.open=false;
     });
-    menu.addEventListener('focusin',()=>menu.open=true);
+    
     menu.addEventListener('focusout',event=>{
       if(!menu.contains(event.relatedTarget))menu.open=false;
     });

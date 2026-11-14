@@ -1198,6 +1198,7 @@ test("navigation dropdowns stay open while the pointer enters their options", ()
   for (const file of ["../quotes/quotes.js", "../dates/dates.js", "../revision/app.js"]) {
     const script = fs.readFileSync(new URL(file, import.meta.url), "utf8");
     assert.ok(script.includes("menu.contains(event.relatedTarget)"));
+    assert.ok(!script.includes("menu.addEventListener('focusin'"));
     assert.ok(script.includes("window.matchMedia('(min-width: 1100px)').matches"));
   }
 });

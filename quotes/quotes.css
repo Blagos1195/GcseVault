@@ -378,7 +378,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .nav-menu-name{color:var(--gold2)}
 .nav-menu-current{color:var(--text)}
 .nav-options{display:none}
-.nav-menu[open]>.nav-options,.nav-menu:hover>.nav-options,.nav-menu:focus-within>.nav-options{display:block}
+.nav-menu[open]>.nav-options,.nav-menu:hover>.nav-options{display:block}
 @media(min-width:761px){
  #app{display:flex;flex-direction:column;min-height:100vh}
  #sidebar{width:100%;min-width:0;height:auto;min-height:0;flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px;padding:7px clamp(18px,3.2vw,42px);border:0;border-bottom:1px solid var(--border);overflow:visible}
@@ -443,7 +443,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 #topbar .nav-menu{position:relative;z-index:410}
 #topbar .nav-menu:hover,#topbar .nav-menu:focus-within,#topbar .nav-menu[open]{z-index:420}
 #topbar .nav-menu>.nav-options{top:100%;padding-top:5px;background-clip:content-box;display:none;pointer-events:auto}
-#topbar .nav-menu:hover>.nav-options,#topbar .nav-menu:focus-within>.nav-options,#topbar .nav-menu[open]>.nav-options{display:block!important}
+#topbar .nav-menu:hover>.nav-options,#topbar .nav-menu[open]>.nav-options{display:block!important}
 #topbar .nav-menu>.nav-options{border-top:0;border-top-left-radius:0;border-top-right-radius:0}
 
 @media(max-width:1099px){

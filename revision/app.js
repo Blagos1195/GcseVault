@@ -1406,7 +1406,7 @@ function closeRevisionSidebar(){
 document.querySelectorAll('#revision-nav .revision-nav-menu').forEach(menu=>{
   menu.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch'&&window.matchMedia('(min-width: 1100px)').matches)menu.open=true;});
   menu.addEventListener('pointerleave',event=>{if(event.pointerType!=='touch'&&!menu.contains(event.relatedTarget)&&!menu.matches(':focus-within'))menu.open=false;});
-  menu.addEventListener('focusin',()=>menu.open=true);
+  
   menu.addEventListener('focusout',event=>{if(!menu.contains(event.relatedTarget))menu.open=false;});
 });
 document.querySelectorAll('#revision-nav [data-view]').forEach(item=>item.addEventListener('click',()=>{

@@ -463,7 +463,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  .revision-nav-chevron{font-size:1rem;color:var(--text2)}
  .revision-nav-menu:hover summary,.revision-nav-menu:focus-within summary,.revision-nav-menu[open] summary{background:var(--bg4);border-color:var(--gold3)}
  .revision-nav-options{display:none;position:absolute;top:100%;left:0;min-width:185px;padding:5px;border:1px solid var(--border2);border-radius:0 0 8px 8px;background:var(--bg2);box-shadow:0 12px 28px rgba(0,0,0,.28);z-index:500;pointer-events:auto}
- .revision-nav-menu:hover>.revision-nav-options,.revision-nav-menu:focus-within>.revision-nav-options,.revision-nav-menu[open]>.revision-nav-options{display:flex}
+ .revision-nav-menu:hover>.revision-nav-options,.revision-nav-menu[open]>.revision-nav-options{display:flex}
  .revision-nav-options{flex-direction:column;gap:2px}
  .revision-nav-options button{width:100%;padding:8px 10px;border:0;border-radius:5px;background:transparent;color:var(--text);font:inherit;font-size:.78rem;text-align:left;cursor:pointer}
  .revision-nav-options button:hover,.revision-nav-options button.active{background:var(--bg4);color:var(--gold2)}
