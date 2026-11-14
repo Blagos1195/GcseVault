@@ -1158,7 +1158,7 @@ function buildNav(){
       if(event.pointerType!=='touch')menu.open=true;
     });
     menu.addEventListener('pointerleave',event=>{
-      if(event.pointerType!=='touch'&&!menu.matches(':focus-within'))menu.open=false;
+      if(event.pointerType!=='touch'&&!menu.contains(event.relatedTarget)&&!menu.matches(':focus-within'))menu.open=false;
     });
     menu.addEventListener('focusin',()=>menu.open=true);
     menu.addEventListener('focusout',event=>{

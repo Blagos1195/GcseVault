@@ -1194,6 +1194,13 @@ test("learning-tool mobile navigation exposes state and supports Escape", () => 
 });
 
 
+test("navigation dropdowns stay open while the pointer enters their options", () => {
+  for (const file of ["../quotes/quotes.js", "../dates/dates.js", "../revision/app.js"]) {
+    const script = fs.readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.ok(script.includes("menu.contains(event.relatedTarget)"));
+  }
+});
+
 test("site switchers retain the main study and utility destinations", () => {
   for (const file of ["../quotes/index.html", "../dates/index.html", "../revision/index.html"]) {
     const html = fs.readFileSync(new URL(file, import.meta.url), "utf8");

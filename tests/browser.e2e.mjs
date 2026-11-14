@@ -120,6 +120,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             await mobileMenu.click();
             await menu.waitFor({ state: "visible" });
             await trigger.click();
+            await menu.locator(".nav-options").waitFor({ state: "visible" });
           }
           await menu.locator(".nav-option").filter({ hasText: /^Library$/ }).click();
           assert.equal(await page.locator("#tb-title").textContent(), "Library", path + " navigation did not change sections");
@@ -161,6 +162,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
             await mobileMenu.click();
             await menu.waitFor({ state: "visible" });
             await trigger.click();
+            await menu.locator(".revision-nav-options").waitFor({ state: "visible" });
           }
           await menu.locator('[data-view="graph"]').click();
           await page.locator("#page").getByText("Knowledge map", { exact: true }).waitFor({ timeout: 5000 });
