@@ -1155,7 +1155,7 @@ function buildNav(){
   }).join('');
   document.querySelectorAll('#nav .nav-menu').forEach(menu=>{
     menu.addEventListener('pointerenter',event=>{
-      if(event.pointerType!=='touch')menu.open=true;
+      if(event.pointerType!=='touch'&&window.matchMedia('(min-width: 1100px)').matches)menu.open=true;
     });
     menu.addEventListener('pointerleave',event=>{
       if(event.pointerType!=='touch'&&!menu.contains(event.relatedTarget)&&!menu.matches(':focus-within'))menu.open=false;
