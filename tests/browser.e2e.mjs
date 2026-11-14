@@ -160,7 +160,7 @@ test("GCSE Vault apps load without browser exceptions at desktop and mobile widt
           assert.ok(await page.locator("#knowledge-map-content").count());
         }
         const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        assert.ok(documentWidth <= viewport.width + 2, path + " overflows horizontally at " + viewport.width + "px (" + documentWidth + "px"));
+        assert.ok(documentWidth <= viewport.width + 2, path + " overflows horizontally at " + viewport.width + "px (" + documentWidth + "px)");
         await page.close();
       }
       await context.close();
