@@ -16,10 +16,48 @@ export default {
     try {
     const ADMIN_KEY = env.ADMIN_KEY;
 
+    function storage(namespace) {
+      if (env.STORAGE_MODE !== "d1" && env[namespace]) return env[namespace];
+      return {
+        async get(key, type) {
+          const row = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ? AND (expires_at IS NULL OR expires_at > ?)").bind(namespace, String(key), Math.floor(Date.now() / 1000)).first();
+          if (!row) return null;
+          return type === "json" ? JSON.parse(row.value) : row.value;
+        },
+        async getWithMetadata(key, type) {
+          const row = await env.DB.prepare("SELECT value, updated_at FROM kv_store WHERE namespace = ? AND key = ? AND (expires_at IS NULL OR expires_at > ?)").bind(namespace, String(key), Math.floor(Date.now() / 1000)).first();
+          if (!row) return null;
+          return { value: type === "json" ? JSON.parse(row.value) : row.value, updatedAt: row.updated_at || null };
+        },
+        async put(key, value, options = {}) {
+          const now = Math.floor(Date.now() / 1000);
+          const expiresAt = options.expirationTtl ? now + Math.max(60, Number(options.expirationTtl)) : options.expiration ? Number(options.expiration) : null;
+          await env.DB.prepare("INSERT INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at").bind(namespace, String(key), String(value), expiresAt, options.metadata ? JSON.stringify(options.metadata) : null, options.updatedAt || new Date().toISOString()).run();
+        },
+        async delete(key) {
+          await env.DB.prepare("DELETE FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, String(key)).run();
+        },
+        async list(options = {}) {
+          const prefix = String(options.prefix || "");
+          const limit = Math.max(1, Math.min(1000, Number(options.limit) || 1000));
+          const cursor = options.cursor ? String(options.cursor) : null;
+          const { results } = await env.DB.prepare("SELECT key, expires_at, metadata_json FROM kv_store WHERE namespace = ? AND key >= ? AND key < ? AND (? IS NULL OR key > ?) AND (expires_at IS NULL OR expires_at > ?) ORDER BY key LIMIT ?").bind(namespace, prefix, prefix + "\uffff", cursor, cursor, Math.floor(Date.now() / 1000), limit + 1).all();
+          const page = results || [];
+          const complete = page.length <= limit;
+          const selected = page.slice(0, limit);
+          return {
+            keys: selected.map(row => ({ name: row.key, ...(row.expires_at ? { expiration: row.expires_at } : {}), ...(row.metadata_json ? { metadata: JSON.parse(row.metadata_json) } : {}) })),
+            list_complete: complete,
+            ...(complete || !selected.length ? {} : { cursor: selected[selected.length - 1].key })
+          };
+        }
+      };
+    }
+
     async function getSessionUser(reqUrl, req) {
       const token = req.headers.get("X-Session-Token");
       if (!token) return null;
-      const stored = await env.QUOTEVAULT.get("session:" + token);
+      const stored = await storage("QUOTEVAULT").get("session:" + token);
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
@@ -42,7 +80,7 @@ export default {
     async function getAIUser(req) {
       const token = req.headers.get("X-AI-Session");
       if (!token) return null;
-      const stored = await env.QUOTEVAULT.get("ai-session:" + token);
+      const stored = await storage("QUOTEVAULT").get("ai-session:" + token);
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
@@ -101,7 +139,7 @@ export default {
     }
 
     async function recordAccountAdminAction(targetUsername, actorUsername, action) {
-      await env.DB.prepare("INSERT INTO admin_account_audit (target_username, actor_username, action, acted_at) VALUES (?, ?, ?, ?)").bind(
+      await env.DB.prepare("INSERT INTO audit_log (event_type, target_username, actor_username, action, acted_at) VALUES ('account', ?, ?, ?, ?)").bind(
         String(targetUsername), String(actorUsername), String(action), new Date().toISOString()
       ).run();
     }
@@ -200,7 +238,7 @@ export default {
       const createdAt = new Date().toISOString();
       const pushJobs = [];
       for (const admin of results || []) {
-        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO notifications (kind, id, user_key, site, item_id, title, submitter, created_at) VALUES ('admin', ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
         if (inserted.meta?.changes) pushJobs.push(sendAdminPush(admin.user_key, { title: "New GCSE Vault submission", body: site + ": " + title + " · " + String(submitter || "Unknown submitter"), tag: site + ":" + id, url: "/GcseVault/admin/" }));
       }
       if (ctx?.waitUntil) ctx.waitUntil(Promise.allSettled(pushJobs));
@@ -229,11 +267,11 @@ export default {
       delete original.userKey;
       delete original.originalSubmission;
       const payload = JSON.stringify({ original, approved: approvedItem || null });
-      await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO notifications (kind, id, user_key, site, item_id, title, status, payload, created_at) VALUES ('submission', ?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
     }
     async function recordModerationAction(site, id, item, actor, action) {
       const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
-      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO audit_log (event_type, site, item_id, item_title, submitted_by, actor_username, action, acted_at) VALUES ('moderation', ?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
     }
     async function recordApproval(site, id, item, actor) {
       return recordModerationAction(site, id, item, actor, "approved");
@@ -267,6 +305,73 @@ export default {
       return items;
     }
 
+    if (url.pathname === "/admin/storage-migrate" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      if (env.STORAGE_MODE === "d1") return new Response(JSON.stringify({ success: true, alreadyMigrated: true, namespaces: {} }), { headers: { ...cors, "Content-Type": "application/json" } });
+      const namespaces = ["QUOTEVAULT", "DV_PENDING", "DV_PUBLIC", "FEEDBACK", "PUBLIC_QUOTES", "REVISION", "THEMES"];
+      const report = {};
+      let conflicts = 0;
+      for (const namespace of namespaces) {
+        const source = env[namespace];
+        if (!source || typeof source.list !== "function") {
+          report[namespace] = { error: "KV binding unavailable" };
+          continue;
+        }
+        let cursor;
+        let copied = 0;
+        let existing = 0;
+        let expired = 0;
+        let duplicatesSkipped = 0;
+        let pages = 0;
+        do {
+          const page = await source.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
+          pages++;
+          for (const key of page.keys || []) {
+            const expiration = Number(key.expiration) || null;
+            if (expiration && expiration <= Math.floor(Date.now() / 1000)) {
+              expired++;
+              continue;
+            }
+            const value = await source.get(key.name);
+            if (value === null || value === undefined) continue;
+            if (namespace === "REVISION" && key.name.startsWith("user:")) {
+              const userKey = key.name.slice("user:".length);
+              const account = await env.DB.prepare("SELECT revision_data_json FROM users WHERE user_key = ?").bind(userKey).first();
+              if (account?.revision_data_json === String(value)) {
+                duplicatesSkipped++;
+                continue;
+              }
+            }
+            if (namespace === "REVISION" && key.name.startsWith("leaderboard:")) {
+              let legacy = null;
+              try { legacy = JSON.parse(value); } catch {}
+              const userKey = String(legacy?.userKey || key.name.slice("leaderboard:".length));
+              const account = await env.DB.prepare("SELECT username, revision_xp, revision_streak, revision_leaderboard_updated_at FROM users WHERE user_key = ?").bind(userKey).first();
+              if (account && account.username === String(legacy?.username || "") && Number(account.revision_xp) === Number(legacy?.xp) && Number(account.revision_streak) === Number(legacy?.streak) && String(account.revision_leaderboard_updated_at || "") === String(legacy?.updatedAt || "")) {
+                duplicatesSkipped++;
+                continue;
+              }
+            }
+            const metadata = key.metadata == null ? null : JSON.stringify(key.metadata);
+            const inserted = await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
+            const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
+            if (stored?.value === String(value)) {
+              if (inserted.meta?.changes) copied++;
+              else existing++;
+            } else {
+              conflicts++;
+            }
+          }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store WHERE namespace = ?").bind(namespace).first();
+        report[namespace] = { copied, alreadyPresent: existing, expired, duplicatesSkipped, totalInD1: Number(count?.total || 0), pages };
+      }
+      return new Response(JSON.stringify({ success: conflicts === 0, conflicts, namespaces: report }), { status: conflicts ? 409 : 200, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/admin/test-run" && request.method === "POST") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -278,19 +383,18 @@ export default {
         health: async () => {
           const row = await env.DB.prepare("SELECT 1 AS ok").first();
           if (Number(row?.ok) !== 1) throw new Error("D1 query returned an unexpected result");
-          const bindings = ["QUOTEVAULT", "PUBLIC_QUOTES", "DV_PENDING", "DV_PUBLIC", "REVISION", "FEEDBACK", "THEMES"];
-          const missing = bindings.filter(name => !env[name] || typeof env[name].put !== "function");
-          if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
-          return "D1 query passed; all seven required KV bindings are available.";
+          const storageStatus = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store").first();
+          if (!storageStatus || !Number.isFinite(Number(storageStatus.total))) throw new Error("Consolidated storage table is unavailable");
+          return "D1 query and consolidated storage table passed.";
         },
         migrations: async () => {
-          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
-          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const requiredTables = ["kv_store", "notifications", "audit_log", "admin_setup", "account_sessions", "admin_push_subscriptions"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('kv_store', 'notifications', 'audit_log', 'admin_setup', 'account_sessions', 'admin_push_subscriptions')").all();
           const presentTables = new Set((tableRows.results || []).map(row => row.name));
           const missingTables = requiredTables.filter(name => !presentTables.has(name));
           const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
           const presentColumns = new Set((userColumns.results || []).map(column => column.name));
-          const requiredColumns = ["role", "ai_access"];
+          const requiredColumns = ["role", "ai_access", "password_hash", "revision_data_json", "revision_xp"];
           const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
           if (missingTables.length || missingColumns.length) {
             const issues = [];
@@ -298,72 +402,72 @@ export default {
             if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
             throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
           }
-          return "All six migration-managed tables and both required users columns are present.";
+          return "The consolidated storage tables and required account columns are present.";
         },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
           const error = new Error("GCSE Vault synthetic diagnostic test");
           const record = { id, type: "test", title: "Synthetic error-reporting test", description: error.message, errorName: error.name, errorStack: error.stack || "", errorLocation: "Owner Test Centre", sourceApplication: "GCSE Vault Test Centre", timestamp: new Date().toISOString(), testRecord: true };
           try {
-            await env.FEEDBACK.put(id, JSON.stringify(record));
-            const stored = await env.FEEDBACK.get(id, "json");
+            await storage("FEEDBACK").put(id, JSON.stringify(record));
+            const stored = await storage("FEEDBACK").get(id, "json");
             if (!stored || stored.errorName !== "Error" || stored.description !== error.message) throw new Error("Synthetic error report did not round-trip correctly");
             return "Synthetic error details were written, retrieved and verified in the feedback store.";
-          } finally { await env.FEEDBACK.delete(id); }
+          } finally { await storage("FEEDBACK").delete(id); }
         },
         quote: async () => {
           const id = "test-centre:quote:" + crypto.randomUUID();
           const record = { id, text: "GCSE Vault test quote", char: "Test character", work: "Test work", submittedBy: "Test Centre", _testRecord: true };
           try {
-            await env.QUOTEVAULT.put(id, JSON.stringify(record));
-            const stored = await env.QUOTEVAULT.get(id, "json");
+            await storage("QUOTEVAULT").put(id, JSON.stringify(record));
+            const stored = await storage("QUOTEVAULT").get(id, "json");
             if (!stored || stored.text !== record.text || stored._testRecord !== true) throw new Error("QuoteVault test record did not round-trip correctly");
             return "QuoteVault pending-storage write/read passed; the temporary record was removed.";
-          } finally { await env.QUOTEVAULT.delete(id); }
+          } finally { await storage("QUOTEVAULT").delete(id); }
         },
         date: async () => {
           const id = "test-centre:date:" + crypto.randomUUID();
           const record = { id, event: "GCSE Vault test date", year: "2000", topic: "Test", submittedBy: "Test Centre", _testRecord: true };
           try {
-            await env.DV_PENDING.put(id, JSON.stringify(record));
-            const stored = await env.DV_PENDING.get(id, "json");
+            await storage("DV_PENDING").put(id, JSON.stringify(record));
+            const stored = await storage("DV_PENDING").get(id, "json");
             if (!stored || stored.event !== record.event || stored._testRecord !== true) throw new Error("DateVault test record did not round-trip correctly");
             return "DateVault pending-storage write/read passed; the temporary record was removed.";
-          } finally { await env.DV_PENDING.delete(id); }
+          } finally { await storage("DV_PENDING").delete(id); }
         },
         revision: async () => {
           const id = "test-centre:" + crypto.randomUUID();
           const key = "test:" + id;
           const record = { id, title: "GCSE Vault test revision note", subject: "Test", cards: [{ front: "Test", back: "Test" }], _testRecord: true };
           try {
-            await env.REVISION.put(key, JSON.stringify(record));
-            const stored = await env.REVISION.get(key, "json");
+            await storage("REVISION").put(key, JSON.stringify(record));
+            const stored = await storage("REVISION").get(key, "json");
             if (!stored || stored.title !== record.title || stored._testRecord !== true) throw new Error("Revision test note did not round-trip correctly");
             return "Revision storage write/read passed; the temporary test note was removed.";
-          } finally { await env.REVISION.delete(key); }
+          } finally { await storage("REVISION").delete(key); }
         },
         feedback: async () => {
           const id = "test-centre:feedback:" + crypto.randomUUID();
           const record = { id, type: "test", title: "Synthetic feedback test", description: "Temporary owner test record", timestamp: new Date().toISOString(), testRecord: true };
           try {
-            await env.FEEDBACK.put(id, JSON.stringify(record));
-            const stored = await env.FEEDBACK.get(id, "json");
+            await storage("FEEDBACK").put(id, JSON.stringify(record));
+            const stored = await storage("FEEDBACK").get(id, "json");
             if (!stored || stored.testRecord !== true || stored.description !== record.description) throw new Error("Feedback test record did not round-trip correctly");
             return "Feedback storage write/read passed; no real admin notification was sent and the temporary record was removed.";
-          } finally { await env.FEEDBACK.delete(id); }
+          } finally { await storage("FEEDBACK").delete(id); }
         },
         notifications: async () => {
           const id = "test-centre:" + crypto.randomUUID();
           try {
-            await env.DB.prepare("INSERT INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
-            const row = await env.DB.prepare("SELECT id, read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            await env.DB.prepare("INSERT INTO notifications (kind, id, user_key, site, item_id, title, submitter, created_at) VALUES ('admin', ?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
+            const row = await env.DB.prepare("SELECT id, read_at FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!row) throw new Error("Could not retrieve the temporary notification");
-            await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
-            const read = await env.DB.prepare("SELECT read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
+            const read = await env.DB.prepare("SELECT read_at FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!read?.read_at) throw new Error("Could not mark the temporary notification as read");
-            await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+            await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run();
             return "Notification creation, retrieval, mark-read and deletion all passed without sending a push alert.";
-          } finally { await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run(); }
+          } finally { await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run(); }
         },
         permissions: async () => {
           if (actor.role !== "owner") throw new Error("The current session is not an owner session");
@@ -384,8 +488,8 @@ export default {
       }
       const completedAt = new Date().toISOString();
       for (const result of results) {
-        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
-          crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
+        await env.DB.prepare("INSERT INTO audit_log (event_type, actor_username, action, test_name, status, detail, duration_ms, acted_at) VALUES ('test', ?, 'test_run', ?, ?, ?, ?, ?)").bind(
+          actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
         ).run();
       }
       return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -395,7 +499,7 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
+      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, acted_at AS completed_at FROM audit_log WHERE event_type = 'test' ORDER BY acted_at DESC LIMIT 50").bind().all();
       return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -455,7 +559,7 @@ export default {
         return new Response("This account does not have admin access", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
+      await storage("QUOTEVAULT").put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -471,7 +575,7 @@ export default {
         return new Response("This account does not have AI access.", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
+      await storage("QUOTEVAULT").put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -487,7 +591,7 @@ export default {
 
     if (url.pathname === "/ai/logout" && request.method === "POST") {
       const token = request.headers.get("X-AI-Session");
-      if (token) await env.QUOTEVAULT.delete("ai-session:" + token);
+      if (token) await storage("QUOTEVAULT").delete("ai-session:" + token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -504,7 +608,7 @@ export default {
     if (url.pathname === "/auth/logout" && request.method === "POST") {
       const user = await getSessionUser(url, request);
       if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete("session:" + user.token);
+      await storage("QUOTEVAULT").delete("session:" + user.token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -537,9 +641,9 @@ export default {
     async function allowRateLimitedAction(prefix, identity, limit, ttl) {
       const ip = request.headers.get("CF-Connecting-IP") || "unknown";
       const key = prefix + ":" + await hashValue(ip + ":" + String(identity || ""));
-      const count = Number(await env.QUOTEVAULT.get(key) || 0);
+      const count = Number(await storage("QUOTEVAULT").get(key) || 0);
       if (count >= limit) return false;
-      await env.QUOTEVAULT.put(key, String(count + 1), { expirationTtl: ttl });
+      await storage("QUOTEVAULT").put(key, String(count + 1), { expirationTtl: ttl });
       return true;
     }
 
@@ -556,10 +660,11 @@ export default {
       const session = await getAccountSession(request);
       if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
       if (request.method === "GET") {
-        const rows = await env.DB.prepare("SELECT site, selections_json, updated_at FROM account_course_selections WHERE user_key = ?").bind(session.user_key).all();
+        const page = await storage("USER_DATA").list({ prefix: "course:" + session.user_key + ":" });
         const selections = {};
-        for (const row of rows.results || []) {
-          try { selections[row.site] = JSON.parse(row.selections_json); } catch {}
+        for (const item of page.keys) {
+          const site = item.name.slice(("course:" + session.user_key + ":").length);
+          try { selections[site] = await storage("USER_DATA").get(item.name, "json"); } catch {}
         }
         return new Response(JSON.stringify({ selections }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
@@ -571,13 +676,13 @@ export default {
         return new Response("Invalid course selections.", { status: 400, headers: cors });
       }
       const selections = [...new Set(values.map(value => String(value).trim()).filter(value => value && value.length <= 160))];
-      await env.DB.prepare("INSERT INTO account_course_selections (user_key, site, selections_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET selections_json = excluded.selections_json, updated_at = excluded.updated_at").bind(session.user_key, site, JSON.stringify(selections), new Date().toISOString()).run();
+      await storage("USER_DATA").put("course:" + session.user_key + ":" + site, JSON.stringify(selections));
       return new Response(JSON.stringify({ success: true, selections }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     async function verifyPasswordAccountAccess(userKey, req) {
       const credential = await env.DB.prepare(
-        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+        "SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL"
       ).bind(userKey).first();
       if (!credential) return false;
       const session = await getAccountSession(req);
@@ -610,13 +715,13 @@ export default {
       ).bind(userKey).first();
       if (!account) return new Response("Account not found.", { status: 404, headers: cors });
       const existing = await env.DB.prepare(
-        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+        "SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL"
       ).bind(userKey).first();
       if (existing) return new Response("This account already has a password. Sign in instead.", { status: 409, headers: cors });
       const now = new Date().toISOString();
       await env.DB.prepare(
-        "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-      ).bind(userKey, await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now).run();
+        "UPDATE users SET password_hash = ?, password_salt = ?, credential_created_at = ?, credential_updated_at = ? WHERE user_key = ?"
+      ).bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now, userKey).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
       return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
@@ -631,7 +736,7 @@ export default {
       const username = String(url.searchParams.get("username") || "").trim();
       if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
       const credential = await env.DB.prepare(
-        "SELECT c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+        "SELECT password_salt FROM users WHERE LOWER(username) = LOWER(?) AND password_hash IS NOT NULL"
       ).bind(username).first();
       if (!credential) return new Response("Invalid username or password.", { status: 404, headers: cors });
       return new Response(JSON.stringify({ passwordSalt: credential.password_salt }), {
@@ -648,15 +753,15 @@ export default {
         return new Response("Invalid username or password.", { status: 400, headers: cors });
       }
       const rateKey = "account-login:" + await hashValue((request.headers.get("CF-Connecting-IP") || "unknown") + ":" + username.toLowerCase());
-      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      const attempts = Number(await storage("QUOTEVAULT").get(rateKey) || 0);
       if (attempts >= 8) return new Response("Too many sign-in attempts. Try again in 15 minutes.", { status: 429, headers: cors });
-      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
+      await storage("QUOTEVAULT").put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const user = await env.DB.prepare(
-        "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+        "SELECT user_key, username, role, password_hash, password_salt FROM users WHERE LOWER(username) = LOWER(?) AND password_hash IS NOT NULL"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
       if (await hashValue(passwordHashValue.toLowerCase()) !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete(rateKey);
+      await storage("QUOTEVAULT").delete(rateKey);
       const token = await createAccountSession(user.user_key);
       return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -679,9 +784,9 @@ export default {
       }
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found.", { status: 404, headers: cors });
-      const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      const existing = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL").bind(userKey).first();
       if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
-      await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
+      await env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ?, credential_updated_at = ? WHERE user_key = ?")
         .bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, new Date().toISOString(), userKey).run();
       await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
       const token = await createAccountSession(userKey);
@@ -737,11 +842,11 @@ export default {
 
     if (url.pathname === "/admin/published" && request.method === "GET") {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quotes = await listPendingItems(env.PUBLIC_QUOTES);
-      const dates = await listPendingItems(env.DV_PUBLIC);
+      const quotes = await listPendingItems(storage("PUBLIC_QUOTES"));
+      const dates = await listPendingItems(storage("DV_PUBLIC"));
       const [quoteAudit, dateAudit] = await Promise.all([
-        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'quote' AND action = 'approved'").all(),
-        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'date' AND action = 'approved'").all()
+        env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'quote' AND action = 'approved'").all(),
+        env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'date' AND action = 'approved'").all()
       ]);
       const quoteOwners = new Map((quoteAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
       const dateOwners = new Map((dateAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
@@ -799,7 +904,7 @@ export default {
     if (url.pathname === "/admin/notifications" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM notifications WHERE kind = 'admin' AND user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
       return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
@@ -809,7 +914,7 @@ export default {
       const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean).slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
       const now = new Date().toISOString();
-      for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
+      for (const id of ids) await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE kind = 'admin' AND id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/delete" && request.method === "POST") {
@@ -818,15 +923,15 @@ export default {
       const body = await request.json();
       const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(String).filter(Boolean))].slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
-      for (const id of ids) await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+      for (const id of ids) await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const [moderation, accountChanges] = await Promise.all([
-        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all(),
-        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM admin_account_audit ORDER BY acted_at DESC LIMIT 500").all()
+        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, actor_username AS moderator, action, acted_at FROM audit_log WHERE event_type = 'moderation' ORDER BY acted_at DESC LIMIT 500").all(),
+        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM audit_log WHERE event_type = 'account' ORDER BY acted_at DESC LIMIT 500").all()
       ]);
       const entries = [
         ...(moderation.results || []),
@@ -837,7 +942,7 @@ export default {
     if (url.pathname === "/submissions/notifications" && request.method === "GET") {
       const account = await getAccountSession(request);
       if (!account) return new Response("Sign in to view submission updates.", { status: 401, headers: cors });
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM notifications WHERE kind = 'submission' AND user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
       return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/submissions/private/remove" && request.method === "POST") {
@@ -869,7 +974,7 @@ export default {
       const id = String(body.id || "");
       const choice = String(body.choice || "");
       if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
-      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM submission_notifications WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
+      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM notifications WHERE kind = 'submission' AND id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
       if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
       const validChoice = notification.status === "approved"
         ? ["keep", "replace"].includes(choice)
@@ -893,7 +998,7 @@ export default {
         }
         await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
       }
-      await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
+      await env.DB.prepare("UPDATE notifications SET acknowledged_at = ?, choice = ? WHERE kind = 'submission' AND id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -919,78 +1024,6 @@ export default {
       return new Response(JSON.stringify({ success: true, username, ai_access: body.enabled }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
-    }
-
-    if (url.pathname === "/admin/migrate-storage" && request.method === "POST") {
-      const actor = await getSessionUser(url, request);
-      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      const body = await request.json();
-      const phase = body.phase;
-      if (!["revision", "revision-leaderboard", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
-      const limit = Math.max(1, Math.min(100, Math.floor(Number(body.limit) || 100)));
-      const binding = phase === "themes" ? env.THEMES : env.REVISION;
-      const prefix = phase === "revision" ? "user:" : phase === "revision-leaderboard" ? "leaderboard:" : "theme:";
-      const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
-      let migrated = 0;
-      let alreadyPresent = 0;
-      let skipped = 0;
-      for (const item of page.keys) {
-        const value = await binding.get(item.name, "json");
-        if (!value) {
-          skipped++;
-          continue;
-        }
-        if (phase === "revision") {
-          const userKey = item.name.slice("user:".length);
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        } else if (phase === "themes") {
-          const remainder = item.name.slice("theme:".length);
-          const separator = remainder.lastIndexOf(":");
-          if (separator < 1) {
-            skipped++;
-            continue;
-          }
-          const userKey = remainder.slice(0, separator);
-          const themeKey = remainder.slice(separator + 1);
-          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) {
-            skipped++;
-            continue;
-          }
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
-          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        } else {
-          const userKey = String(value.userKey || item.name.slice("leaderboard:".length)).trim();
-          const username = String(value.username || "").trim().slice(0, 20);
-          const xp = Number(value.xp);
-          const streak = Number(value.streak);
-          if (!userKey || !username || !Number.isFinite(xp) || xp < 0 || !Number.isFinite(streak) || streak < 0) {
-            skipped++;
-            continue;
-          }
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?)"
-          ).bind(userKey, username, Math.floor(xp), Math.floor(streak), String(value.updatedAt || new Date().toISOString())).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        }
-      }
-      return new Response(JSON.stringify({
-        phase,
-        processed: page.keys.length,
-        migrated,
-        alreadyPresent,
-        skipped,
-        complete: page.list_complete,
-        cursor: page.list_complete ? null : page.cursor
-      }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/users" && request.method === "POST") {
@@ -1021,10 +1054,10 @@ export default {
 
     // ── QUOTEVAULT QUOTES (public) ────────────────────────────────────────────
     if (url.pathname === "/quotes" && request.method === "GET") {
-      const list = await env.PUBLIC_QUOTES.list();
+      const list = await storage("PUBLIC_QUOTES").list();
       const items = [];
       for (const key of list.keys) {
-        const value = await env.PUBLIC_QUOTES.get(key.name, "json");
+        const value = await storage("PUBLIC_QUOTES").get(key.name, "json");
         if (value) items.push(value);
       }
       return new Response(JSON.stringify({ items }), {
@@ -1037,7 +1070,7 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const items = await listPendingItems(env.QUOTEVAULT);
+      const items = await listPendingItems(storage("QUOTEVAULT"));
       const owners = await getSubmissionOwners("qv");
       for (const item of items) {
         item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
@@ -1085,7 +1118,7 @@ export default {
         }
       }
 
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1113,7 +1146,7 @@ export default {
       data._submittedByUserKey = userKey;
       const id = requestId ? await createIdempotentSubmissionId("qv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       if (requestId) {
-        const existing = await env.QUOTEVAULT.get(id, "json");
+        const existing = await storage("QUOTEVAULT").get(id, "json");
         if (existing) {
           if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
           await createAdminNotification("QuoteVault", id, existing, existing.submittedBy);
@@ -1122,7 +1155,7 @@ export default {
       }
       data.id = id;
       data.submittedAt = new Date().toISOString();
-      await env.QUOTEVAULT.put(id, JSON.stringify(data));
+      await storage("QUOTEVAULT").put(id, JSON.stringify(data));
       await createAdminNotification("QuoteVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1136,7 +1169,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.QUOTEVAULT.get(id, "json");
+      const quote = await storage("QUOTEVAULT").get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       await attachSubmissionOwner("qv", id, quote);
       const publishedQuote = { ...quote };
@@ -1144,7 +1177,7 @@ export default {
       delete publishedQuote._submittedByUserKey;
       delete publishedQuote.originalSubmission;
       delete publishedQuote.userKey;
-      await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
+      await storage("PUBLIC_QUOTES").put(id, JSON.stringify(publishedQuote));
       try {
         await createSubmissionNotification("qv", id, quote, "approved", publishedQuote);
         await recordApproval("quote", id, quote, actor);
@@ -1155,7 +1188,7 @@ export default {
           headers: cors
         });
       }
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1168,7 +1201,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.QUOTEVAULT.get(id, "json");
+      const quote = await storage("QUOTEVAULT").get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       await attachSubmissionOwner("qv", id, quote);
       try {
@@ -1181,7 +1214,7 @@ export default {
           headers: cors
         });
       }
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1194,11 +1227,11 @@ export default {
       const id = String(body.id || "").trim();
       const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
-      const existing = await env.QUOTEVAULT.get(id, "json");
+      const existing = await storage("QUOTEVAULT").get(id, "json");
       if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
       const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       delete updated.userKey;
-      await env.QUOTEVAULT.put(id, JSON.stringify(updated));
+      await storage("QUOTEVAULT").put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1209,10 +1242,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      const existing = await storage("PUBLIC_QUOTES").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
-      await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
+      await storage("PUBLIC_QUOTES").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1223,9 +1256,9 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      const existing = await storage("PUBLIC_QUOTES").get(body.id, "json");
       if (existing) await recordModerationAction("quote", body.id, existing, await getSessionUser(url, request), "removed");
-      await env.PUBLIC_QUOTES.delete(body.id);
+      await storage("PUBLIC_QUOTES").delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1253,7 +1286,7 @@ export default {
       data._submittedByUserKey = userKey;
       const id = requestId ? await createIdempotentSubmissionId("dv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       if (requestId) {
-        const existing = await env.DV_PENDING.get(id, "json");
+        const existing = await storage("DV_PENDING").get(id, "json");
         if (existing) {
           if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
           await createAdminNotification("DateVault", id, existing, existing.submittedBy);
@@ -1262,7 +1295,7 @@ export default {
       }
       data.id = id;
       data.submittedAt = new Date().toISOString();
-      await env.DV_PENDING.put(id, JSON.stringify(data));
+      await storage("DV_PENDING").put(id, JSON.stringify(data));
       await createAdminNotification("DateVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1308,7 +1341,7 @@ export default {
         });
       }
 
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1316,10 +1349,10 @@ export default {
     }
 
     if (url.pathname === "/dv/quotes" && request.method === "GET") {
-      const list = await env.DV_PUBLIC.list();
+      const list = await storage("DV_PUBLIC").list();
       const items = [];
       for (const key of list.keys) {
-        const value = await env.DV_PUBLIC.get(key.name, "json");
+        const value = await storage("DV_PUBLIC").get(key.name, "json");
         if (value) items.push(value);
       }
       return new Response(JSON.stringify({ items }), {
@@ -1331,7 +1364,7 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const items = await listPendingItems(env.DV_PENDING);
+      const items = await listPendingItems(storage("DV_PENDING"));
       const owners = await getSubmissionOwners("dv");
       for (const item of items) {
         item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
@@ -1347,7 +1380,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const fact = await env.DV_PENDING.get(id, "json");
+      const fact = await storage("DV_PENDING").get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       await attachSubmissionOwner("dv", id, fact);
       const publishedFact = { ...fact };
@@ -1355,7 +1388,7 @@ export default {
       delete publishedFact._submittedByUserKey;
       delete publishedFact.originalSubmission;
       delete publishedFact.userKey;
-      await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
+      await storage("DV_PUBLIC").put(id, JSON.stringify(publishedFact));
       try {
         await createSubmissionNotification("dv", id, fact, "approved", publishedFact);
         await recordApproval("date", id, fact, actor);
@@ -1366,7 +1399,7 @@ export default {
           headers: cors
         });
       }
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1378,7 +1411,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const fact = await env.DV_PENDING.get(id, "json");
+      const fact = await storage("DV_PENDING").get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       await attachSubmissionOwner("dv", id, fact);
       try {
@@ -1391,7 +1424,7 @@ export default {
           headers: cors
         });
       }
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1401,10 +1434,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PENDING.get(body.id, "json");
+      const existing = await storage("DV_PENDING").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
-      await env.DV_PENDING.put(body.id, JSON.stringify(updated));
+      await storage("DV_PENDING").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1414,10 +1447,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      const existing = await storage("DV_PUBLIC").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
-      await env.DV_PUBLIC.put(body.id, JSON.stringify(updated));
+      await storage("DV_PUBLIC").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1427,9 +1460,9 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      const existing = await storage("DV_PUBLIC").get(body.id, "json");
       if (existing) await recordModerationAction("date", body.id, existing, await getSessionUser(url, request), "removed");
-      await env.DV_PUBLIC.delete(body.id);
+      await storage("DV_PUBLIC").delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1505,7 +1538,7 @@ export default {
         });
       }
 
-      const credential = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      const credential = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL").bind(userKey).first();
       if (!credential) {
         return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
           headers: { ...cors, "Content-Type": "application/json" }
@@ -1812,38 +1845,19 @@ export default {
       }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // CUSTOM THEMES — stored in THEMES KV, keyed by "theme:{userKey}:{themeKey}"
-    //
-    // Requires a KV namespace bound as env.THEMES in wrangler.toml:
-    //   [[kv_namespaces]]
-    //   binding = "THEMES"
-    //   id = "<your-kv-namespace-id>"
-    // ════════════════════════════════════════════════════════════════════════
-
     if (url.pathname === "/themes/save" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key, theme } = body;
-      if (!userKey || !key || !theme) {
-        return new Response("Missing fields", { status: 400, headers: cors });
-      }
-      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
-        return new Response("Invalid key", { status: 400, headers: cors });
-      }
+      if (!userKey || !key || !theme) return new Response("Missing fields", { status: 400, headers: cors });
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const safeTheme = { label: String(theme.label || "").slice(0, 60), desc: String(theme.desc || "").slice(0, 120) };
       Object.entries(theme).forEach(([name, value]) => {
         if (name.startsWith("--")) safeTheme[name] = String(value).slice(0, 80);
       });
-      const updatedAt = new Date().toISOString();
-      await env.DB.prepare(
-        "INSERT INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, theme_key) DO UPDATE SET theme_json = excluded.theme_json, updated_at = excluded.updated_at"
-      ).bind(userKey, key, JSON.stringify(safeTheme), updatedAt).run();
-      await env.THEMES.put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      await storage("THEMES").put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/themes/list" && request.method === "GET") {
@@ -1852,28 +1866,15 @@ export default {
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const prefix = `theme:${userKey}:`;
-      let cursor;
-      do {
-        const page = await env.THEMES.list({ prefix, ...(cursor ? { cursor } : {}) });
-        for (const item of page.keys) {
-          const value = await env.THEMES.get(item.name, "json");
-          if (!value) continue;
-          const themeKey = item.name.slice(prefix.length);
-          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
-          await env.DB.prepare(
-            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
-          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
-        }
-        cursor = page.list_complete ? null : page.cursor;
-      } while (cursor);
-      const { results } = await env.DB.prepare(
-        "SELECT theme_key, theme_json FROM custom_themes WHERE user_key = ? ORDER BY theme_key"
-      ).bind(userKey).all();
+      const page = await storage("THEMES").list({ prefix });
       const themes = {};
-      for (const row of results) themes[row.theme_key] = JSON.parse(row.theme_json);
-      return new Response(JSON.stringify({ themes }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      for (const item of page.keys) {
+        const themeKey = item.name.slice(prefix.length);
+        if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
+        const value = await storage("THEMES").get(item.name, "json");
+        if (value) themes[themeKey] = value;
+      }
+      return new Response(JSON.stringify({ themes }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/themes/delete" && request.method === "POST") {
@@ -1883,23 +1884,20 @@ export default {
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      await env.THEMES.delete(`theme:${userKey}:${key}`);
-      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      await storage("THEMES").delete(`theme:${userKey}:${key}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
       const rateKey = "feedback-submit:" + await hashValue(request.headers.get("CF-Connecting-IP") || "unknown");
-      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      const attempts = Number(await storage("QUOTEVAULT").get(rateKey) || 0);
       if (attempts >= 5) return new Response("Too many feedback submissions. Try again in 15 minutes.", { status: 429, headers: cors });
       const rawBody = await request.text();
       if (new TextEncoder().encode(rawBody).byteLength > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
       let body;
       try { body = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
-      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
+      await storage("QUOTEVAULT").put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
       const type = sanitize(body.type, 80);
       const title = sanitize(body.title, 300);
@@ -1923,7 +1921,7 @@ export default {
         page: sanitize(body.page, 300),
         timestamp: new Date().toISOString()
       };
-      await env.FEEDBACK.put(id, JSON.stringify(record));
+      await storage("FEEDBACK").put(id, JSON.stringify(record));
       await createAdminNotification("Feedback", id, record, "Visitor feedback");
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1939,9 +1937,9 @@ export default {
       const items = [];
       let cursor;
       do {
-        const page = await env.FEEDBACK.list(cursor ? { cursor } : {});
+        const page = await storage("FEEDBACK").list(cursor ? { cursor } : {});
         for (const key of page.keys) {
-          const value = await env.FEEDBACK.get(key.name, "json");
+          const value = await storage("FEEDBACK").get(key.name, "json");
           if (value && value.testRecord !== true) items.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
@@ -1959,7 +1957,7 @@ export default {
       const id = String(body.id || "").trim();
       const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
-      const existing = await env.FEEDBACK.get(id, "json");
+      const existing = await storage("FEEDBACK").get(id, "json");
       if (!existing) return new Response("Feedback not found", { status: 404, headers: cors });
       const clean = value => String(value ?? "").replace(/[<>]/g, "").trim().slice(0, 10000);
       const updated = {
@@ -1975,7 +1973,7 @@ export default {
         timestamp: existing.timestamp
       };
       if (!updated.type || !updated.title || !updated.description) return new Response("Type, title and description are required.", { status: 400, headers: cors });
-      await env.FEEDBACK.put(id, JSON.stringify(updated));
+      await storage("FEEDBACK").put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -1991,7 +1989,7 @@ export default {
         return new Response("Missing id", { status: 400, headers: cors });
       }
 
-      await env.FEEDBACK.delete(id);
+      await storage("FEEDBACK").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -2004,17 +2002,18 @@ export default {
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
       if (request.method === "GET") {
-        const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
-        let schedules = {};
-        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
-        return new Response(JSON.stringify({ found: Boolean(row), schedules, updatedAt: row?.updated_at || null }), { headers: { ...cors, "Content-Type": "application/json" } });
+        const key = "schedules:" + session.user_key + ":" + site;
+        let stored = null;
+        try { stored = await storage("USER_DATA").getWithMetadata(key, "json"); } catch {}
+        const schedules = stored?.value || {};
+        return new Response(JSON.stringify({ found: Boolean(stored), schedules, updatedAt: stored?.updatedAt || null }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
       const body = await request.json();
       const incoming = body.schedules && typeof body.schedules === "object" && !Array.isArray(body.schedules) ? body.schedules : null;
       if (!incoming) return new Response("Invalid schedules", { status: 400, headers: cors });
-      const row = await env.DB.prepare("SELECT schedules_json FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
+      const key = "schedules:" + session.user_key + ":" + site;
       let merged = {};
-      try { merged = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
+      try { merged = await storage("USER_DATA").get(key, "json") || {}; } catch {}
       for (const [id, schedule] of Object.entries(incoming).slice(0, 10000)) {
         if (!id || !schedule || typeof schedule !== "object" || Array.isArray(schedule)) continue;
         const current = merged[id];
@@ -2023,7 +2022,7 @@ export default {
         if (!current || (incomingAt && incomingAt >= currentAt)) merged[id] = schedule;
       }
       const updatedAt = new Date().toISOString();
-      await env.DB.prepare("INSERT INTO review_schedules (user_key, site, schedules_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET schedules_json=excluded.schedules_json, updated_at=excluded.updated_at").bind(session.user_key, site, JSON.stringify(merged), updatedAt).run();
+      await storage("USER_DATA").put(key, JSON.stringify(merged), { updatedAt });
       return new Response(JSON.stringify({ success: true, schedules: merged, updatedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2033,22 +2032,20 @@ export default {
         return new Response("Sign in with a password account to view synced progress.", { status: 401, headers: cors });
       }
       const [quoteRow, dateRow, revisionRow, accountRow] = await Promise.all([
-        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "qv").first(),
-        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "dv").first(),
-        env.DB.prepare("SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?").bind(session.user_key).first(),
+        storage("USER_DATA").get("schedules:" + session.user_key + ":qv", "json"),
+        storage("USER_DATA").get("schedules:" + session.user_key + ":dv", "json"),
+        env.DB.prepare("SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?").bind(session.user_key).first(),
         env.DB.prepare("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp, streak, max_streak, updated_at FROM users WHERE user_key = ?").bind(session.user_key).first()
       ]);
       const today = new Date().toISOString().slice(0, 10);
-      const summarizeSchedules = (row, mastered, xp) => {
-        let schedules = {};
-        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
-        const values = Object.values(schedules).filter(item => item && typeof item === "object" && !Array.isArray(item));
+      const summarizeSchedules = (schedules, mastered, xp) => {
+        const values = Object.values(schedules || {}).filter(item => item && typeof item === "object" && !Array.isArray(item));
         return {
           scheduled: values.length,
           due: values.filter(item => !item.due || String(item.due).slice(0, 10) <= today).length,
           mastered: Number(mastered) || 0,
           xp: Number(xp) || 0,
-          updatedAt: [row?.updated_at, accountRow?.updated_at].filter(Boolean).sort().at(-1) || null
+          updatedAt: accountRow?.updated_at || null
         };
       };
       let revisionData = {};
@@ -2082,16 +2079,17 @@ export default {
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let row = await env.DB.prepare(
-        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+        "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
-      if (!row) {
-        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+      if (!row?.data_json) {
+        row = null;
+        const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+            "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+          ).bind(JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString()), userKey).run();
           row = await env.DB.prepare(
-            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+            "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
           ).bind(userKey).first();
         }
       }
@@ -2114,16 +2112,17 @@ export default {
       }
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let existingRow = await env.DB.prepare(
-        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+        "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
-      if (!existingRow) {
-        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+      if (!existingRow?.data_json) {
+        existingRow = null;
+        const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+            "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+          ).bind(JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString()), userKey).run();
           existingRow = await env.DB.prepare(
-            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+            "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
           ).bind(userKey).first();
         }
       }
@@ -2203,16 +2202,16 @@ export default {
       let write;
       if (existingRow) {
         write = await env.DB.prepare(
-          "UPDATE revision_sync_data SET data_json = ?, updated_at = ? WHERE user_key = ? AND updated_at = ?"
+          "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND COALESCE(revision_updated_at, '') = ?"
         ).bind(JSON.stringify(data), data.updatedAt, userKey, currentUpdatedAt).run();
       } else {
         write = await env.DB.prepare(
-          "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-        ).bind(userKey, JSON.stringify(data), data.updatedAt).run();
+          "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+        ).bind(JSON.stringify(data), data.updatedAt, userKey).run();
       }
       if (write.meta && write.meta.changes === 0) {
         const latestRow = await env.DB.prepare(
-          "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
         ).bind(userKey).first();
         return new Response(JSON.stringify({ conflict: true, data: latestRow ? { ...JSON.parse(latestRow.data_json), updatedAt: latestRow.updated_at } : null }), {
           status: 409,
@@ -2220,15 +2219,15 @@ export default {
         });
       }
       await env.DB.prepare(
-        "INSERT INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_key) DO UPDATE SET username = excluded.username, xp = excluded.xp, streak = excluded.streak, updated_at = excluded.updated_at"
-      ).bind(userKey, username, data.xp, data.streak, data.updatedAt).run();
+        "UPDATE users SET revision_xp = ?, revision_streak = ?, revision_leaderboard_updated_at = ? WHERE user_key = ?"
+      ).bind(data.xp, data.streak, data.updatedAt, userKey).run();
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
       await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT r.username, r.xp, r.streak, r.updated_at AS updatedAt FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key WHERE COALESCE(u.leaderboard_hidden, 0) = 0 ORDER BY r.xp DESC, r.updated_at DESC LIMIT 100"
+        "SELECT username, revision_xp AS xp, revision_streak AS streak, revision_leaderboard_updated_at AS updatedAt FROM users WHERE COALESCE(leaderboard_hidden, 0) = 0 AND revision_leaderboard_updated_at IS NOT NULL ORDER BY revision_xp DESC, revision_leaderboard_updated_at DESC LIMIT 100"
       ).all();
       return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -2238,9 +2237,9 @@ export default {
       const notes = [];
       let cursor;
       do {
-        const page = await env.REVISION.list({ prefix: "public:", ...(cursor ? { cursor } : {}) });
+        const page = await storage("REVISION").list({ prefix: "public:", ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          const value = await env.REVISION.get(key.name, "json");
+          const value = await storage("REVISION").get(key.name, "json");
           if (value) {
             const { ownerKey, submittedBy, submittedAt, originalSubmission, ...publicValue } = value;
             notes.push({ ...publicValue, owned: Boolean(requesterKey && ownerKey === requesterKey) });
@@ -2267,7 +2266,7 @@ export default {
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
       const publicNote = { id, ownerKey: userKey, submittedBy: account.username, submittedAt: new Date().toISOString(), title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
-      await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
+      await storage("REVISION").put(`public-pending:${id}`, JSON.stringify(publicNote));
       await createAdminNotification("Revision", id, publicNote, account.username);
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -2277,9 +2276,9 @@ export default {
       const notes = [];
       let cursor;
       do {
-        const page = await env.REVISION.list({ prefix: "public-pending:", ...(cursor ? { cursor } : {}) });
+        const page = await storage("REVISION").list({ prefix: "public-pending:", ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          const value = await env.REVISION.get(key.name, "json");
+          const value = await storage("REVISION").get(key.name, "json");
           if (value) notes.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
@@ -2293,9 +2292,9 @@ export default {
       for (const prefix of ["public:", "public-pending:"]) {
         let cursor;
         do {
-          const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
+          const page = await storage("REVISION").list({ prefix, ...(cursor ? { cursor } : {}) });
           for (const key of page.keys) {
-            const value = await env.REVISION.get(key.name, "json");
+            const value = await storage("REVISION").get(key.name, "json");
             if (value) notes.push({ ...value, submittedBy: value.submittedBy || "Legacy submission", submittedAt: value.submittedAt || value.updatedAt, pending: prefix === "public-pending:" });
           }
           cursor = page.list_complete ? null : page.cursor;
@@ -2309,12 +2308,12 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const body = await request.json();
       const id = String(body.id || "").trim();
-      const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
+      const note = id ? await storage("REVISION").get(`public-pending:${id}`, "json") : null;
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
-      await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await storage("REVISION").put(`public:${id}`, JSON.stringify(note));
       await createSubmissionNotification("revision", id, note, "approved", note);
       await recordApproval("revision-note", id, note, actor);
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2323,12 +2322,12 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      const note = await env.REVISION.get(`public-pending:${id}`, "json");
+      const note = await storage("REVISION").get(`public-pending:${id}`, "json");
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       const actor = await getSessionUser(url, request);
       await createSubmissionNotification("revision", id, note, "denied");
       await recordModerationAction("revision-note", id, note, actor, "denied");
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2340,12 +2339,12 @@ export default {
       if (!id || !note) return new Response("Missing id or note", { status: 400, headers: cors });
       const publicKey = `public:${id}`;
       const pendingKey = `public-pending:${id}`;
-      const existing = await env.REVISION.get(publicKey, "json");
-      const existingPending = existing ? null : await env.REVISION.get(pendingKey, "json");
+      const existing = await storage("REVISION").get(publicKey, "json");
+      const existingPending = existing ? null : await storage("REVISION").get(pendingKey, "json");
       const current = existing || existingPending;
       if (!current) return new Response("Note not found", { status: 404, headers: cors });
       const updated = { ...current, originalSubmission: current.originalSubmission || { title: current.title, subject: current.subject, level: current.level, cards: current.cards }, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
-      await env.REVISION.put(existing ? publicKey : pendingKey, JSON.stringify(updated));
+      await storage("REVISION").put(existing ? publicKey : pendingKey, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true, note: updated }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2354,10 +2353,10 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      const note = await env.REVISION.get(`public:${id}`, "json") || await env.REVISION.get(`public-pending:${id}`, "json");
+      const note = await storage("REVISION").get(`public:${id}`, "json") || await storage("REVISION").get(`public-pending:${id}`, "json");
       if (note) await recordModerationAction("revision-note", id, note, await getSessionUser(url, request), "removed");
-      await env.REVISION.delete(`public:${id}`);
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2365,13 +2364,13 @@ export default {
       const body = await request.json();
       const userKey = String(body.userKey || "").trim();
       const id = String(body.id || "").trim();
-      const note = id ? await env.REVISION.get(`public:${id}`, "json") : null;
+      const note = id ? await storage("REVISION").get(`public:${id}`, "json") : null;
       if (!userKey || !id) return new Response("Missing fields", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       if (note.ownerKey !== userKey) return new Response("Forbidden", { status: 403, headers: cors });
-      await env.REVISION.delete(`public:${id}`);
+      await storage("REVISION").delete(`public:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2463,6 +2462,19 @@ export default {
         headers: { ...cors, "Content-Type": "application/json", "X-Request-Id": requestId }
       });
     }
+  },
+  async scheduled(controller, env) {
+    const now = new Date();
+    const nowSeconds = Math.floor(now.getTime() / 1000);
+    const cutoff90 = new Date(now.getTime() - 90 * 86400000).toISOString();
+    const cutoff180 = new Date(now.getTime() - 180 * 86400000).toISOString();
+    await Promise.all([
+      env.DB.prepare("DELETE FROM kv_store WHERE expires_at IS NOT NULL AND expires_at <= ?").bind(nowSeconds).run(),
+      env.DB.prepare("DELETE FROM kv_store WHERE namespace = 'FEEDBACK' AND json_valid(value) AND json_extract(value, '$.timestamp') < ?").bind(cutoff90).run(),
+      env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND created_at < ?").bind(cutoff90).run(),
+      env.DB.prepare("DELETE FROM notifications WHERE kind = 'submission' AND acknowledged_at IS NOT NULL AND acknowledged_at < ?").bind(cutoff180).run(),
+      env.DB.prepare("DELETE FROM audit_log WHERE event_type = 'test' AND acted_at < ?").bind(cutoff90).run()
+    ]);
   }
 };
 

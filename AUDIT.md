@@ -1,5 +1,32 @@
 # GCSE Vault backend audit
 
+## Current storage consolidation (15 November 2026)
+
+The current implementation is being rolled out in stages in PR #66.
+
+Target application tables after final cleanup:
+- `users`: account identity, password credentials, Vault progress, Revision sync data and Revision leaderboard fields.
+- `account_sessions`: multiple active account sessions per user.
+- `admin_setup`: the one-time owner setup lock.
+- `admin_push_subscriptions`: multiple push endpoints per admin.
+- `notifications`: admin notifications and user submission decisions, distinguished by `kind`.
+- `audit_log`: moderation, account-permission and Test Centre events, distinguished by `event_type`.
+- `kv_store`: all seven former KV namespaces plus themes, course selections and review schedules.
+
+The seven KV namespaces are being moved into D1 because their daily write quota is the limiting factor. The Worker has a D1 storage adapter and an owner-only `/admin/storage-migrate` endpoint. The Admin Panel action copies all namespace keys, values, expiry times and metadata into `kv_store`; it never deletes source keys. Revision private-sync and leaderboard KV records are skipped only when their content matches the corresponding D1 user record exactly.
+
+Migration 0008 is additive and intentionally retains the legacy tables during the transition. Apply it, deploy the new Worker, run the KV copy, verify the result, then switch `STORAGE_MODE` from `kv` to `d1`. A later migration and configuration change will drop the old tables and bindings only after the D1-backed Worker is verified. Do not delete the KV namespaces before that point.
+
+The Worker also runs daily retention cleanup at 03:00 UTC: expired storage keys, feedback older than 90 days, admin notifications older than 90 days, acknowledged submission notifications older than 180 days, and Test Centre history older than 90 days. Unacknowledged submission notifications and moderation/account audit history are retained.
+
+The local D1 export and KV ZIP backup created on 15 November 2026 remain private, untracked files. Do not commit them.
+
+---
+
+## Historical audit notes
+
+The sections below record earlier implementation decisions and production checks. Some of their original storage-layout descriptions have been superseded by the consolidation plan above.
+
 ## Intended data layout
 
 The repository targets this layout. The owner has applied migrations `0001` through `0005` and deployed the Worker. Migration `0006_ai_access.sql` is now pending and must be applied before deploying the updated Worker. The owner-controlled KV-to-D1 data copy is complete. First-owner setup is complete and the `ADMIN_KEY` secret has been removed. Browser verification is still pending.

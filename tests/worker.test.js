@@ -20,10 +20,41 @@ async function derivePasswordHash(password, passwordSalt) {
   return Buffer.from(bits).toString("hex");
 }
 
+function memoryKV() {
+  const values = new Map();
+  return {
+    values,
+    async get(key, type) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      return type === "json" ? JSON.parse(value) : value;
+    },
+    async getWithMetadata(key, type) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      return { value: type === "json" ? JSON.parse(value) : value, updatedAt: null };
+    },
+    async put(key, value) {
+      values.set(key, String(value));
+    },
+    async delete(key) {
+      values.delete(key);
+    },
+    async list({ prefix = "" } = {}) {
+      return { keys: [...values.keys()].filter(key => key.startsWith(prefix)).sort().map(name => ({ name })), list_complete: true };
+    }
+  };
+}
+
 function makeEnv(rows = []) {
   const updates = [];
   const batchCalls = [];
+  const userData = memoryKV();
   return {
+    USER_DATA: userData,
+    FEEDBACK: memoryKV(),
+    PUBLIC_QUOTES: memoryKV(),
+    DV_PUBLIC: memoryKV(),
     ADMIN_KEY: "test-admin",
     updates,
     batchCalls,
@@ -36,7 +67,7 @@ function makeEnv(rows = []) {
           bind(...values) {
             return {
               first: async () => {
-                if (sql.includes("FROM account_credentials")) return null;
+                if (sql.includes("password_hash IS NOT NULL")) return null;
                 if (sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
                 if (sql.includes("SELECT user_key, username, role FROM users")) return { user_key: "admin-key", username: "owner", role: "owner" };
                 if (sql.includes("SELECT user_key, role FROM users WHERE LOWER(username)") || sql.includes("SELECT user_key, role, ai_access FROM users WHERE LOWER(username)")) return { user_key: "target-key", role: "user", ai_access: 0 };
@@ -62,12 +93,11 @@ function makeEnv(rows = []) {
       }
     },
     QUOTEVAULT: {
+      ...memoryKV(),
       get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null,
       delete: async () => {}
     },
-    DV_PENDING: {
-      delete: async () => {}
-    },
+    DV_PENDING: memoryKV(),
     REVISION: {
       get: async () => null,
       put: async () => {},
@@ -311,14 +341,14 @@ test("custom theme keys reject separators", async () => {
   const prepare = env.DB.prepare.bind(env.DB);
   env.DB.prepare = sql => {
     const statement = prepare(sql);
-    if (!sql.includes("FROM account_credentials") && !sql.includes("FROM account_sessions")) return statement;
+    if (!sql.includes("password_hash IS NOT NULL") && !sql.includes("FROM account_sessions")) return statement;
     return {
       ...statement,
       bind(...values) {
         const bound = statement.bind(...values);
         return {
           ...bound,
-          first: async () => sql.includes("FROM account_credentials")
+          first: async () => sql.includes("password_hash IS NOT NULL")
             ? { user_key: values[0] }
             : { user_key: "account-key", username: "student", role: "user" }
         };
@@ -511,35 +541,47 @@ test("theme storage rejects unknown accounts", async () => {
   assert.equal(listed, false);
 });
 
-test("owner migration copies existing revision data into D1 without deleting KV", async () => {
+test("owner storage migration copies KV values into D1 and leaves the sources intact", async () => {
   const env = makeEnv();
-  let legacyDeleted = false;
-  env.REVISION.list = async () => ({ keys: [{ name: "user:account-key" }], list_complete: true });
-  env.REVISION.get = async () => ({ username: "student", updatedAt: "2026-11-08T12:00:00.000Z", cards: [] });
-  env.REVISION.delete = async () => { legacyDeleted = true; };
-  const response = await call("/admin/migrate-storage", env, {
-    phase: "revision",
-    limit: 100
-  }, { "X-Session-Token": "test-session" });
+  env.FEEDBACK.values.set("report-1", JSON.stringify({ id: "report-1", title: "Test report" }));
+  const quoteValues = env.QUOTEVAULT.values;
+  quoteValues.set("pending-1", JSON.stringify({ id: "pending-1", text: "Pending quote" }));
+  env.QUOTEVAULT.get = async (key, type) => {
+    if (key === "session:test-session") return JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" });
+    const value = quoteValues.get(key);
+    return value === undefined ? null : type === "json" ? JSON.parse(value) : value;
+  };
+  const records = new Map();
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
+        if (sql.includes("FROM users WHERE user_key = ?")) return { user_key: "admin-key", username: "owner", role: "owner" };
+        if (sql.includes("SELECT value FROM kv_store")) return records.has(values[0] + ":" + values[1]) ? { value: records.get(values[0] + ":" + values[1]) } : null;
+        if (sql.includes("COUNT(*) AS total")) return { total: [...records.keys()].filter(key => key.startsWith(values[0] + ":")).length };
+        return null;
+      },
+      run: async () => {
+        if (sql.includes("INSERT OR IGNORE INTO kv_store")) {
+          const key = values[0] + ":" + values[1];
+          if (records.has(key)) return { meta: { changes: 0 } };
+          records.set(key, values[2]);
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 1 } };
+      }
+    })
+  });
+  const response = await call("/admin/storage-migrate", env, {}, { "X-Session-Token": "test-session" });
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(data.migrated, 1);
-  assert.equal(legacyDeleted, false);
-  assert.ok(env.updates.some(update => update.sql.includes("revision_sync_data")));
-});
-
-test("theme migration preserves account keys containing separators", async () => {
-  const env = makeEnv();
-  env.THEMES.list = async () => ({ keys: [{ name: "theme:user:old-account:dark_theme" }], list_complete: true });
-  env.THEMES.get = async () => ({ label: "Dark" });
-  const response = await call("/admin/migrate-storage", env, {
-    phase: "themes",
-    limit: 100
-  }, { "X-Session-Token": "test-session" });
-  const data = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(data.migrated, 1);
-  assert.ok(env.updates.some(update => update.sql.includes("custom_themes") && update.values[0] === "user:old-account" && update.values[1] === "dark_theme"));
+  assert.equal(data.success, true);
+  assert.equal(data.namespaces.FEEDBACK.copied, 1);
+  assert.equal(data.namespaces.QUOTEVAULT.copied, 1);
+  assert.equal(records.get("FEEDBACK:report-1"), env.FEEDBACK.values.get("report-1"));
+  assert.equal(records.get("QUOTEVAULT:pending-1"), quoteValues.get("pending-1"));
+  assert.equal(env.FEEDBACK.values.has("report-1"), true);
+  assert.equal(quoteValues.has("pending-1"), true);
 });
 
 test("QuoteVault withdrawal requires an account key", async () => {
@@ -594,11 +636,11 @@ test("password account setup hashes passwords, creates sessions and protects acc
     bind(...values) {
       return {
         first: async () => {
-          if (sql.includes("SELECT user_key FROM users WHERE user_key")) return values[0] === account.user_key ? { user_key: account.user_key } : null;
-          if (sql.includes("SELECT user_key FROM account_credentials")) return credential ? { user_key: account.user_key } : null;
+          if (sql === "SELECT user_key FROM users WHERE user_key = ?") return values[0] === account.user_key ? { user_key: account.user_key } : null;
+          if (sql.includes("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL")) return credential ? { user_key: account.user_key } : null;
           if (sql.includes("SELECT username, role FROM users")) return { username: account.username, role: account.role };
-          if (sql.includes("SELECT c.password_salt FROM users")) return credential ? { password_salt: credential.password_salt } : null;
-          if (sql.includes("FROM users u JOIN account_credentials")) {
+          if (sql.includes("SELECT password_salt FROM users")) return credential ? { password_salt: credential.password_salt } : null;
+          if (sql.includes("SELECT user_key, username, role, password_hash, password_salt FROM users")) {
             return credential && values[0].toLowerCase() === account.username.toLowerCase()
               ? { ...account, password_hash: credential.password_hash, password_salt: credential.password_salt }
               : null;
@@ -613,8 +655,8 @@ test("password account setup hashes passwords, creates sessions and protects acc
           return null;
         },
         run: async () => {
-          if (sql.includes("INSERT INTO account_credentials")) {
-            credential = { password_hash: values[1], password_salt: values[2] };
+          if (sql.includes("UPDATE users SET password_hash")) {
+            credential = { password_hash: values[0], password_salt: values[1] };
           }
           if (sql.includes("INSERT INTO account_sessions")) {
             sessions.set(values[0], { user_key: values[1], expires_at: values[3] });
@@ -720,7 +762,7 @@ test("Revision leaderboard reads from D1", async () => {
   let query = "";
   env.DB.prepare = sql => {
     if (sql.includes("PRAGMA table_info(users)")) return { all: async () => ({ results: [{ name: "leaderboard_hidden" }] }) };
-    if (sql.includes("FROM revision_leaderboard")) query = sql;
+    if (sql.includes("FROM users") && sql.includes("revision_xp")) query = sql;
     return { all: async () => ({ results: [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }] }) };
   };
   env.REVISION.list = async () => {
@@ -731,105 +773,9 @@ test("Revision leaderboard reads from D1", async () => {
   const data = await response.json();
 
   assert.equal(response.status, 200);
-  assert.ok(query.includes("FROM revision_leaderboard"));
+  assert.ok(query.includes("FROM users"));
   assert.deepEqual(data.users, [{ username: "student", xp: 420, streak: 3, updatedAt: "2026-11-09T08:00:00.000Z" }]);
 });
-
-test("owner migration copies legacy Revision leaderboard entries into D1 without deleting KV", async () => {
-  const env = makeEnv();
-  let legacyDeleted = false;
-  env.REVISION.list = async ({ prefix }) => {
-    assert.equal(prefix, "leaderboard:");
-    return { keys: [{ name: "leaderboard:account-key" }], list_complete: true };
-  };
-  env.REVISION.get = async () => ({
-    userKey: "account-key",
-    username: "student",
-    xp: 420,
-    streak: 3,
-    updatedAt: "2026-11-09T08:00:00.000Z"
-  });
-  env.REVISION.delete = async () => { legacyDeleted = true; };
-
-  const response = await call("/admin/migrate-storage", env, {
-    phase: "revision-leaderboard",
-    limit: 100
-  }, { "X-Session-Token": "test-session" });
-  const data = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(data.migrated, 1);
-  assert.equal(legacyDeleted, false);
-  assert.ok(env.updates.some(update => update.sql.includes("INSERT OR IGNORE INTO revision_leaderboard")));
-});
-
-
-test("owner migration reports malformed Revision leaderboard records as skipped", async () => {
-  const env = makeEnv();
-  env.REVISION.list = async () => ({
-    keys: [{ name: "leaderboard:invalid-account" }],
-    list_complete: true
-  });
-  env.REVISION.get = async () => ({
-    userKey: "invalid-account",
-    username: "",
-    xp: -1,
-    streak: 0
-  });
-
-  const response = await call("/admin/migrate-storage", env, {
-    phase: "revision-leaderboard",
-    limit: 100
-  }, { "X-Session-Token": "test-session" });
-  const data = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(data.processed, 1);
-  assert.equal(data.migrated, 0);
-  assert.equal(data.alreadyPresent, 0);
-  assert.equal(data.skipped, 1);
-  assert.equal(data.complete, true);
-  assert.equal(data.cursor, null);
-});
-
-test("owner migration counts existing D1 records separately from newly copied records", async () => {
-  const env = makeEnv();
-  env.REVISION.list = async () => ({
-    keys: [{ name: "leaderboard:account-key" }],
-    list_complete: true
-  });
-  env.REVISION.get = async () => ({
-    userKey: "account-key",
-    username: "student",
-    xp: 420,
-    streak: 3,
-    updatedAt: "2026-11-09T08:00:00.000Z"
-  });
-  env.DB.prepare = sql => ({
-    bind: () => ({
-      first: async () => sql.includes("SELECT user_key FROM account_sessions WHERE token_hash")
-        ? { user_key: "admin-key" }
-        : sql.includes("SELECT user_key, username, role FROM users")
-          ? { user_key: "admin-key", username: "owner", role: "owner" }
-          : null,
-      all: async () => ({ results: [] }),
-      run: async () => ({ success: true, meta: { changes: 0 } })
-    })
-  });
-
-  const response = await call("/admin/migrate-storage", env, {
-    phase: "revision-leaderboard",
-    limit: 100
-  }, { "X-Session-Token": "test-session" });
-  const data = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(data.processed, 1);
-  assert.equal(data.migrated, 0);
-  assert.equal(data.alreadyPresent, 1);
-  assert.equal(data.skipped, 0);
-});
-
 
 test("automatic bug feedback is stored with bounded diagnostic metadata", async () => {
   const env = makeEnv();
@@ -868,7 +814,7 @@ test("review schedule routes authenticate and always scope writes to the signed-
       const bound = bind(...values);
       if (sql.includes("SELECT s.user_key, u.username, u.role FROM account_sessions")) {
         bound.first = async () => ({ user_key: "account-key", username: "student", role: "user" });
-      } else if (sql.includes("FROM account_credentials")) {
+      } else if (sql.includes("password_hash IS NOT NULL")) {
         bound.first = async () => ({ user_key: "account-key" });
       } else if (sql.includes("SELECT schedules_json FROM review_schedules")) {
         bound.first = async () => null;
@@ -886,7 +832,7 @@ test("review schedule routes authenticate and always scope writes to the signed-
     schedules: { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } }
   }, { "X-Account-Session": token });
   assert.equal(saved.status, 200);
-  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
+  assert.deepEqual(JSON.parse(env.USER_DATA.values.get("schedules:account-key:qv")), { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
 
 
@@ -906,13 +852,14 @@ test("progress summary is account-scoped and returns aggregates without study co
       { id: "set-b", cards: [{ id: "card-c" }], progress: { "card-c": { reviews: 1, due: Date.now() - 1000 } }, xp: 40 }
     ]
   };
+  await env.USER_DATA.put("schedules:account-key:qv", JSON.stringify(schedules.qv));
+  await env.USER_DATA.put("schedules:account-key:dv", JSON.stringify(schedules.dv));
   env.DB.prepare = sql => ({
     bind: (...values) => ({
       first: async () => {
         if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
-        if (sql.includes("FROM account_credentials")) return { user_key: "account-key" };
-        if (sql.includes("SELECT schedules_json, updated_at FROM review_schedules")) return { schedules_json: JSON.stringify(schedules[values[1]] || {}), updated_at: "2026-11-13T10:00:00.000Z" };
-        if (sql.includes("SELECT data_json, updated_at FROM revision_sync_data")) return { data_json: JSON.stringify(revisionData), updated_at: "2026-11-13T11:00:00.000Z" };
+        if (sql.includes("password_hash IS NOT NULL")) return { user_key: "account-key" };
+        if (sql.includes("revision_data_json AS data_json")) return { data_json: JSON.stringify(revisionData), updated_at: "2026-11-13T11:00:00.000Z" };
         if (sql.includes("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp")) return { username: "student", qv_mastered: 7, dv_mastered: 5, qv_xp: 1200, dv_xp: 600, streak: 4, max_streak: 9, updated_at: "2026-11-13T12:00:00.000Z" };
         return null;
       },
@@ -955,7 +902,7 @@ test("submission approval replaces existing private copies instead of duplicatin
     bind: (...values) => ({
       first: async () => {
         if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
-        if (sql.includes("FROM submission_notifications")) return {
+        if (sql.includes("FROM notifications WHERE kind = 'submission'")) return {
           site: "qv",
           item_id: "quote-1",
           status: "approved",
@@ -1033,7 +980,7 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
     const statement = values => ({
       bind: (...next) => statement(next),
       first: async () => {
-        if (sql.includes("FROM account_credentials")) return values[0] === "student-key" ? { user_key: "student-key" } : null;
+        if (sql.includes("password_hash IS NOT NULL")) return values[0] === "student-key" ? { user_key: "student-key" } : null;
         if (sql.includes("FROM account_sessions s JOIN users")) {
           if (values[0] === studentHash) return { user_key: "student-key", username: "student", role: "user" };
           return null;
@@ -1044,26 +991,26 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
         if (sql.includes("SELECT user_key, username, role FROM users")) {
           return values[0] === "owner-key" ? { user_key: "owner-key", username: "owner", role: "owner" } : null;
         }
-        if (sql.includes("FROM submission_notifications WHERE user_key")) {
+        if (sql.includes("FROM notifications WHERE kind = 'submission' AND user_key")) {
           return notifications.find(item => item.user_key === values[0] && item.acknowledged_at == null) || null;
         }
         return null;
       },
       all: async () => {
-        if (sql.includes("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications")) {
+        if (sql.includes("SELECT id, site, item_id, title, status, payload, created_at FROM notifications")) {
           return { results: notifications.filter(item => item.user_key === values[0] && item.acknowledged_at == null) };
         }
         return { results: [] };
       },
       run: async () => {
-        if (sql.includes("INSERT OR IGNORE INTO submission_notifications")) {
+        if (sql.includes("INSERT OR IGNORE INTO notifications") && sql.includes("VALUES ('submission'")) {
           notifications.push({
             id: values[0], user_key: values[1], site: values[2], item_id: values[3],
             title: values[4], status: values[5], payload: values[6], created_at: values[7],
             acknowledged_at: null
           });
         }
-        if (sql.includes("INSERT OR IGNORE INTO moderation_audit")) {
+        if (sql.includes("INSERT OR IGNORE INTO audit_log")) {
           moderation.push({
             site: values[0], item_id: values[1], item_title: values[2],
             submitted_by: values[3], moderator: values[4], action: values[5]
@@ -1116,14 +1063,14 @@ test("owner Test Centre stores run history and restricts history access", async 
     statement.bind = (...values) => {
       const bound = originalBind(...values);
       if (sql.includes("SELECT actor_username")) bound.all = async () => ({ results: [{ actor_username: "owner", test_name: "permissions", status: "passed", detail: "Owner-only access check passed.", duration_ms: 1, completed_at: "2026-11-13T12:00:00.000Z" }] });
-      if (sql.includes("INSERT INTO test_run_history")) bound.run = async () => { writes.push({sql,values}); return {success:true,meta:{changes:1}}; };
+      if (sql.includes("INSERT INTO audit_log")) bound.run = async () => { writes.push({sql,values}); return {success:true,meta:{changes:1}}; };
       return bound;
     };
     return statement;
   };
   const run = await call("/admin/test-run", env, {test:"permissions"}, {"X-Session-Token":"test-session"});
   assert.equal(run.status,200);
-  assert.ok(writes.some(write=>write.sql.includes("INSERT INTO test_run_history")&&write.values[1]==="owner"&&write.values[2]==="permissions"));
+  assert.ok(writes.some(write=>write.sql.includes("INSERT INTO audit_log")&&write.values[0]==="owner"&&write.values[1]==="permissions"));
   const denied = await call("/admin/test-history",env);
   assert.equal(denied.status,401);
   const history = await call("/admin/test-history",env,null,{"X-Session-Token":"test-session"});
@@ -1137,10 +1084,10 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   env.DB.prepare = sql => {
     const statement = originalPrepare(sql);
     const originalBind = statement.bind;
+    if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) bound.all = async () => ({results:values.map(name=>({name}))});
-      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"},{name:"ai_access"}]});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
       return bound;
     };
     return statement;
@@ -1148,8 +1095,8 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
   const data = await response.json();
   assert.equal(response.status,200);
-  assert.equal(data.results[0].status,"passed");
-  assert.match(data.results[0].detail,/six migration-managed tables/);
+  assert.equal(data.results[0].status,"passed",data.results[0].detail);
+  assert.match(data.results[0].detail,/consolidated storage tables/);
 });
 
 test("Test Centre reports missing migrations without changing the database", async () => {
@@ -1158,9 +1105,9 @@ test("Test Centre reports missing migrations without changing the database", asy
   env.DB.prepare = sql => {
     const statement = originalPrepare(sql);
     const originalBind = statement.bind;
+    if (sql.includes("sqlite_master")) statement.all = async () => ({results:[{name:"account_sessions"}]});
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) bound.all = async () => ({results:[{name:"account_sessions"}]});
       if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
       return bound;
     };
@@ -1172,7 +1119,7 @@ test("Test Centre reports missing migrations without changing the database", asy
   assert.equal(data.results[0].status,"failed");
   assert.match(data.results[0].detail,/missing tables/);
   assert.match(data.results[0].detail,/ai_access/);
-  assert.equal(env.updates.some(update=>/revision_sync_data|custom_themes|account_credentials|account_sessions|revision_leaderboard|ALTER TABLE/.test(update.sql)),false);
+  assert.equal(env.updates.some(update=>/ALTER TABLE|CREATE TABLE|DROP TABLE/.test(update.sql)),false);
 });
 
 test("admin status exposes Worker version metadata without account information", async () => {
@@ -1231,7 +1178,7 @@ test("content submissions enforce size limits and account rate limits", async ()
   limitedEnv.DB.prepare = sql => ({
     bind: () => ({
       first: async () => {
-        if (sql.includes("FROM account_credentials")) return {user_key:"student-key"};
+        if (sql.includes("password_hash IS NOT NULL")) return {user_key:"student-key"};
         if (sql.includes("FROM account_sessions s JOIN users")) return {user_key:"student-key",username:"student",role:"user"};
         return null;
       }
@@ -1267,7 +1214,7 @@ test("owner account permission changes are written to the admin audit log", asyn
     body: JSON.stringify({ username: "student", role: "admin" })
   }), env);
   assert.equal(response.status, 200);
-  assert.ok(writes.some(write => write.sql.includes("INSERT INTO admin_account_audit") &&
+  assert.ok(writes.some(write => write.sql.includes("INSERT INTO audit_log") &&
     write.values[0] === "student" && write.values[1] === "owner" &&
     write.values[2] === "Role changed from user to admin"));
 });
@@ -1284,9 +1231,9 @@ test("QuoteVault submission retries reuse the same server item and admin notific
     const baseBind = statement.bind;
     statement.bind = (...values) => {
       const bound = baseBind(...values);
-      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("password_hash IS NOT NULL")) bound.first = async () => ({ user_key: "student-key" });
       if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
-      if (sql.includes("INSERT OR IGNORE INTO admin_notifications")) bound.run = async () => {
+      if (sql.includes("INSERT OR IGNORE INTO notifications")) bound.run = async () => {
         const key = values[0];
         const changes = notices.has(key) ? 0 : 1;
         notices.add(key);
@@ -1326,7 +1273,7 @@ test("DateVault submission retries reuse the same server item", async () => {
     const baseBind = statement.bind;
     statement.bind = (...values) => {
       const bound = baseBind(...values);
-      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("password_hash IS NOT NULL")) bound.first = async () => ({ user_key: "student-key" });
       if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
       return bound;
     };
@@ -1359,7 +1306,7 @@ test("QuoteVault rejects malformed idempotency request IDs", async () => {
     const baseBind = statement.bind;
     statement.bind = (...values) => {
       const bound = baseBind(...values);
-      if (sql.includes("FROM account_credentials")) bound.first = async () => ({ user_key: "student-key" });
+      if (sql.includes("password_hash IS NOT NULL")) bound.first = async () => ({ user_key: "student-key" });
       if (sql.includes("account_sessions s JOIN users u")) bound.first = async () => ({ user_key: "student-key", username: "student", role: "user" });
       return bound;
     };

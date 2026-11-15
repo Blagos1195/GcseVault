@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, audit-and-reliability]
+    branches: [main, audit-and-reliability, storage-consolidation]
   pull_request:
     branches: [main]
 

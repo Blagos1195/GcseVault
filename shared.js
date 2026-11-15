@@ -1324,45 +1324,29 @@ const AdminManager = {
   async migrateStorage() {
     if (this.role !== 'owner' || this.migrating) return;
     this.migrating = true;
-    this.migrationStatus = 'Preparing storage migration...';
+    this.migrationStatus = 'Copying all remaining KV storage into D1...';
     this.error = '';
     if (typeof window.render === 'function') window.render();
     try {
-      let processedTotal = 0;
-      let migratedTotal = 0;
-      let alreadyPresentTotal = 0;
-      let skippedTotal = 0;
-      for (const phase of ['revision', 'revision-leaderboard', 'themes']) {
-        let cursor = null;
-        let processed = 0;
-        let migrated = 0;
-        let alreadyPresent = 0;
-        let skipped = 0;
-        do {
-          const response = await fetch(`${WORKER_API}/admin/migrate-storage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
-            body: JSON.stringify({ phase, cursor, limit: 100 })
-          });
-          if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-          const result = await response.json();
-          processed += result.processed || 0;
-          migrated += result.migrated || 0;
-          alreadyPresent += result.alreadyPresent || 0;
-          skipped += result.skipped || 0;
-          processedTotal += result.processed || 0;
-          migratedTotal += result.migrated || 0;
-          alreadyPresentTotal += result.alreadyPresent || 0;
-          skippedTotal += result.skipped || 0;
-          if (!result.complete && !result.cursor) throw new Error(`The ${phase} migration stopped without a continuation cursor.`);
-          cursor = result.cursor || null;
-          this.migrationStatus = `Migrating ${phase}: ${processed} scanned, ${migrated} copied, ${alreadyPresent} already present, ${skipped} skipped. Total: ${processedTotal} scanned.`;
-          if (typeof window.render === 'function') window.render();
-        } while (cursor);
+      const response = await fetch(`${WORKER_API}/admin/storage-migrate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Token': this.getToken() },
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      const result = await response.json();
+      if (result.alreadyMigrated) {
+        this.migrationStatus = 'Storage is already using D1.';
+        return;
       }
-      this.migrationStatus = skippedTotal
-        ? `Migration finished: ${migratedTotal} copied, ${alreadyPresentTotal} already present, ${skippedTotal} skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.`
-        : `Migration complete: ${migratedTotal} copied, ${alreadyPresentTotal} already present, 0 skipped. Original KV copies remain available.`;
+      const entries = Object.entries(result.namespaces || {});
+      const failed = entries.filter(([, value]) => value.error);
+      if (failed.length || result.conflicts) throw new Error(`Migration needs attention. Conflicts: ${result.conflicts || 0}. Unavailable namespaces: ${failed.map(([name]) => name).join(', ') || 'none'}.`);
+      const copied = entries.reduce((total, [, value]) => total + Number(value.copied || 0), 0);
+      const existing = entries.reduce((total, [, value]) => total + Number(value.alreadyPresent || 0), 0);
+      const expired = entries.reduce((total, [, value]) => total + Number(value.expired || 0), 0);
+      const duplicates = entries.reduce((total, [, value]) => total + Number(value.duplicatesSkipped || 0), 0);
+      this.migrationStatus = `Migration complete: ${copied} copied, ${existing} already present, ${duplicates} verified duplicates skipped, ${expired} expired. All original KV records remain available until the D1 switch is verified.`;
     } catch (error) {
       this.error = error.message;
       this.migrationStatus = 'Migration paused. You can safely run it again.';
