@@ -1079,9 +1079,9 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   env.DB.prepare = sql => {
     const statement = originalPrepare(sql);
     const originalBind = statement.bind;
+    if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
       if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
       return bound;
     };
@@ -1100,9 +1100,9 @@ test("Test Centre reports missing migrations without changing the database", asy
   env.DB.prepare = sql => {
     const statement = originalPrepare(sql);
     const originalBind = statement.bind;
+    if (sql.includes("sqlite_master")) statement.all = async () => ({results:[{name:"account_sessions"}]});
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) statement.all = async () => ({results:[{name:"account_sessions"}]});
       if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
       return bound;
     };
