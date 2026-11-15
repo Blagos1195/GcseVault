@@ -2,7 +2,8 @@ import { chromium } from "playwright";
 import { readFile } from "node:fs/promises";
 
 const baseUrl = String(process.env.BASE_URL || "").replace(/\/$/, "");
-const maxAccounts = Math.min(10, Math.max(1, Math.floor(Number(process.env.MAX_ACCOUNTS || 3))));
+const requestedAccounts = Number(process.env.MAX_ACCOUNTS || 3);
+const maxAccounts = Number.isFinite(requestedAccounts) ? Math.min(10, Math.max(1, Math.floor(requestedAccounts))) : 3;
 const workerUrl = "https://quotevault-api.noah-l-barker.workers.dev";
 const paths = ["/", "/quotes/", "/dates/", "/revision/", "/progress/"];
 
