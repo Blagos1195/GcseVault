@@ -2074,7 +2074,8 @@ export default {
       let row = await env.DB.prepare(
         "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
-      if (!row) {
+      if (!row?.data_json) {
+        row = null;
         const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
@@ -2106,7 +2107,8 @@ export default {
       let existingRow = await env.DB.prepare(
         "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
-      if (!existingRow) {
+      if (!existingRow?.data_json) {
+        existingRow = null;
         const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
@@ -2218,7 +2220,7 @@ export default {
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
       await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT username, revision_xp AS xp, revision_streak AS streak, revision_leaderboard_updated_at AS updatedAt FROM users WHERE COALESCE(leaderboard_hidden, 0) = 0 AND revision_xp > 0 ORDER BY revision_xp DESC, revision_leaderboard_updated_at DESC LIMIT 100"
+        "SELECT username, revision_xp AS xp, revision_streak AS streak, revision_leaderboard_updated_at AS updatedAt FROM users WHERE COALESCE(leaderboard_hidden, 0) = 0 AND revision_leaderboard_updated_at IS NOT NULL ORDER BY revision_xp DESC, revision_leaderboard_updated_at DESC LIMIT 100"
       ).all();
       return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
