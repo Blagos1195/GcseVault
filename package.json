@@ -1,6 +1,6 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node --check scripts/live-browser-load.mjs && node --check scripts/live-load.k6.js && node --test"
+    "test": "node --check scripts/prepare-load-test.mjs && node --check scripts/live-browser-load.mjs && node --check scripts/live-load.k6.js && node --test"
   }
 }
