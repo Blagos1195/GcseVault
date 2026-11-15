@@ -52,3 +52,6 @@ migrations_dir = "migrations"
 STORAGE_MODE = "kv"
 VAPID_PUBLIC_KEY = "BOaU8cDpW3gJFdhWh1mTVif8dfn-vKB3AzVnWKnKDLUxLwLMWZri33_jBy7iJWAt7QHvDCCVSt3E9wqb1B3asCs"
 VAPID_SUBJECT = "mailto:nbarker249@gmail.com"
+
+[triggers]
+crons = ["0 3 * * *"]
