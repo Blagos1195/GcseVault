@@ -28,10 +28,10 @@ Install Grafana k6 using its official Windows installation instructions. From th
 npm test
 ```
 
-Then start with five concurrent test accounts:
+Set BASE_URL to the live site address shown in your browser, including the `/GcseVault` path. Then start with five concurrent test accounts:
 
 ```powershell
-k6 run -e MAX_VUS=5 scripts/live-load.k6.js
+k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=5 scripts/live-load.k6.js
 ```
 
 The test ramps up gradually, holds the selected load, and then ramps down. Each virtual user uses a different test-account session. Each iteration requests one of the five live site pages and the authenticated account progress endpoint.
@@ -40,8 +40,8 @@ The initial script caps the test at 20 concurrent accounts. Run the levels separ
 
 ```powershell
 k6 run -e MAX_VUS=5 scripts/live-load.k6.js
-k6 run -e MAX_VUS=10 scripts/live-load.k6.js
-k6 run -e MAX_VUS=20 scripts/live-load.k6.js
+k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=10 scripts/live-load.k6.js
+k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=20 scripts/live-load.k6.js
 ```
 
 You need at least the same number of distinct test-account sessions as the selected VU count. Stop immediately with Ctrl+C if the real site becomes slow or starts returning errors.
