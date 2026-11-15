@@ -30,7 +30,7 @@ export const options = {
 const pages = ["/", "/quotes/", "/dates/", "/revision/", "/progress/"];
 
 export function setup() {
-  const accounts = JSON.parse(open("./load-test-accounts.json"));
+  const accounts = JSON.parse(open("./scripts/load-test-accounts.json"));
   if (!Array.isArray(accounts) || accounts.length < maxVUs) {
     throw new Error("Add at least " + maxVUs + " dedicated test-account sessions to scripts/load-test-accounts.json.");
   }
