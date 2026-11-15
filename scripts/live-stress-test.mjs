@@ -1,5 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const workerUrl = (process.env.GCSE_VAULT_WORKER_URL || "https://quotevault-api.noah-l-barker.workers.dev").replace(/\/$/, "");
 const stages = [25, 50, 100, 200, 400, 800];
@@ -65,12 +68,14 @@ function report(label, batch) {
 
 function cleanup() {
   if (!attempted) return true;
-  const sql = "DELETE FROM users WHERE substr(username, 1, " + prefix.length + ") = '" + prefix + "'";
-  console.log("Removing " + created.length + " disposable accounts from the live D1 database...");
-  const result = spawnSync(process.platform === "win32" ? "npx.cmd" : "npx", ["wrangler", "d1", "execute", "leaderboard", "--remote", "--command", sql], {
+  const cleanupFile = join(tmpdir(), "gcsevault-stress-cleanup-" + prefix + ".sql");
+  writeFileSync(cleanupFile, "DELETE FROM users WHERE substr(username, 1, " + prefix.length + ") = '" + prefix + "';\\n");
+  console.log("Removing disposable accounts from the live D1 database...");
+  const result = spawnSync(process.platform === "win32" ? "npx.cmd" : "npx", ["wrangler", "d1", "execute", "leaderboard", "--remote", "--file", cleanupFile], {
     encoding: "utf8",
     shell: process.platform === "win32"
   });
+  try { unlinkSync(cleanupFile); } catch {}
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   return result.status === 0;
