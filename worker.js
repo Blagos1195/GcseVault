@@ -309,6 +309,7 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      if (env.STORAGE_MODE === "d1") return new Response(JSON.stringify({ success: true, alreadyMigrated: true, namespaces: {} }), { headers: { ...cors, "Content-Type": "application/json" } });
       const namespaces = ["QUOTEVAULT", "DV_PENDING", "DV_PUBLIC", "FEEDBACK", "PUBLIC_QUOTES", "REVISION", "THEMES"];
       const report = {};
       let conflicts = 0;
