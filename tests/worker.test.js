@@ -584,6 +584,38 @@ test("owner storage migration copies KV values into D1 and leaves the sources in
   assert.equal(quoteValues.has("pending-1"), true);
 });
 
+test("storage migration reports D1 namespace counts after cutover", async () => {
+  const env = makeEnv();
+  env.STORAGE_MODE = "d1";
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("SELECT value FROM kv_store")) {
+          return values[0] === "QUOTEVAULT" && values[1] === "session:test-session"
+            ? { value: JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) }
+            : null;
+        }
+        if (sql.includes("FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
+        if (sql.includes("FROM users WHERE user_key = ?")) return { user_key: "admin-key", username: "owner", role: "owner" };
+        return null;
+      },
+      all: async () => sql.includes("GROUP BY namespace")
+        ? { results: [{ namespace: "FEEDBACK", total: 6, expired: 0 }, { namespace: "REVISION", total: 10, expired: 0 }] }
+        : { results: [] },
+      run: async () => ({ success: true, meta: { changes: 1 } })
+    })
+  });
+  const response = await call("/admin/storage-migrate", env, {}, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.alreadyMigrated, true);
+  assert.equal(data.storageMode, "d1");
+  assert.deepEqual(data.namespaces, {
+    FEEDBACK: { total: 6, expired: 0 },
+    REVISION: { total: 10, expired: 0 }
+  });
+});
+
 test("QuoteVault withdrawal requires an account key", async () => {
   let deleted = false;
   const env = makeEnv();
