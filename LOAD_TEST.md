@@ -9,26 +9,7 @@ Both use dedicated test accounts. Do not use real users' accounts.
 
 ## Prepare test accounts
 
-Create dedicated test accounts in GCSE Vault. For each account, sign in on the live site, open the browser developer console and run:
-
-```js
-localStorage.getItem("vault_account_session")
-localStorage.getItem("vault_userKey")
-```
-
-Copy both values into `scripts/load-test-accounts.json`. The session must be a 64-character token. Keep this file private: it contains active login sessions and account keys.
-
-Copy `scripts/load-test-accounts.example.json` to `scripts/load-test-accounts.json`, then replace the example values. The real file is ignored by Git.
-
-Do not paste these values into chat, commit them or share them. Sign out of the test accounts when finished to revoke their sessions.
-
-Set the live site URL shown in your browser, including the `/GcseVault` path. For example:
-
-```powershell
-$env:BASE_URL = "https://your-live-site/GcseVault"
-```
-
-## 1. Full browser pass
+Create dedicated GCSE Vault accounts first. The guided setup opens a separate Chromium window for each account, so you can sign in normally without copying session tokens or using developer tools.
 
 From the repository root in the VS Code terminal, install Playwright and Chromium:
 
@@ -36,6 +17,22 @@ From the repository root in the VS Code terminal, install Playwright and Chromiu
 npm install --no-save --package-lock=false playwright
 npx playwright install chromium
 ```
+
+Set the live site URL, including the `/GcseVault` path:
+
+```powershell
+$env:BASE_URL = "https://your-live-site/GcseVault"
+$env:MAX_ACCOUNTS = "3"
+node scripts/prepare-load-test.mjs
+```
+
+A Chromium window opens for each account. Sign in using a dedicated load-test account, then press Enter in the terminal. The script captures the session and account key from that browser's local storage, closes the window and moves to the next account.
+
+The script saves the credentials locally in `scripts/load-test-accounts.json`. It does not print the credentials. This file is ignored by Git, but it still contains active login sessions: do not share or commit it. Use only dedicated test accounts. Sign out of those accounts when finished to revoke their sessions.
+
+The setup script supports between one and ten accounts. It replaces an existing credentials file only after you confirm.
+
+## 1. Full browser pass
 
 Start with three concurrent test accounts:
 
