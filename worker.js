@@ -2455,6 +2455,19 @@ export default {
         headers: { ...cors, "Content-Type": "application/json", "X-Request-Id": requestId }
       });
     }
+  },
+  async scheduled(controller, env) {
+    const now = new Date();
+    const nowSeconds = Math.floor(now.getTime() / 1000);
+    const cutoff90 = new Date(now.getTime() - 90 * 86400000).toISOString();
+    const cutoff180 = new Date(now.getTime() - 180 * 86400000).toISOString();
+    await Promise.all([
+      env.DB.prepare("DELETE FROM kv_store WHERE expires_at IS NOT NULL AND expires_at <= ?").bind(nowSeconds).run(),
+      env.DB.prepare("DELETE FROM kv_store WHERE namespace = 'FEEDBACK' AND json_valid(value) AND json_extract(value, '$.timestamp') < ?").bind(cutoff90).run(),
+      env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND created_at < ?").bind(cutoff90).run(),
+      env.DB.prepare("DELETE FROM notifications WHERE kind = 'submission' AND acknowledged_at IS NOT NULL AND acknowledged_at < ?").bind(cutoff180).run(),
+      env.DB.prepare("DELETE FROM audit_log WHERE event_type = 'test' AND acted_at < ?").bind(cutoff90).run()
+    ]);
   }
 };
 
