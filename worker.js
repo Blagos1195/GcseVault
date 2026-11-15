@@ -2222,10 +2222,6 @@ export default {
       await env.DB.prepare(
         "INSERT INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_key) DO UPDATE SET username = excluded.username, xp = excluded.xp, streak = excluded.streak, updated_at = excluded.updated_at"
       ).bind(userKey, username, data.xp, data.streak, data.updatedAt).run();
-      try {
-        await env.REVISION.put(`user:${userKey}`, JSON.stringify(data));
-        await env.REVISION.put(`leaderboard:${userKey}`, JSON.stringify({ userKey, username, xp: data.xp, streak: data.streak, updatedAt: data.updatedAt }));
-      } catch {}
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
