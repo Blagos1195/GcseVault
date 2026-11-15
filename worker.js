@@ -325,11 +325,10 @@ export default {
             if (value === null || value === undefined) continue;
             const expiration = Number(key.expiration) || null;
             const metadata = key.metadata == null ? null : JSON.stringify(key.metadata);
-            await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
+            const inserted = await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
             const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
             if (stored?.value === String(value)) {
-              const wasInserted = await env.DB.prepare("SELECT changes() AS changes").first();
-              if (Number(wasInserted?.changes) === 1) copied++;
+              if (inserted.meta?.changes) copied++;
               else existing++;
             } else {
               conflicts++;
@@ -354,19 +353,18 @@ export default {
         health: async () => {
           const row = await env.DB.prepare("SELECT 1 AS ok").first();
           if (Number(row?.ok) !== 1) throw new Error("D1 query returned an unexpected result");
-          const bindings = ["QUOTEVAULT", "PUBLIC_QUOTES", "DV_PENDING", "DV_PUBLIC", "REVISION", "FEEDBACK", "THEMES"];
-          const missing = bindings.filter(name => !env[name] || typeof env[name].put !== "function");
-          if (missing.length) throw new Error("Missing KV bindings: " + missing.join(", "));
-          return "D1 query passed; all seven required KV bindings are available.";
+          const storageStatus = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store").first();
+          if (!storageStatus || !Number.isFinite(Number(storageStatus.total))) throw new Error("Consolidated storage table is unavailable");
+          return "D1 query and consolidated storage table passed.";
         },
         migrations: async () => {
-          const requiredTables = ["revision_sync_data", "custom_themes", "admin_setup", "account_credentials", "account_sessions", "revision_leaderboard"];
-          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (?, ?, ?, ?, ?, ?)").bind(...requiredTables).all();
+          const requiredTables = ["kv_store", "notifications", "audit_log", "admin_setup", "account_sessions", "admin_push_subscriptions"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('kv_store', 'notifications', 'audit_log', 'admin_setup', 'account_sessions', 'admin_push_subscriptions')").all();
           const presentTables = new Set((tableRows.results || []).map(row => row.name));
           const missingTables = requiredTables.filter(name => !presentTables.has(name));
           const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
           const presentColumns = new Set((userColumns.results || []).map(column => column.name));
-          const requiredColumns = ["role", "ai_access"];
+          const requiredColumns = ["role", "ai_access", "password_hash", "revision_data_json", "revision_xp"];
           const missingColumns = requiredColumns.filter(name => !presentColumns.has(name));
           if (missingTables.length || missingColumns.length) {
             const issues = [];
@@ -374,7 +372,7 @@ export default {
             if (missingColumns.length) issues.push("missing users columns: " + missingColumns.join(", "));
             throw new Error("D1 migration check failed (" + issues.join("; ") + "). Apply the repository migrations before relying on these features.");
           }
-          return "All six migration-managed tables and both required users columns are present.";
+          return "The consolidated storage tables and required account columns are present.";
         },
         error: async () => {
           const id = "test-centre:error:" + crypto.randomUUID();
@@ -632,10 +630,11 @@ export default {
       const session = await getAccountSession(request);
       if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
       if (request.method === "GET") {
-        const rows = await env.DB.prepare("SELECT site, selections_json, updated_at FROM account_course_selections WHERE user_key = ?").bind(session.user_key).all();
+        const page = await storage("USER_DATA").list({ prefix: "course:" + session.user_key + ":" });
         const selections = {};
-        for (const row of rows.results || []) {
-          try { selections[row.site] = JSON.parse(row.selections_json); } catch {}
+        for (const item of page.keys) {
+          const site = item.name.slice(("course:" + session.user_key + ":").length);
+          try { selections[site] = await storage("USER_DATA").get(item.name, "json"); } catch {}
         }
         return new Response(JSON.stringify({ selections }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
@@ -647,13 +646,13 @@ export default {
         return new Response("Invalid course selections.", { status: 400, headers: cors });
       }
       const selections = [...new Set(values.map(value => String(value).trim()).filter(value => value && value.length <= 160))];
-      await env.DB.prepare("INSERT INTO account_course_selections (user_key, site, selections_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET selections_json = excluded.selections_json, updated_at = excluded.updated_at").bind(session.user_key, site, JSON.stringify(selections), new Date().toISOString()).run();
+      await storage("USER_DATA").put("course:" + session.user_key + ":" + site, JSON.stringify(selections));
       return new Response(JSON.stringify({ success: true, selections }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     async function verifyPasswordAccountAccess(userKey, req) {
       const credential = await env.DB.prepare(
-        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+        "SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL"
       ).bind(userKey).first();
       if (!credential) return false;
       const session = await getAccountSession(req);
@@ -686,13 +685,13 @@ export default {
       ).bind(userKey).first();
       if (!account) return new Response("Account not found.", { status: 404, headers: cors });
       const existing = await env.DB.prepare(
-        "SELECT user_key FROM account_credentials WHERE user_key = ?"
+        "SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL"
       ).bind(userKey).first();
       if (existing) return new Response("This account already has a password. Sign in instead.", { status: 409, headers: cors });
       const now = new Date().toISOString();
       await env.DB.prepare(
-        "INSERT INTO account_credentials (user_key, password_hash, password_salt, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-      ).bind(userKey, await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now).run();
+        "UPDATE users SET password_hash = ?, password_salt = ?, credential_created_at = ?, credential_updated_at = ? WHERE user_key = ?"
+      ).bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, now, now, userKey).run();
       const token = await createAccountSession(userKey);
       const user = await env.DB.prepare("SELECT username, role FROM users WHERE user_key = ?").bind(userKey).first();
       return new Response(JSON.stringify({ token, userKey, username: user.username, role: user.role || "user" }), {
@@ -707,7 +706,7 @@ export default {
       const username = String(url.searchParams.get("username") || "").trim();
       if (!username || username.length > 20) return new Response("Invalid username or password.", { status: 400, headers: cors });
       const credential = await env.DB.prepare(
-        "SELECT c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+        "SELECT password_salt FROM users WHERE LOWER(username) = LOWER(?) AND password_hash IS NOT NULL"
       ).bind(username).first();
       if (!credential) return new Response("Invalid username or password.", { status: 404, headers: cors });
       return new Response(JSON.stringify({ passwordSalt: credential.password_salt }), {
@@ -728,7 +727,7 @@ export default {
       if (attempts >= 8) return new Response("Too many sign-in attempts. Try again in 15 minutes.", { status: 429, headers: cors });
       await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const user = await env.DB.prepare(
-        "SELECT u.user_key, u.username, u.role, c.password_hash, c.password_salt FROM users u JOIN account_credentials c ON c.user_key = u.user_key WHERE LOWER(u.username) = LOWER(?)"
+        "SELECT user_key, username, role, password_hash, password_salt FROM users WHERE LOWER(username) = LOWER(?) AND password_hash IS NOT NULL"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
       if (await hashValue(passwordHashValue.toLowerCase()) !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
@@ -755,9 +754,9 @@ export default {
       }
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found.", { status: 404, headers: cors });
-      const existing = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      const existing = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL").bind(userKey).first();
       if (!existing) return new Response("Set up a password before using password reset.", { status: 404, headers: cors });
-      await env.DB.prepare("UPDATE account_credentials SET password_hash = ?, password_salt = ?, updated_at = ? WHERE user_key = ?")
+      await env.DB.prepare("UPDATE users SET password_hash = ?, password_salt = ?, credential_updated_at = ? WHERE user_key = ?")
         .bind(await hashValue(passwordHashValue.toLowerCase()), passwordSalt, new Date().toISOString(), userKey).run();
       await env.DB.prepare("DELETE FROM account_sessions WHERE user_key = ?").bind(userKey).run();
       const token = await createAccountSession(userKey);
@@ -1581,7 +1580,7 @@ export default {
         });
       }
 
-      const credential = await env.DB.prepare("SELECT user_key FROM account_credentials WHERE user_key = ?").bind(userKey).first();
+      const credential = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL").bind(userKey).first();
       if (!credential) {
         return new Response(JSON.stringify({ found: true, user: { username: row.username } }), {
           headers: { ...cors, "Content-Type": "application/json" }
@@ -2080,17 +2079,17 @@ export default {
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
       if (request.method === "GET") {
-        const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
+        const key = "schedules:" + session.user_key + ":" + site;
         let schedules = {};
-        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
-        return new Response(JSON.stringify({ found: Boolean(row), schedules, updatedAt: row?.updated_at || null }), { headers: { ...cors, "Content-Type": "application/json" } });
+        try { schedules = await storage("USER_DATA").get(key, "json") || {}; } catch {}
+        return new Response(JSON.stringify({ found: Object.keys(schedules).length > 0, schedules, updatedAt: null }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
       const body = await request.json();
       const incoming = body.schedules && typeof body.schedules === "object" && !Array.isArray(body.schedules) ? body.schedules : null;
       if (!incoming) return new Response("Invalid schedules", { status: 400, headers: cors });
-      const row = await env.DB.prepare("SELECT schedules_json FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
+      const key = "schedules:" + session.user_key + ":" + site;
       let merged = {};
-      try { merged = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
+      try { merged = await storage("USER_DATA").get(key, "json") || {}; } catch {}
       for (const [id, schedule] of Object.entries(incoming).slice(0, 10000)) {
         if (!id || !schedule || typeof schedule !== "object" || Array.isArray(schedule)) continue;
         const current = merged[id];
@@ -2099,7 +2098,7 @@ export default {
         if (!current || (incomingAt && incomingAt >= currentAt)) merged[id] = schedule;
       }
       const updatedAt = new Date().toISOString();
-      await env.DB.prepare("INSERT INTO review_schedules (user_key, site, schedules_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, site) DO UPDATE SET schedules_json=excluded.schedules_json, updated_at=excluded.updated_at").bind(session.user_key, site, JSON.stringify(merged), updatedAt).run();
+      await storage("USER_DATA").put(key, JSON.stringify(merged));
       return new Response(JSON.stringify({ success: true, schedules: merged, updatedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2109,9 +2108,9 @@ export default {
         return new Response("Sign in with a password account to view synced progress.", { status: 401, headers: cors });
       }
       const [quoteRow, dateRow, revisionRow, accountRow] = await Promise.all([
-        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "qv").first(),
-        env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "dv").first(),
-        env.DB.prepare("SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?").bind(session.user_key).first(),
+        storage("USER_DATA").get("schedules:" + session.user_key + ":qv", "json"),
+        storage("USER_DATA").get("schedules:" + session.user_key + ":dv", "json"),
+        env.DB.prepare("SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?").bind(session.user_key).first(),
         env.DB.prepare("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp, streak, max_streak, updated_at FROM users WHERE user_key = ?").bind(session.user_key).first()
       ]);
       const today = new Date().toISOString().slice(0, 10);
