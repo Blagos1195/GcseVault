@@ -9,6 +9,7 @@ const stopP95Ms = 5000;
 const runId = randomBytes(4).toString("hex");
 const prefix = "zt" + runId;
 const created = [];
+let attempted = 0;
 const results = [];
 
 function percentile(values, fraction) {
@@ -63,7 +64,7 @@ function report(label, batch) {
 }
 
 function cleanup() {
-  if (!created.length) return true;
+  if (!attempted) return true;
   const sql = "DELETE FROM users WHERE substr(username, 1, " + prefix.length + ") = '" + prefix + "'";
   console.log("Removing " + created.length + " disposable accounts from the live D1 database...");
   const result = spawnSync(process.platform === "win32" ? "npx.cmd" : "npx", ["wrangler", "d1", "execute", "leaderboard", "--remote", "--command", sql], {
@@ -103,6 +104,7 @@ async function main() {
     }));
 
     await runPool(accounts, concurrency, async account => {
+      attempted++;
       const result = await request("/lb/register", { method: "POST", body: JSON.stringify(account) });
       batch.push(result);
       if (result.ok && result.data?.success && result.data?.userKey) created.push(account.username);
@@ -148,6 +150,7 @@ try {
   console.log(JSON.stringify({
     prefix,
     accountsCreated: created.length,
+    accountsAttempted: attempted,
     stages: results,
     cleanupSucceeded: cleaned,
     interrupted
