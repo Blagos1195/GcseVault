@@ -36,7 +36,7 @@ export default {
           const prefix = String(options.prefix || "");
           const limit = Math.max(1, Math.min(1000, Number(options.limit) || 1000));
           const cursor = options.cursor ? String(options.cursor) : null;
-          const { results } = await env.DB.prepare("SELECT key, expires_at, metadata_json FROM kv_store WHERE namespace = ? AND substr(key, 1, ?) = ? AND (? IS NULL OR key > ?) AND (expires_at IS NULL OR expires_at > ?) ORDER BY key LIMIT ?").bind(namespace, prefix.length, prefix, cursor, cursor, Math.floor(Date.now() / 1000), limit + 1).all();
+          const { results } = await env.DB.prepare("SELECT key, expires_at, metadata_json FROM kv_store WHERE namespace = ? AND key >= ? AND key < ? AND (? IS NULL OR key > ?) AND (expires_at IS NULL OR expires_at > ?) ORDER BY key LIMIT ?").bind(namespace, prefix, prefix + "\uffff", cursor, cursor, Math.floor(Date.now() / 1000), limit + 1).all();
           const page = results || [];
           const complete = page.length <= limit;
           const selected = page.slice(0, limit);
