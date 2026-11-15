@@ -537,7 +537,6 @@ export default {
         "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
       ).bind(userKey).first();
       if (!account) return new Response("Account not found or not eligible for owner setup", { status: 404, headers: cors });
-      const usedAt = new Date().toISOString();
       const results = await env.DB.batch([
         env.DB.prepare(
           "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user' AND NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin'))"
