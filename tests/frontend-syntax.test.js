@@ -829,7 +829,8 @@ test("submission ownership and one-time notifications cover all three sites", ()
   const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   assert.match(worker, /data\._submittedByUserKey = userKey/);
   assert.match(worker, /async function createSubmissionNotification/);
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS submission_notifications/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS submission_notifications/);
   assert.match(worker, /url\.pathname === "\/submissions\/notifications"/);
   assert.match(worker, /url\.pathname === "\/submissions\/notifications\/resolve"/);
   assert.match(worker, /originalSubmission/);
@@ -866,7 +867,8 @@ test("admin submissions use Web Push when the admin site is closed", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
   const serviceWorker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
   assert.match(worker, /url\.pathname === "\/admin\/push\/subscribe"/);
   assert.match(worker, /Content-Encoding": "aes128gcm"/);
   assert.match(worker, /createVapidToken/);
