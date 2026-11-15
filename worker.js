@@ -100,16 +100,7 @@ export default {
       if (!columns.results.some(column => column.name === "leaderboard_hidden")) await env.DB.prepare("ALTER TABLE users ADD COLUMN leaderboard_hidden INTEGER NOT NULL DEFAULT 0").bind().run();
     }
 
-    async function ensureModerationTables() {
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS moderation_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, site TEXT NOT NULL, item_id TEXT NOT NULL, item_title TEXT NOT NULL, submitted_by TEXT NOT NULL, moderator TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL, UNIQUE(site, item_id, action))").bind().run();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS submission_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, acknowledged_at TEXT, choice TEXT)").bind().run();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_notifications (id TEXT PRIMARY KEY, user_key TEXT NOT NULL, site TEXT NOT NULL, item_id TEXT NOT NULL, title TEXT NOT NULL, submitter TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)").bind().run();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_push_subscriptions (user_key TEXT NOT NULL, endpoint TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, endpoint))").bind().run();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_account_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, target_username TEXT NOT NULL, actor_username TEXT NOT NULL, action TEXT NOT NULL, acted_at TEXT NOT NULL)").bind().run();
-    }
-
     async function recordAccountAdminAction(targetUsername, actorUsername, action) {
-      await ensureModerationTables();
       await env.DB.prepare("INSERT INTO admin_account_audit (target_username, actor_username, action, acted_at) VALUES (?, ?, ?, ?)").bind(
         String(targetUsername), String(actorUsername), String(action), new Date().toISOString()
       ).run();
@@ -204,7 +195,6 @@ export default {
       return site + "-" + hash.slice(0, 32);
     }
     async function createAdminNotification(site, id, item, submitter = "Unknown submitter") {
-      await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "New submission").slice(0, 300);
       const { results } = await env.DB.prepare("SELECT user_key FROM users WHERE role IN ('owner', 'admin')").all();
       const createdAt = new Date().toISOString();
@@ -232,7 +222,6 @@ export default {
     async function createSubmissionNotification(site, id, item, status, approvedItem = null) {
       const userKey = String(item._submittedByUserKey || item.ownerKey || "");
       if (!userKey) return;
-      await ensureModerationTables();
       const title = String(item.text || item.event || item.title || "Untitled submission").slice(0, 300);
       const original = { ...(item.originalSubmission && typeof item.originalSubmission === "object" ? item.originalSubmission : item) };
       delete original._submittedByUserKey;
@@ -243,7 +232,6 @@ export default {
       await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
     }
     async function recordModerationAction(site, id, item, actor, action) {
-      await ensureModerationTables();
       const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
       await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
     }
@@ -365,7 +353,6 @@ export default {
           } finally { await env.FEEDBACK.delete(id); }
         },
         notifications: async () => {
-          await ensureModerationTables();
           const id = "test-centre:" + crypto.randomUUID();
           try {
             await env.DB.prepare("INSERT INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
@@ -396,7 +383,6 @@ export default {
         }
       }
       const completedAt = new Date().toISOString();
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
       for (const result of results) {
         await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
           crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
@@ -409,7 +395,6 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS test_run_history (id TEXT PRIMARY KEY, actor_username TEXT NOT NULL, test_name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, duration_ms INTEGER NOT NULL, completed_at TEXT NOT NULL)").bind().run();
       const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
       return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -570,7 +555,6 @@ export default {
     if (url.pathname === "/account/course-selections" && ["GET", "PUT"].includes(request.method)) {
       const session = await getAccountSession(request);
       if (!session) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS account_course_selections (user_key TEXT NOT NULL, site TEXT NOT NULL, selections_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_key, site))").run();
       if (request.method === "GET") {
         const rows = await env.DB.prepare("SELECT site, selections_json, updated_at FROM account_course_selections WHERE user_key = ?").bind(session.user_key).all();
         const selections = {};
@@ -755,7 +739,6 @@ export default {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
       const quotes = await listPendingItems(env.PUBLIC_QUOTES);
       const dates = await listPendingItems(env.DV_PUBLIC);
-      await ensureModerationTables();
       const [quoteAudit, dateAudit] = await Promise.all([
         env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'quote' AND action = 'approved'").all(),
         env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'date' AND action = 'approved'").all()
@@ -800,7 +783,6 @@ export default {
       const p256dh = String(body.keys?.p256dh || "");
       const auth = String(body.keys?.auth || "");
       if (!endpoint.startsWith("https://") || endpoint.length > 2048 || !p256dh || !auth || p256dh.length > 200 || auth.length > 100) return new Response("Invalid push subscription", { status: 400, headers: cors });
-      await ensureModerationTables();
       const now = new Date().toISOString();
       await env.DB.prepare("INSERT INTO admin_push_subscriptions (user_key, endpoint, p256dh, auth, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_key, endpoint) DO UPDATE SET p256dh=excluded.p256dh, auth=excluded.auth, updated_at=excluded.updated_at").bind(actor.user_key, endpoint, p256dh, auth, now, now).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -811,14 +793,12 @@ export default {
       const body = await request.json();
       const endpoint = String(body.endpoint || "");
       if (!endpoint.startsWith("https://") || endpoint.length > 2048) return new Response("Invalid push endpoint", { status: 400, headers: cors });
-      await ensureModerationTables();
       await env.DB.prepare("DELETE FROM admin_push_subscriptions WHERE user_key = ? AND endpoint = ?").bind(actor.user_key, endpoint).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      await ensureModerationTables();
       const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
       return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -828,7 +808,6 @@ export default {
       const body = await request.json();
       const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean).slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
-      await ensureModerationTables();
       const now = new Date().toISOString();
       for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -839,14 +818,12 @@ export default {
       const body = await request.json();
       const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(String).filter(Boolean))].slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
-      await ensureModerationTables();
       for (const id of ids) await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      await ensureModerationTables();
       const [moderation, accountChanges] = await Promise.all([
         env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all(),
         env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM admin_account_audit ORDER BY acted_at DESC LIMIT 500").all()
@@ -860,7 +837,6 @@ export default {
     if (url.pathname === "/submissions/notifications" && request.method === "GET") {
       const account = await getAccountSession(request);
       if (!account) return new Response("Sign in to view submission updates.", { status: 401, headers: cors });
-      await ensureModerationTables();
       const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
       return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -2027,7 +2003,6 @@ export default {
       if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) return new Response("Sign in with a password account to sync review schedules.", { status: 401, headers: cors });
       const site = request.method === "GET" ? String(url.searchParams.get("site") || "") : String((await request.clone().json()).site || "");
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
       if (request.method === "GET") {
         const row = await env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, site).first();
         let schedules = {};
@@ -2057,7 +2032,6 @@ export default {
       if (!session || !(await verifyPasswordAccountAccess(session.user_key, request))) {
         return new Response("Sign in with a password account to view synced progress.", { status: 401, headers: cors });
       }
-      await env.DB.prepare("CREATE TABLE IF NOT EXISTS review_schedules (user_key TEXT NOT NULL, site TEXT NOT NULL, schedules_json TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_key, site))").bind().run();
       const [quoteRow, dateRow, revisionRow, accountRow] = await Promise.all([
         env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "qv").first(),
         env.DB.prepare("SELECT schedules_json, updated_at FROM review_schedules WHERE user_key = ? AND site = ?").bind(session.user_key, "dv").first(),

@@ -696,7 +696,8 @@ test("review schedules are stored per account and synchronised through authentic
     assert.ok(source.includes("reviewScheduleSyncPromise"));
   }
   assert.ok(worker.includes('url.pathname === "/review-schedules"'));
-  assert.ok(worker.includes("CREATE TABLE IF NOT EXISTS review_schedules"));
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS review_schedules/);
   const routeStart = worker.indexOf("/review-schedules");
   const routeEnd = worker.indexOf("/revision/sync", routeStart);
   const scheduleRoute = worker.slice(routeStart, routeEnd);
@@ -828,7 +829,8 @@ test("submission ownership and one-time notifications cover all three sites", ()
   const revision = fs.readFileSync(new URL("../revision/app.js", import.meta.url), "utf8");
   assert.match(worker, /data\._submittedByUserKey = userKey/);
   assert.match(worker, /async function createSubmissionNotification/);
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS submission_notifications/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS submission_notifications/);
   assert.match(worker, /url\.pathname === "\/submissions\/notifications"/);
   assert.match(worker, /url\.pathname === "\/submissions\/notifications\/resolve"/);
   assert.match(worker, /originalSubmission/);
@@ -865,7 +867,8 @@ test("admin submissions use Web Push when the admin site is closed", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const admin = fs.readFileSync(new URL("../admin/admin.js", import.meta.url), "utf8");
   const serviceWorker = fs.readFileSync(new URL("../admin/push-sw.js", import.meta.url), "utf8");
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS admin_push_subscriptions/);
   assert.match(worker, /url\.pathname === "\/admin\/push\/subscribe"/);
   assert.match(worker, /Content-Encoding": "aes128gcm"/);
   assert.match(worker, /createVapidToken/);
@@ -1093,7 +1096,8 @@ test("icon-only navigation and data controls have accessible names", () => {
 
 test("owner account permission changes are included in the admin history", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
-  assert.match(worker, /CREATE TABLE IF NOT EXISTS admin_account_audit/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS admin_account_audit/);
   assert.match(worker, /recordAccountAdminAction/);
   assert.match(worker, /SELECT target_username, actor_username, action, acted_at FROM admin_account_audit/);
 });
