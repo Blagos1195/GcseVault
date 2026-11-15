@@ -24,13 +24,13 @@ Reviewed the Worker authentication and account routes, moderation endpoints, acc
 ## Remaining security considerations
 
 - The legacy account setup and password-reset design uses the account's random `userKey` as proof of account ownership. The key is stored locally by the client and must be treated as a secret. Anyone who obtains it can set up or reset that account's password. There is no independent email-based recovery mechanism in the current design. This review leaves that compatibility behaviour unchanged.
-- The feedback rate limit uses a KV read followed by a write, rather than an atomic counter. It is a practical abuse barrier, not a strict distributed quota; concurrent requests can occasionally exceed the threshold.
+- The feedback and account rate limits use a read followed by a write in the configured storage backend, rather than an atomic counter. They are practical abuse barriers, not strict distributed quotas; concurrent requests can occasionally exceed the threshold.
 - The Worker allows cross-origin requests. Its authenticated routes use explicit bearer-token headers rather than ambient cookies, so this is not by itself an authentication bypass. Preventing script injection in user-generated content remains important.
 - This is a source-level review plus automated tests. It does not prove the live Cloudflare deployment is current, and it is not a penetration test of the deployed service.
 
 ## Not changed
 
-No user data, account records, moderation history, or feedback records were deleted or migrated by this review. No backup system was added.
+The consolidation is staged. Migration 0008 copies existing D1 data into the new tables without dropping the old tables. The owner-only `/admin/storage-migrate` endpoint copies all seven KV namespaces into D1 and leaves the source keys untouched. The Worker stays in KV mode until the owner verifies the copy and switches `STORAGE_MODE` to `d1`. Legacy D1 tables and KV namespaces are retained until a later cleanup migration. The owner has created local D1 and KV backups; those private backups must not be committed.
 
 
 ## Worker endpoint coverage
@@ -41,7 +41,7 @@ The route inventory was checked against the current Worker source. The groups be
 |---|---|---|
 | Account credentials | `/account/setup`, `/account/challenge`, `/account/login`, `/account/reset`, `/account/session`, `/account/logout` | Setup/reset rely on possession of the legacy account key. Login is throttled by IP plus username. Session reads and logout require the account-session header. |
 | Admin authentication | `/auth`, `/auth/session`, `/auth/logout`, `/admin/status`, `/admin/bootstrap` | Admin sessions are bound to a live account session and current role. Bootstrap uses the one-time setup secret. Status exposes only whether an owner/admin has been configured. |
-| Owner administration | `/admin/users`, `/admin/leaderboard-visibility`, `/admin/ai-access`, `/admin/migrate-storage`, `/admin/test-run` | Owner role is checked server-side for privileged operations. |
+| Owner administration | `/admin/users`, `/admin/leaderboard-visibility`, `/admin/ai-access`, `/admin/storage-migrate`, `/admin/test-run` | Owner role is checked server-side for privileged operations. |
 | Admin workspace | `/admin/published`, `/admin/push/subscribe`, `/admin/notifications`, `/admin/notifications/read`, `/admin/notifications/delete`, `/admin/moderation-log` | Requires a valid admin session. Notification reads/deletes are scoped to the authenticated admin. |
 | QuoteVault and DateVault | `/quotes`, `/pending`, `/submit`, `/approve`, `/reject`, `/withdraw`, `/update-pending`, `/update-public`, `/delete`, and the corresponding `/dv/*` routes | Published content is public. Submission requires an account session. Moderation and content-management routes require admin access. Withdrawal is account-scoped. |
 | Submission decisions | `/submissions/notifications`, `/submissions/private/remove`, `/submissions/notifications/resolve` | Requires the signed-in account session; records are queried and changed using that session's user key. |
@@ -54,7 +54,7 @@ The route inventory was checked against the current Worker source. The groups be
 ## Additional findings from the endpoint review
 
 - Account sessions have a 30-day expiry. Logging out revokes the current session, and password reset revokes all sessions for that account. There is not yet a dedicated account-wide **sign out all devices** control or session-management screen.
-- The moderation audit records approval/rejection actions. Owner changes to account roles and AI access are not currently recorded in that same audit log.
+- Moderation, account-permission and Test Centre history are consolidated into `audit_log`. The merged log preserves each event type.
 - Login and feedback have rate limits. Other public write paths, including account setup/reset and content submissions, do not currently share a common rate-limit layer.
 - Feedback has an explicit request-body limit. Request-size limits are not yet applied consistently to every JSON endpoint, particularly large account and Revision sync payloads.
 - Error reports retain fingerprints, timestamps, app versions and diagnostic context. The admin workspace does not yet provide a grouped recurring-error trend view.
