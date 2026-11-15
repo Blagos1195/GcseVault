@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS kv_store (
 );
 
 CREATE INDEX IF NOT EXISTS kv_store_expiry_idx ON kv_store(expires_at);
+CREATE INDEX IF NOT EXISTS users_revision_rank_idx
+ON users(revision_xp DESC, revision_leaderboard_updated_at DESC)
+WHERE revision_leaderboard_updated_at IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS notifications (
   kind TEXT NOT NULL CHECK (kind IN ('admin', 'submission')),
