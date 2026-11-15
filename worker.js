@@ -16,6 +16,39 @@ export default {
     try {
     const ADMIN_KEY = env.ADMIN_KEY;
 
+    function storage(namespace) {
+      if (env.STORAGE_MODE !== "d1" && env[namespace]) return env[namespace];
+      return {
+        async get(key, type) {
+          const row = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ? AND (expires_at IS NULL OR expires_at > ?)").bind(namespace, String(key), Math.floor(Date.now() / 1000)).first();
+          if (!row) return null;
+          return type === "json" ? JSON.parse(row.value) : row.value;
+        },
+        async put(key, value, options = {}) {
+          const now = Math.floor(Date.now() / 1000);
+          const expiresAt = options.expirationTtl ? now + Math.max(60, Number(options.expirationTtl)) : options.expiration ? Number(options.expiration) : null;
+          await env.DB.prepare("INSERT INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at").bind(namespace, String(key), String(value), expiresAt, options.metadata ? JSON.stringify(options.metadata) : null, new Date().toISOString()).run();
+        },
+        async delete(key) {
+          await env.DB.prepare("DELETE FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, String(key)).run();
+        },
+        async list(options = {}) {
+          const prefix = String(options.prefix || "");
+          const limit = Math.max(1, Math.min(1000, Number(options.limit) || 1000));
+          const cursor = options.cursor ? String(options.cursor) : null;
+          const { results } = await env.DB.prepare("SELECT key, expires_at, metadata_json FROM kv_store WHERE namespace = ? AND substr(key, 1, ?) = ? AND (? IS NULL OR key > ?) AND (expires_at IS NULL OR expires_at > ?) ORDER BY key LIMIT ?").bind(namespace, prefix.length, prefix, cursor, cursor, Math.floor(Date.now() / 1000), limit + 1).all();
+          const page = results || [];
+          const complete = page.length <= limit;
+          const selected = page.slice(0, limit);
+          return {
+            keys: selected.map(row => ({ name: row.key, ...(row.expires_at ? { expiration: row.expires_at } : {}), ...(row.metadata_json ? { metadata: JSON.parse(row.metadata_json) } : {}) })),
+            list_complete: complete,
+            ...(complete || !selected.length ? {} : { cursor: selected[selected.length - 1].key })
+          };
+        }
+      };
+    }
+
     async function getSessionUser(reqUrl, req) {
       const token = req.headers.get("X-Session-Token");
       if (!token) return null;
@@ -265,6 +298,49 @@ export default {
         cursor = page.list_complete ? null : page.cursor;
       } while (cursor);
       return items;
+    }
+
+    if (url.pathname === "/admin/storage-migrate" && request.method === "POST") {
+      const actor = await getSessionUser(url, request);
+      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
+      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
+      const namespaces = ["QUOTEVAULT", "DV_PENDING", "DV_PUBLIC", "FEEDBACK", "PUBLIC_QUOTES", "REVISION", "THEMES"];
+      const report = {};
+      let conflicts = 0;
+      for (const namespace of namespaces) {
+        const source = env[namespace];
+        if (!source || typeof source.list !== "function") {
+          report[namespace] = { error: "KV binding unavailable" };
+          continue;
+        }
+        let cursor;
+        let copied = 0;
+        let existing = 0;
+        let pages = 0;
+        do {
+          const page = await source.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
+          pages++;
+          for (const key of page.keys || []) {
+            const value = await source.get(key.name);
+            if (value === null || value === undefined) continue;
+            const expiration = Number(key.expiration) || null;
+            const metadata = key.metadata == null ? null : JSON.stringify(key.metadata);
+            await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
+            const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
+            if (stored?.value === String(value)) {
+              const wasInserted = await env.DB.prepare("SELECT changes() AS changes").first();
+              if (Number(wasInserted?.changes) === 1) copied++;
+              else existing++;
+            } else {
+              conflicts++;
+            }
+          }
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+        const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store WHERE namespace = ?").bind(namespace).first();
+        report[namespace] = { copied, alreadyPresent: existing, totalInD1: Number(count?.total || 0), pages };
+      }
+      return new Response(JSON.stringify({ success: conflicts === 0, conflicts, namespaces: report }), { status: conflicts ? 409 : 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/test-run" && request.method === "POST") {
