@@ -564,7 +564,7 @@ test("owner storage migration copies KV values into D1 and leaves the sources in
         return null;
       },
       run: async () => {
-        if (sql.includes("INSERT OR IGNORE INTO kv_store")) {
+        if (sql.includes("INSERT INTO kv_store")) {
           const key = values[0] + ":" + values[1];
           if (records.has(key)) return { meta: { changes: 0 } };
           records.set(key, values[2]);
