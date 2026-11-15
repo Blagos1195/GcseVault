@@ -1341,7 +1341,8 @@ const AdminManager = {
       const copied = entries.reduce((total, [, value]) => total + Number(value.copied || 0), 0);
       const existing = entries.reduce((total, [, value]) => total + Number(value.alreadyPresent || 0), 0);
       const expired = entries.reduce((total, [, value]) => total + Number(value.expired || 0), 0);
-      this.migrationStatus = `Migration complete: ${copied} copied, ${existing} already present, ${expired} expired. All original KV records remain available until the D1 switch is verified.`;
+      const duplicates = entries.reduce((total, [, value]) => total + Number(value.duplicatesSkipped || 0), 0);
+      this.migrationStatus = `Migration complete: ${copied} copied, ${existing} already present, ${duplicates} verified duplicates skipped, ${expired} expired. All original KV records remain available until the D1 switch is verified.`;
     } catch (error) {
       this.error = error.message;
       this.migrationStatus = 'Migration paused. You can safely run it again.';
