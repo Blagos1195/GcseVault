@@ -52,7 +52,7 @@ export default {
     async function getSessionUser(reqUrl, req) {
       const token = req.headers.get("X-Session-Token");
       if (!token) return null;
-      const stored = await env.QUOTEVAULT.get("session:" + token);
+      const stored = await storage("QUOTEVAULT").get("session:" + token);
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
@@ -75,7 +75,7 @@ export default {
     async function getAIUser(req) {
       const token = req.headers.get("X-AI-Session");
       if (!token) return null;
-      const stored = await env.QUOTEVAULT.get("ai-session:" + token);
+      const stored = await storage("QUOTEVAULT").get("ai-session:" + token);
       if (!stored) return null;
       let session;
       try { session = JSON.parse(stored); } catch { return null; }
@@ -379,52 +379,52 @@ export default {
           const error = new Error("GCSE Vault synthetic diagnostic test");
           const record = { id, type: "test", title: "Synthetic error-reporting test", description: error.message, errorName: error.name, errorStack: error.stack || "", errorLocation: "Owner Test Centre", sourceApplication: "GCSE Vault Test Centre", timestamp: new Date().toISOString(), testRecord: true };
           try {
-            await env.FEEDBACK.put(id, JSON.stringify(record));
-            const stored = await env.FEEDBACK.get(id, "json");
+            await storage("FEEDBACK").put(id, JSON.stringify(record));
+            const stored = await storage("FEEDBACK").get(id, "json");
             if (!stored || stored.errorName !== "Error" || stored.description !== error.message) throw new Error("Synthetic error report did not round-trip correctly");
             return "Synthetic error details were written, retrieved and verified in the feedback store.";
-          } finally { await env.FEEDBACK.delete(id); }
+          } finally { await storage("FEEDBACK").delete(id); }
         },
         quote: async () => {
           const id = "test-centre:quote:" + crypto.randomUUID();
           const record = { id, text: "GCSE Vault test quote", char: "Test character", work: "Test work", submittedBy: "Test Centre", _testRecord: true };
           try {
-            await env.QUOTEVAULT.put(id, JSON.stringify(record));
-            const stored = await env.QUOTEVAULT.get(id, "json");
+            await storage("QUOTEVAULT").put(id, JSON.stringify(record));
+            const stored = await storage("QUOTEVAULT").get(id, "json");
             if (!stored || stored.text !== record.text || stored._testRecord !== true) throw new Error("QuoteVault test record did not round-trip correctly");
             return "QuoteVault pending-storage write/read passed; the temporary record was removed.";
-          } finally { await env.QUOTEVAULT.delete(id); }
+          } finally { await storage("QUOTEVAULT").delete(id); }
         },
         date: async () => {
           const id = "test-centre:date:" + crypto.randomUUID();
           const record = { id, event: "GCSE Vault test date", year: "2000", topic: "Test", submittedBy: "Test Centre", _testRecord: true };
           try {
-            await env.DV_PENDING.put(id, JSON.stringify(record));
-            const stored = await env.DV_PENDING.get(id, "json");
+            await storage("DV_PENDING").put(id, JSON.stringify(record));
+            const stored = await storage("DV_PENDING").get(id, "json");
             if (!stored || stored.event !== record.event || stored._testRecord !== true) throw new Error("DateVault test record did not round-trip correctly");
             return "DateVault pending-storage write/read passed; the temporary record was removed.";
-          } finally { await env.DV_PENDING.delete(id); }
+          } finally { await storage("DV_PENDING").delete(id); }
         },
         revision: async () => {
           const id = "test-centre:" + crypto.randomUUID();
           const key = "test:" + id;
           const record = { id, title: "GCSE Vault test revision note", subject: "Test", cards: [{ front: "Test", back: "Test" }], _testRecord: true };
           try {
-            await env.REVISION.put(key, JSON.stringify(record));
-            const stored = await env.REVISION.get(key, "json");
+            await storage("REVISION").put(key, JSON.stringify(record));
+            const stored = await storage("REVISION").get(key, "json");
             if (!stored || stored.title !== record.title || stored._testRecord !== true) throw new Error("Revision test note did not round-trip correctly");
             return "Revision storage write/read passed; the temporary test note was removed.";
-          } finally { await env.REVISION.delete(key); }
+          } finally { await storage("REVISION").delete(key); }
         },
         feedback: async () => {
           const id = "test-centre:feedback:" + crypto.randomUUID();
           const record = { id, type: "test", title: "Synthetic feedback test", description: "Temporary owner test record", timestamp: new Date().toISOString(), testRecord: true };
           try {
-            await env.FEEDBACK.put(id, JSON.stringify(record));
-            const stored = await env.FEEDBACK.get(id, "json");
+            await storage("FEEDBACK").put(id, JSON.stringify(record));
+            const stored = await storage("FEEDBACK").get(id, "json");
             if (!stored || stored.testRecord !== true || stored.description !== record.description) throw new Error("Feedback test record did not round-trip correctly");
             return "Feedback storage write/read passed; no real admin notification was sent and the temporary record was removed.";
-          } finally { await env.FEEDBACK.delete(id); }
+          } finally { await storage("FEEDBACK").delete(id); }
         },
         notifications: async () => {
           const id = "test-centre:" + crypto.randomUUID();
@@ -529,7 +529,7 @@ export default {
         return new Response("This account does not have admin access", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
+      await storage("QUOTEVAULT").put("session:" + token, JSON.stringify({ userKey, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -545,7 +545,7 @@ export default {
         return new Response("This account does not have AI access.", { status: 403, headers: cors });
       }
       const token = crypto.randomUUID() + crypto.randomUUID();
-      await env.QUOTEVAULT.put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
+      await storage("QUOTEVAULT").put("ai-session:" + token, JSON.stringify({ userKey: user.user_key, accountTokenHash: await hashValue(accountSession.token) }), { expirationTtl: 28800 });
       return new Response(JSON.stringify({ token, username: user.username, role: user.role }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -561,7 +561,7 @@ export default {
 
     if (url.pathname === "/ai/logout" && request.method === "POST") {
       const token = request.headers.get("X-AI-Session");
-      if (token) await env.QUOTEVAULT.delete("ai-session:" + token);
+      if (token) await storage("QUOTEVAULT").delete("ai-session:" + token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -578,7 +578,7 @@ export default {
     if (url.pathname === "/auth/logout" && request.method === "POST") {
       const user = await getSessionUser(url, request);
       if (!user) return new Response("Unauthorized", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete("session:" + user.token);
+      await storage("QUOTEVAULT").delete("session:" + user.token);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -611,9 +611,9 @@ export default {
     async function allowRateLimitedAction(prefix, identity, limit, ttl) {
       const ip = request.headers.get("CF-Connecting-IP") || "unknown";
       const key = prefix + ":" + await hashValue(ip + ":" + String(identity || ""));
-      const count = Number(await env.QUOTEVAULT.get(key) || 0);
+      const count = Number(await storage("QUOTEVAULT").get(key) || 0);
       if (count >= limit) return false;
-      await env.QUOTEVAULT.put(key, String(count + 1), { expirationTtl: ttl });
+      await storage("QUOTEVAULT").put(key, String(count + 1), { expirationTtl: ttl });
       return true;
     }
 
@@ -723,15 +723,15 @@ export default {
         return new Response("Invalid username or password.", { status: 400, headers: cors });
       }
       const rateKey = "account-login:" + await hashValue((request.headers.get("CF-Connecting-IP") || "unknown") + ":" + username.toLowerCase());
-      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      const attempts = Number(await storage("QUOTEVAULT").get(rateKey) || 0);
       if (attempts >= 8) return new Response("Too many sign-in attempts. Try again in 15 minutes.", { status: 429, headers: cors });
-      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
+      await storage("QUOTEVAULT").put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const user = await env.DB.prepare(
         "SELECT user_key, username, role, password_hash, password_salt FROM users WHERE LOWER(username) = LOWER(?) AND password_hash IS NOT NULL"
       ).bind(username).first();
       if (!user) return new Response("Invalid username or password.", { status: 401, headers: cors });
       if (await hashValue(passwordHashValue.toLowerCase()) !== user.password_hash.toLowerCase()) return new Response("Invalid username or password.", { status: 401, headers: cors });
-      await env.QUOTEVAULT.delete(rateKey);
+      await storage("QUOTEVAULT").delete(rateKey);
       const token = await createAccountSession(user.user_key);
       return new Response(JSON.stringify({ token, userKey: user.user_key, username: user.username, role: user.role || "user" }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -812,8 +812,8 @@ export default {
 
     if (url.pathname === "/admin/published" && request.method === "GET") {
       if (!await isAuthorized(url, request)) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quotes = await listPendingItems(env.PUBLIC_QUOTES);
-      const dates = await listPendingItems(env.DV_PUBLIC);
+      const quotes = await listPendingItems(storage("PUBLIC_QUOTES"));
+      const dates = await listPendingItems(storage("DV_PUBLIC"));
       const [quoteAudit, dateAudit] = await Promise.all([
         env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'quote' AND action = 'approved'").all(),
         env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'date' AND action = 'approved'").all()
@@ -1024,10 +1024,10 @@ export default {
 
     // ── QUOTEVAULT QUOTES (public) ────────────────────────────────────────────
     if (url.pathname === "/quotes" && request.method === "GET") {
-      const list = await env.PUBLIC_QUOTES.list();
+      const list = await storage("PUBLIC_QUOTES").list();
       const items = [];
       for (const key of list.keys) {
-        const value = await env.PUBLIC_QUOTES.get(key.name, "json");
+        const value = await storage("PUBLIC_QUOTES").get(key.name, "json");
         if (value) items.push(value);
       }
       return new Response(JSON.stringify({ items }), {
@@ -1040,7 +1040,7 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const items = await listPendingItems(env.QUOTEVAULT);
+      const items = await listPendingItems(storage("QUOTEVAULT"));
       const owners = await getSubmissionOwners("qv");
       for (const item of items) {
         item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
@@ -1088,7 +1088,7 @@ export default {
         }
       }
 
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1116,7 +1116,7 @@ export default {
       data._submittedByUserKey = userKey;
       const id = requestId ? await createIdempotentSubmissionId("qv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       if (requestId) {
-        const existing = await env.QUOTEVAULT.get(id, "json");
+        const existing = await storage("QUOTEVAULT").get(id, "json");
         if (existing) {
           if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
           await createAdminNotification("QuoteVault", id, existing, existing.submittedBy);
@@ -1125,7 +1125,7 @@ export default {
       }
       data.id = id;
       data.submittedAt = new Date().toISOString();
-      await env.QUOTEVAULT.put(id, JSON.stringify(data));
+      await storage("QUOTEVAULT").put(id, JSON.stringify(data));
       await createAdminNotification("QuoteVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1139,7 +1139,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.QUOTEVAULT.get(id, "json");
+      const quote = await storage("QUOTEVAULT").get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       await attachSubmissionOwner("qv", id, quote);
       const publishedQuote = { ...quote };
@@ -1147,7 +1147,7 @@ export default {
       delete publishedQuote._submittedByUserKey;
       delete publishedQuote.originalSubmission;
       delete publishedQuote.userKey;
-      await env.PUBLIC_QUOTES.put(id, JSON.stringify(publishedQuote));
+      await storage("PUBLIC_QUOTES").put(id, JSON.stringify(publishedQuote));
       try {
         await createSubmissionNotification("qv", id, quote, "approved", publishedQuote);
         await recordApproval("quote", id, quote, actor);
@@ -1158,7 +1158,7 @@ export default {
           headers: cors
         });
       }
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1171,7 +1171,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const quote = await env.QUOTEVAULT.get(id, "json");
+      const quote = await storage("QUOTEVAULT").get(id, "json");
       if (!quote) return new Response("Quote not found", { status: 404, headers: cors });
       await attachSubmissionOwner("qv", id, quote);
       try {
@@ -1184,7 +1184,7 @@ export default {
           headers: cors
         });
       }
-      await env.QUOTEVAULT.delete(id);
+      await storage("QUOTEVAULT").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1197,11 +1197,11 @@ export default {
       const id = String(body.id || "").trim();
       const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
-      const existing = await env.QUOTEVAULT.get(id, "json");
+      const existing = await storage("QUOTEVAULT").get(id, "json");
       if (!existing) return new Response("Pending quote not found", { status: 404, headers: cors });
       const updated = { ...existing, ...data, id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
       delete updated.userKey;
-      await env.QUOTEVAULT.put(id, JSON.stringify(updated));
+      await storage("QUOTEVAULT").put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1212,10 +1212,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      const existing = await storage("PUBLIC_QUOTES").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
-      await env.PUBLIC_QUOTES.put(body.id, JSON.stringify(updated));
+      await storage("PUBLIC_QUOTES").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1226,9 +1226,9 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.PUBLIC_QUOTES.get(body.id, "json");
+      const existing = await storage("PUBLIC_QUOTES").get(body.id, "json");
       if (existing) await recordModerationAction("quote", body.id, existing, await getSessionUser(url, request), "removed");
-      await env.PUBLIC_QUOTES.delete(body.id);
+      await storage("PUBLIC_QUOTES").delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1256,7 +1256,7 @@ export default {
       data._submittedByUserKey = userKey;
       const id = requestId ? await createIdempotentSubmissionId("dv", userKey, requestId) : Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
       if (requestId) {
-        const existing = await env.DV_PENDING.get(id, "json");
+        const existing = await storage("DV_PENDING").get(id, "json");
         if (existing) {
           if (existing._submittedByUserKey !== userKey) return new Response("Submission request conflict.", { status: 409, headers: cors });
           await createAdminNotification("DateVault", id, existing, existing.submittedBy);
@@ -1265,7 +1265,7 @@ export default {
       }
       data.id = id;
       data.submittedAt = new Date().toISOString();
-      await env.DV_PENDING.put(id, JSON.stringify(data));
+      await storage("DV_PENDING").put(id, JSON.stringify(data));
       await createAdminNotification("DateVault", id, data, data.submittedBy);
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1311,7 +1311,7 @@ export default {
         });
       }
 
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1319,10 +1319,10 @@ export default {
     }
 
     if (url.pathname === "/dv/quotes" && request.method === "GET") {
-      const list = await env.DV_PUBLIC.list();
+      const list = await storage("DV_PUBLIC").list();
       const items = [];
       for (const key of list.keys) {
-        const value = await env.DV_PUBLIC.get(key.name, "json");
+        const value = await storage("DV_PUBLIC").get(key.name, "json");
         if (value) items.push(value);
       }
       return new Response(JSON.stringify({ items }), {
@@ -1334,7 +1334,7 @@ export default {
       if (!await isAuthorized(url, request)) {
         return new Response("Unauthorized", { status: 401, headers: cors });
       }
-      const items = await listPendingItems(env.DV_PENDING);
+      const items = await listPendingItems(storage("DV_PENDING"));
       const owners = await getSubmissionOwners("dv");
       for (const item of items) {
         item.submittedBy = item.submittedBy || owners.get(String(item.id)) || "Legacy submission";
@@ -1350,7 +1350,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const fact = await env.DV_PENDING.get(id, "json");
+      const fact = await storage("DV_PENDING").get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       await attachSubmissionOwner("dv", id, fact);
       const publishedFact = { ...fact };
@@ -1358,7 +1358,7 @@ export default {
       delete publishedFact._submittedByUserKey;
       delete publishedFact.originalSubmission;
       delete publishedFact.userKey;
-      await env.DV_PUBLIC.put(id, JSON.stringify(publishedFact));
+      await storage("DV_PUBLIC").put(id, JSON.stringify(publishedFact));
       try {
         await createSubmissionNotification("dv", id, fact, "approved", publishedFact);
         await recordApproval("date", id, fact, actor);
@@ -1369,7 +1369,7 @@ export default {
           headers: cors
         });
       }
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1381,7 +1381,7 @@ export default {
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const fact = await env.DV_PENDING.get(id, "json");
+      const fact = await storage("DV_PENDING").get(id, "json");
       if (!fact) return new Response("Fact not found", { status: 404, headers: cors });
       await attachSubmissionOwner("dv", id, fact);
       try {
@@ -1394,7 +1394,7 @@ export default {
           headers: cors
         });
       }
-      await env.DV_PENDING.delete(id);
+      await storage("DV_PENDING").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1404,10 +1404,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PENDING.get(body.id, "json");
+      const existing = await storage("DV_PENDING").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt, submittedBy: existing.submittedBy, _submittedByUserKey: existing._submittedByUserKey, originalSubmission: existing.originalSubmission || Object.fromEntries(Object.entries(existing).filter(([key]) => !["_submittedByUserKey", "originalSubmission"].includes(key))) };
-      await env.DV_PENDING.put(body.id, JSON.stringify(updated));
+      await storage("DV_PENDING").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1417,10 +1417,10 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      const existing = await storage("DV_PUBLIC").get(body.id, "json");
       if (!existing) return new Response("Not found", { status: 404, headers: cors });
       const updated = { ...existing, ...body.data, id: body.id, submittedAt: existing.submittedAt };
-      await env.DV_PUBLIC.put(body.id, JSON.stringify(updated));
+      await storage("DV_PUBLIC").put(body.id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1430,9 +1430,9 @@ export default {
       const body = await request.json();
       const ok = await isAuthorized(url, request);
       if (!ok) return new Response("Unauthorized", { status: 401, headers: cors });
-      const existing = await env.DV_PUBLIC.get(body.id, "json");
+      const existing = await storage("DV_PUBLIC").get(body.id, "json");
       if (existing) await recordModerationAction("date", body.id, existing, await getSessionUser(url, request), "removed");
-      await env.DV_PUBLIC.delete(body.id);
+      await storage("DV_PUBLIC").delete(body.id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -1861,13 +1861,13 @@ export default {
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
     if (url.pathname === "/feedback/submit" && request.method === "POST") {
       const rateKey = "feedback-submit:" + await hashValue(request.headers.get("CF-Connecting-IP") || "unknown");
-      const attempts = Number(await env.QUOTEVAULT.get(rateKey) || 0);
+      const attempts = Number(await storage("QUOTEVAULT").get(rateKey) || 0);
       if (attempts >= 5) return new Response("Too many feedback submissions. Try again in 15 minutes.", { status: 429, headers: cors });
       const rawBody = await request.text();
       if (new TextEncoder().encode(rawBody).byteLength > 12000) return new Response("Feedback is too large", { status: 413, headers: cors });
       let body;
       try { body = JSON.parse(rawBody); } catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
-      await env.QUOTEVAULT.put(rateKey, String(attempts + 1), { expirationTtl: 900 });
+      await storage("QUOTEVAULT").put(rateKey, String(attempts + 1), { expirationTtl: 900 });
       const sanitize = (value, max = 3000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
       const type = sanitize(body.type, 80);
       const title = sanitize(body.title, 300);
@@ -1891,7 +1891,7 @@ export default {
         page: sanitize(body.page, 300),
         timestamp: new Date().toISOString()
       };
-      await env.FEEDBACK.put(id, JSON.stringify(record));
+      await storage("FEEDBACK").put(id, JSON.stringify(record));
       await createAdminNotification("Feedback", id, record, "Visitor feedback");
       return new Response(JSON.stringify({ success: true, id }), {
         headers: { ...cors, "Content-Type": "application/json" }
@@ -1907,9 +1907,9 @@ export default {
       const items = [];
       let cursor;
       do {
-        const page = await env.FEEDBACK.list(cursor ? { cursor } : {});
+        const page = await storage("FEEDBACK").list(cursor ? { cursor } : {});
         for (const key of page.keys) {
-          const value = await env.FEEDBACK.get(key.name, "json");
+          const value = await storage("FEEDBACK").get(key.name, "json");
           if (value && value.testRecord !== true) items.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
@@ -1927,7 +1927,7 @@ export default {
       const id = String(body.id || "").trim();
       const data = body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : null;
       if (!id || !data) return new Response("Missing id or data", { status: 400, headers: cors });
-      const existing = await env.FEEDBACK.get(id, "json");
+      const existing = await storage("FEEDBACK").get(id, "json");
       if (!existing) return new Response("Feedback not found", { status: 404, headers: cors });
       const clean = value => String(value ?? "").replace(/[<>]/g, "").trim().slice(0, 10000);
       const updated = {
@@ -1943,7 +1943,7 @@ export default {
         timestamp: existing.timestamp
       };
       if (!updated.type || !updated.title || !updated.description) return new Response("Type, title and description are required.", { status: 400, headers: cors });
-      await env.FEEDBACK.put(id, JSON.stringify(updated));
+      await storage("FEEDBACK").put(id, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -1959,7 +1959,7 @@ export default {
         return new Response("Missing id", { status: 400, headers: cors });
       }
 
-      await env.FEEDBACK.delete(id);
+      await storage("FEEDBACK").delete(id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...cors, "Content-Type": "application/json" }
       });
@@ -2051,7 +2051,7 @@ export default {
         "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!row) {
-        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
             "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
@@ -2083,7 +2083,7 @@ export default {
         "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!existingRow) {
-        const legacy = await env.REVISION.get(`user:${userKey}`, "json");
+        const legacy = await storage("REVISION").get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
             "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
@@ -2204,9 +2204,9 @@ export default {
       const notes = [];
       let cursor;
       do {
-        const page = await env.REVISION.list({ prefix: "public:", ...(cursor ? { cursor } : {}) });
+        const page = await storage("REVISION").list({ prefix: "public:", ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          const value = await env.REVISION.get(key.name, "json");
+          const value = await storage("REVISION").get(key.name, "json");
           if (value) {
             const { ownerKey, submittedBy, submittedAt, originalSubmission, ...publicValue } = value;
             notes.push({ ...publicValue, owned: Boolean(requesterKey && ownerKey === requesterKey) });
@@ -2233,7 +2233,7 @@ export default {
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const id = `rn-${crypto.randomUUID()}`;
       const publicNote = { id, ownerKey: userKey, submittedBy: account.username, submittedAt: new Date().toISOString(), title: String(note.title || "Untitled notes").slice(0, 120), subject: String(note.subject || "General").slice(0, 80), level: String(note.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : [], updatedAt: new Date().toISOString() };
-      await env.REVISION.put(`public-pending:${id}`, JSON.stringify(publicNote));
+      await storage("REVISION").put(`public-pending:${id}`, JSON.stringify(publicNote));
       await createAdminNotification("Revision", id, publicNote, account.username);
       return new Response(JSON.stringify({ success: true, pending: true, note: publicNote }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
@@ -2243,9 +2243,9 @@ export default {
       const notes = [];
       let cursor;
       do {
-        const page = await env.REVISION.list({ prefix: "public-pending:", ...(cursor ? { cursor } : {}) });
+        const page = await storage("REVISION").list({ prefix: "public-pending:", ...(cursor ? { cursor } : {}) });
         for (const key of page.keys) {
-          const value = await env.REVISION.get(key.name, "json");
+          const value = await storage("REVISION").get(key.name, "json");
           if (value) notes.push(value);
         }
         cursor = page.list_complete ? null : page.cursor;
@@ -2259,9 +2259,9 @@ export default {
       for (const prefix of ["public:", "public-pending:"]) {
         let cursor;
         do {
-          const page = await env.REVISION.list({ prefix, ...(cursor ? { cursor } : {}) });
+          const page = await storage("REVISION").list({ prefix, ...(cursor ? { cursor } : {}) });
           for (const key of page.keys) {
-            const value = await env.REVISION.get(key.name, "json");
+            const value = await storage("REVISION").get(key.name, "json");
             if (value) notes.push({ ...value, submittedBy: value.submittedBy || "Legacy submission", submittedAt: value.submittedAt || value.updatedAt, pending: prefix === "public-pending:" });
           }
           cursor = page.list_complete ? null : page.cursor;
@@ -2275,12 +2275,12 @@ export default {
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const body = await request.json();
       const id = String(body.id || "").trim();
-      const note = id ? await env.REVISION.get(`public-pending:${id}`, "json") : null;
+      const note = id ? await storage("REVISION").get(`public-pending:${id}`, "json") : null;
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
-      await env.REVISION.put(`public:${id}`, JSON.stringify(note));
+      await storage("REVISION").put(`public:${id}`, JSON.stringify(note));
       await createSubmissionNotification("revision", id, note, "approved", note);
       await recordApproval("revision-note", id, note, actor);
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2289,12 +2289,12 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      const note = await env.REVISION.get(`public-pending:${id}`, "json");
+      const note = await storage("REVISION").get(`public-pending:${id}`, "json");
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       const actor = await getSessionUser(url, request);
       await createSubmissionNotification("revision", id, note, "denied");
       await recordModerationAction("revision-note", id, note, actor, "denied");
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2306,12 +2306,12 @@ export default {
       if (!id || !note) return new Response("Missing id or note", { status: 400, headers: cors });
       const publicKey = `public:${id}`;
       const pendingKey = `public-pending:${id}`;
-      const existing = await env.REVISION.get(publicKey, "json");
-      const existingPending = existing ? null : await env.REVISION.get(pendingKey, "json");
+      const existing = await storage("REVISION").get(publicKey, "json");
+      const existingPending = existing ? null : await storage("REVISION").get(pendingKey, "json");
       const current = existing || existingPending;
       if (!current) return new Response("Note not found", { status: 404, headers: cors });
       const updated = { ...current, originalSubmission: current.originalSubmission || { title: current.title, subject: current.subject, level: current.level, cards: current.cards }, title: String(note.title || current.title).slice(0, 120), subject: String(note.subject || current.subject || "General").slice(0, 80), level: String(note.level || current.level || "").slice(0, 50), cards: Array.isArray(note.cards) ? note.cards.slice(0, 500) : current.cards, updatedAt: new Date().toISOString() };
-      await env.REVISION.put(existing ? publicKey : pendingKey, JSON.stringify(updated));
+      await storage("REVISION").put(existing ? publicKey : pendingKey, JSON.stringify(updated));
       return new Response(JSON.stringify({ success: true, note: updated }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2320,10 +2320,10 @@ export default {
       const body = await request.json();
       const id = String(body.id || "").trim();
       if (!id) return new Response("Missing id", { status: 400, headers: cors });
-      const note = await env.REVISION.get(`public:${id}`, "json") || await env.REVISION.get(`public-pending:${id}`, "json");
+      const note = await storage("REVISION").get(`public:${id}`, "json") || await storage("REVISION").get(`public-pending:${id}`, "json");
       if (note) await recordModerationAction("revision-note", id, note, await getSessionUser(url, request), "removed");
-      await env.REVISION.delete(`public:${id}`);
-      await env.REVISION.delete(`public-pending:${id}`);
+      await storage("REVISION").delete(`public:${id}`);
+      await storage("REVISION").delete(`public-pending:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -2331,13 +2331,13 @@ export default {
       const body = await request.json();
       const userKey = String(body.userKey || "").trim();
       const id = String(body.id || "").trim();
-      const note = id ? await env.REVISION.get(`public:${id}`, "json") : null;
+      const note = id ? await storage("REVISION").get(`public:${id}`, "json") : null;
       if (!userKey || !id) return new Response("Missing fields", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!note) return new Response("Note not found", { status: 404, headers: cors });
       if (note.ownerKey !== userKey) return new Response("Forbidden", { status: 403, headers: cors });
-      await env.REVISION.delete(`public:${id}`);
+      await storage("REVISION").delete(`public:${id}`);
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
