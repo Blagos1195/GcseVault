@@ -996,78 +996,6 @@ export default {
       });
     }
 
-    if (url.pathname === "/admin/migrate-storage" && request.method === "POST") {
-      const actor = await getSessionUser(url, request);
-      if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      const body = await request.json();
-      const phase = body.phase;
-      if (!["revision", "revision-leaderboard", "themes"].includes(phase)) return new Response("Invalid migration phase", { status: 400, headers: cors });
-      const limit = Math.max(1, Math.min(100, Math.floor(Number(body.limit) || 100)));
-      const binding = phase === "themes" ? env.THEMES : env.REVISION;
-      const prefix = phase === "revision" ? "user:" : phase === "revision-leaderboard" ? "leaderboard:" : "theme:";
-      const page = await binding.list({ prefix, limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
-      let migrated = 0;
-      let alreadyPresent = 0;
-      let skipped = 0;
-      for (const item of page.keys) {
-        const value = await binding.get(item.name, "json");
-        if (!value) {
-          skipped++;
-          continue;
-        }
-        if (phase === "revision") {
-          const userKey = item.name.slice("user:".length);
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(value), String(value.updatedAt || new Date().toISOString())).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        } else if (phase === "themes") {
-          const remainder = item.name.slice("theme:".length);
-          const separator = remainder.lastIndexOf(":");
-          if (separator < 1) {
-            skipped++;
-            continue;
-          }
-          const userKey = remainder.slice(0, separator);
-          const themeKey = remainder.slice(separator + 1);
-          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) {
-            skipped++;
-            continue;
-          }
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
-          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        } else {
-          const userKey = String(value.userKey || item.name.slice("leaderboard:".length)).trim();
-          const username = String(value.username || "").trim().slice(0, 20);
-          const xp = Number(value.xp);
-          const streak = Number(value.streak);
-          if (!userKey || !username || !Number.isFinite(xp) || xp < 0 || !Number.isFinite(streak) || streak < 0) {
-            skipped++;
-            continue;
-          }
-          const result = await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?)"
-          ).bind(userKey, username, Math.floor(xp), Math.floor(streak), String(value.updatedAt || new Date().toISOString())).run();
-          if (result.meta?.changes) migrated++;
-          else alreadyPresent++;
-        }
-      }
-      return new Response(JSON.stringify({
-        phase,
-        processed: page.keys.length,
-        migrated,
-        alreadyPresent,
-        skipped,
-        complete: page.list_complete,
-        cursor: page.list_complete ? null : page.cursor
-      }), { headers: { ...cors, "Content-Type": "application/json" } });
-    }
-
     if (url.pathname === "/admin/users" && request.method === "POST") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
@@ -1887,38 +1815,19 @@ export default {
       }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // CUSTOM THEMES — stored in THEMES KV, keyed by "theme:{userKey}:{themeKey}"
-    //
-    // Requires a KV namespace bound as env.THEMES in wrangler.toml:
-    //   [[kv_namespaces]]
-    //   binding = "THEMES"
-    //   id = "<your-kv-namespace-id>"
-    // ════════════════════════════════════════════════════════════════════════
-
     if (url.pathname === "/themes/save" && request.method === "POST") {
       const body = await request.json();
       const { userKey, key, theme } = body;
-      if (!userKey || !key || !theme) {
-        return new Response("Missing fields", { status: 400, headers: cors });
-      }
-      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) {
-        return new Response("Invalid key", { status: 400, headers: cors });
-      }
+      if (!userKey || !key || !theme) return new Response("Missing fields", { status: 400, headers: cors });
+      if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const safeTheme = { label: String(theme.label || "").slice(0, 60), desc: String(theme.desc || "").slice(0, 120) };
       Object.entries(theme).forEach(([name, value]) => {
         if (name.startsWith("--")) safeTheme[name] = String(value).slice(0, 80);
       });
-      const updatedAt = new Date().toISOString();
-      await env.DB.prepare(
-        "INSERT INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_key, theme_key) DO UPDATE SET theme_json = excluded.theme_json, updated_at = excluded.updated_at"
-      ).bind(userKey, key, JSON.stringify(safeTheme), updatedAt).run();
-      await env.THEMES.put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      await storage("THEMES").put(`theme:${userKey}:${key}`, JSON.stringify(safeTheme));
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/themes/list" && request.method === "GET") {
@@ -1927,28 +1836,15 @@ export default {
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       const prefix = `theme:${userKey}:`;
-      let cursor;
-      do {
-        const page = await env.THEMES.list({ prefix, ...(cursor ? { cursor } : {}) });
-        for (const item of page.keys) {
-          const value = await env.THEMES.get(item.name, "json");
-          if (!value) continue;
-          const themeKey = item.name.slice(prefix.length);
-          if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
-          await env.DB.prepare(
-            "INSERT OR IGNORE INTO custom_themes (user_key, theme_key, theme_json, updated_at) VALUES (?, ?, ?, ?)"
-          ).bind(userKey, themeKey, JSON.stringify(value), new Date().toISOString()).run();
-        }
-        cursor = page.list_complete ? null : page.cursor;
-      } while (cursor);
-      const { results } = await env.DB.prepare(
-        "SELECT theme_key, theme_json FROM custom_themes WHERE user_key = ? ORDER BY theme_key"
-      ).bind(userKey).all();
+      const page = await storage("THEMES").list({ prefix });
       const themes = {};
-      for (const row of results) themes[row.theme_key] = JSON.parse(row.theme_json);
-      return new Response(JSON.stringify({ themes }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      for (const item of page.keys) {
+        const themeKey = item.name.slice(prefix.length);
+        if (!/^[a-zA-Z0-9_]{1,80}$/.test(themeKey)) continue;
+        const value = await storage("THEMES").get(item.name, "json");
+        if (value) themes[themeKey] = value;
+      }
+      return new Response(JSON.stringify({ themes }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/themes/delete" && request.method === "POST") {
@@ -1958,11 +1854,8 @@ export default {
       if (!/^[a-zA-Z0-9_]{1,80}$/.test(String(key))) return new Response("Invalid key", { status: 400, headers: cors });
       const account = await env.DB.prepare("SELECT user_key FROM users WHERE user_key = ?").bind(userKey).first();
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
-      await env.THEMES.delete(`theme:${userKey}:${key}`);
-      await env.DB.prepare("DELETE FROM custom_themes WHERE user_key = ? AND theme_key = ?").bind(userKey, key).run();
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...cors, "Content-Type": "application/json" }
-      });
+      await storage("THEMES").delete(`theme:${userKey}:${key}`);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // ── FEEDBACK SUBMIT ──────────────────────────────────────────────────────
@@ -2157,16 +2050,16 @@ export default {
       if (!account) return new Response("Account not found", { status: 404, headers: cors });
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let row = await env.DB.prepare(
-        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+        "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!row) {
         const legacy = await env.REVISION.get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+            "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+          ).bind(JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString()), userKey).run();
           row = await env.DB.prepare(
-            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+            "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
           ).bind(userKey).first();
         }
       }
@@ -2189,16 +2082,16 @@ export default {
       }
       if (!(await verifyPasswordAccountAccess(userKey, request))) return new Response("Sign in with a password account to sync Revision.", { status: 401, headers: cors });
       let existingRow = await env.DB.prepare(
-        "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+        "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
       ).bind(userKey).first();
       if (!existingRow) {
         const legacy = await env.REVISION.get(`user:${userKey}`, "json");
         if (legacy) {
           await env.DB.prepare(
-            "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-          ).bind(userKey, JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString())).run();
+            "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+          ).bind(JSON.stringify(legacy), String(legacy.updatedAt || new Date().toISOString()), userKey).run();
           existingRow = await env.DB.prepare(
-            "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+            "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
           ).bind(userKey).first();
         }
       }
@@ -2278,16 +2171,16 @@ export default {
       let write;
       if (existingRow) {
         write = await env.DB.prepare(
-          "UPDATE revision_sync_data SET data_json = ?, updated_at = ? WHERE user_key = ? AND updated_at = ?"
+          "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND COALESCE(revision_updated_at, '') = ?"
         ).bind(JSON.stringify(data), data.updatedAt, userKey, currentUpdatedAt).run();
       } else {
         write = await env.DB.prepare(
-          "INSERT OR IGNORE INTO revision_sync_data (user_key, data_json, updated_at) VALUES (?, ?, ?)"
-        ).bind(userKey, JSON.stringify(data), data.updatedAt).run();
+          "UPDATE users SET revision_data_json = ?, revision_updated_at = ? WHERE user_key = ? AND revision_data_json IS NULL"
+        ).bind(JSON.stringify(data), data.updatedAt, userKey).run();
       }
       if (write.meta && write.meta.changes === 0) {
         const latestRow = await env.DB.prepare(
-          "SELECT data_json, updated_at FROM revision_sync_data WHERE user_key = ?"
+          "SELECT revision_data_json AS data_json, revision_updated_at AS updated_at FROM users WHERE user_key = ?"
         ).bind(userKey).first();
         return new Response(JSON.stringify({ conflict: true, data: latestRow ? { ...JSON.parse(latestRow.data_json), updatedAt: latestRow.updated_at } : null }), {
           status: 409,
@@ -2295,15 +2188,15 @@ export default {
         });
       }
       await env.DB.prepare(
-        "INSERT INTO revision_leaderboard (user_key, username, xp, streak, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_key) DO UPDATE SET username = excluded.username, xp = excluded.xp, streak = excluded.streak, updated_at = excluded.updated_at"
-      ).bind(userKey, username, data.xp, data.streak, data.updatedAt).run();
+        "UPDATE users SET revision_xp = ?, revision_streak = ?, revision_leaderboard_updated_at = ? WHERE user_key = ?"
+      ).bind(data.xp, data.streak, data.updatedAt, userKey).run();
       return new Response(JSON.stringify({ success: true, data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/revision/leaderboard" && request.method === "GET") {
       await ensureLeaderboardVisibilityColumn();
       const { results } = await env.DB.prepare(
-        "SELECT r.username, r.xp, r.streak, r.updated_at AS updatedAt FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key WHERE COALESCE(u.leaderboard_hidden, 0) = 0 ORDER BY r.xp DESC, r.updated_at DESC LIMIT 100"
+        "SELECT username, revision_xp AS xp, revision_streak AS streak, revision_leaderboard_updated_at AS updatedAt FROM users WHERE COALESCE(leaderboard_hidden, 0) = 0 AND revision_xp > 0 ORDER BY revision_xp DESC, revision_leaderboard_updated_at DESC LIMIT 100"
       ).all();
       return new Response(JSON.stringify({ users: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
