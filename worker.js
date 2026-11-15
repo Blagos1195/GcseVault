@@ -309,14 +309,21 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      if (env.STORAGE_MODE === "d1") return new Response(JSON.stringify({ success: true, alreadyMigrated: true, namespaces: {} }), { headers: { ...cors, "Content-Type": "application/json" } });
+      if (env.STORAGE_MODE === "d1") {
+        const now = Math.floor(Date.now() / 1000);
+        const { results } = await env.DB.prepare("SELECT namespace, COUNT(*) AS total, SUM(CASE WHEN expires_at IS NOT NULL AND expires_at <= ? THEN 1 ELSE 0 END) AS expired FROM kv_store GROUP BY namespace ORDER BY namespace").bind(now).all();
+        const namespaces = Object.fromEntries((results || []).map(row => [row.namespace, { total: Number(row.total || 0), expired: Number(row.expired || 0) }]));
+        return new Response(JSON.stringify({ success: true, alreadyMigrated: true, storageMode: "d1", namespaces }), { headers: { ...cors, "Content-Type": "application/json" } });
+      }
       const namespaces = ["QUOTEVAULT", "DV_PENDING", "DV_PUBLIC", "FEEDBACK", "PUBLIC_QUOTES", "REVISION", "THEMES"];
       const report = {};
       let conflicts = 0;
+      let errors = 0;
       for (const namespace of namespaces) {
         const source = env[namespace];
         if (!source || typeof source.list !== "function") {
           report[namespace] = { error: "KV binding unavailable" };
+          errors++;
           continue;
         }
         let cursor;
@@ -355,21 +362,22 @@ export default {
               }
             }
             const metadata = key.metadata == null ? null : JSON.stringify(key.metadata);
-            const inserted = await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
-            const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
-            if (stored?.value === String(value)) {
-              if (inserted.meta?.changes) copied++;
-              else existing++;
-            } else {
-              conflicts++;
+            const previous = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
+            if (previous?.value === String(value)) {
+              existing++;
+              continue;
             }
+            await env.DB.prepare("INSERT INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
+            const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
+            if (stored?.value === String(value)) copied++;
+            else conflicts++;
           }
           cursor = page.list_complete ? null : page.cursor;
         } while (cursor);
         const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store WHERE namespace = ?").bind(namespace).first();
         report[namespace] = { copied, alreadyPresent: existing, expired, duplicatesSkipped, totalInD1: Number(count?.total || 0), pages };
       }
-      return new Response(JSON.stringify({ success: conflicts === 0, conflicts, namespaces: report }), { status: conflicts ? 409 : 200, headers: { ...cors, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: conflicts === 0 && errors === 0, conflicts, errors, storageMode: env.STORAGE_MODE || "kv", namespaces: report }), { status: conflicts || errors ? 409 : 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/admin/test-run" && request.method === "POST") {

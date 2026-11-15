@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS account_credentials;
+DROP TABLE IF EXISTS revision_sync_data;
+DROP TABLE IF EXISTS revision_leaderboard;
+DROP TABLE IF EXISTS custom_themes;
+DROP TABLE IF EXISTS account_course_selections;
+DROP TABLE IF EXISTS review_schedules;
+DROP TABLE IF EXISTS admin_notifications;
+DROP TABLE IF EXISTS submission_notifications;
+DROP TABLE IF EXISTS moderation_audit;
+DROP TABLE IF EXISTS admin_account_audit;
+DROP TABLE IF EXISTS test_run_history;
