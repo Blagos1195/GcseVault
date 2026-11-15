@@ -12,16 +12,30 @@ SELECT 'revision_sync_data' AS dataset,
   (SELECT COUNT(*) FROM revision_sync_data r LEFT JOIN users u ON u.user_key = r.user_key
    WHERE u.user_key IS NOT NULL AND (u.revision_data_json IS NOT r.data_json OR u.revision_updated_at IS NOT r.updated_at)) +
   (SELECT COUNT(*) FROM revision_sync_data r LEFT JOIN users u ON u.user_key = r.user_key
-   WHERE u.user_key IS NULL AND NOT EXISTS (SELECT 1 FROM kv_store k WHERE k.namespace = 'REVISION_SYNC_ORPHAN' AND k.key = r.user_key AND k.value = r.data_json)) AS mismatches;
+   WHERE u.user_key IS NULL AND NOT EXISTS (
+     SELECT 1 FROM kv_store k WHERE k.namespace = 'REVISION_SYNC_ORPHAN'
+       AND k.key = r.user_key AND k.value = r.data_json AND k.updated_at = r.updated_at
+   )) AS mismatches;
 
 SELECT 'revision_leaderboard' AS dataset,
   (SELECT COUNT(*) FROM revision_leaderboard) AS source_rows,
   (SELECT COUNT(*) FROM users WHERE revision_leaderboard_updated_at IS NOT NULL) +
   (SELECT COUNT(*) FROM kv_store WHERE namespace = 'REVISION_LEADERBOARD_ORPHAN') AS target_rows,
   (SELECT COUNT(*) FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key
-   WHERE u.user_key IS NOT NULL AND (u.username IS NOT r.username OR u.revision_xp IS NOT r.xp OR u.revision_streak IS NOT r.streak OR u.revision_leaderboard_updated_at IS NOT r.updated_at)) +
+   WHERE u.user_key IS NOT NULL AND (
+     u.username IS NOT r.username OR u.revision_xp IS NOT r.xp OR
+     u.revision_streak IS NOT r.streak OR
+     u.revision_leaderboard_updated_at IS NOT r.updated_at
+   )) +
   (SELECT COUNT(*) FROM revision_leaderboard r LEFT JOIN users u ON u.user_key = r.user_key
-   WHERE u.user_key IS NULL AND NOT EXISTS (SELECT 1 FROM kv_store k WHERE k.namespace = 'REVISION_LEADERBOARD_ORPHAN' AND k.key = r.user_key)) AS mismatches;
+   WHERE u.user_key IS NULL AND NOT EXISTS (
+     SELECT 1 FROM kv_store k
+     WHERE k.namespace = 'REVISION_LEADERBOARD_ORPHAN' AND k.key = r.user_key
+       AND json_extract(k.value, '$.username') IS r.username
+       AND json_extract(k.value, '$.xp') IS r.xp
+       AND json_extract(k.value, '$.streak') IS r.streak
+       AND json_extract(k.value, '$.updatedAt') IS r.updated_at
+   )) AS mismatches;
 
 SELECT 'admin_notifications' AS dataset,
   (SELECT COUNT(*) FROM admin_notifications) AS source_rows,
@@ -42,26 +56,26 @@ SELECT 'moderation_audit' AS dataset,
   (SELECT COUNT(*) FROM moderation_audit) AS source_rows,
   (SELECT COUNT(*) FROM audit_log WHERE event_type = 'moderation') AS target_rows,
   (SELECT COUNT(*) FROM moderation_audit m WHERE NOT EXISTS (
-    SELECT 1 FROM audit_log a WHERE a.event_type = 'moderation' AND a.site = m.site
-      AND a.item_id = m.item_id AND a.item_title = m.item_title AND a.submitted_by = m.submitted_by
-      AND a.actor_username = m.moderator AND a.action = m.action AND a.acted_at = m.acted_at
+    SELECT 1 FROM audit_log a WHERE a.event_type = 'moderation' AND a.site IS m.site
+      AND a.item_id IS m.item_id AND a.item_title IS m.item_title AND a.submitted_by IS m.submitted_by
+      AND a.actor_username IS m.moderator AND a.action IS m.action AND a.acted_at IS m.acted_at
   )) AS mismatches;
 
 SELECT 'admin_account_audit' AS dataset,
   (SELECT COUNT(*) FROM admin_account_audit) AS source_rows,
   (SELECT COUNT(*) FROM audit_log WHERE event_type = 'account') AS target_rows,
   (SELECT COUNT(*) FROM admin_account_audit m WHERE NOT EXISTS (
-    SELECT 1 FROM audit_log a WHERE a.event_type = 'account' AND a.target_username = m.target_username
-      AND a.actor_username = m.actor_username AND a.action = m.action AND a.acted_at = m.acted_at
+    SELECT 1 FROM audit_log a WHERE a.event_type = 'account' AND a.target_username IS m.target_username
+      AND a.actor_username IS m.actor_username AND a.action IS m.action AND a.acted_at IS m.acted_at
   )) AS mismatches;
 
 SELECT 'test_run_history' AS dataset,
   (SELECT COUNT(*) FROM test_run_history) AS source_rows,
   (SELECT COUNT(*) FROM audit_log WHERE event_type = 'test') AS target_rows,
   (SELECT COUNT(*) FROM test_run_history m WHERE NOT EXISTS (
-    SELECT 1 FROM audit_log a WHERE a.event_type = 'test' AND a.actor_username = m.actor_username
-      AND a.test_name = m.test_name AND a.status = m.status AND a.detail = m.detail
-      AND a.duration_ms = m.duration_ms AND a.acted_at = m.completed_at
+    SELECT 1 FROM audit_log a WHERE a.event_type = 'test' AND a.actor_username IS m.actor_username
+      AND a.test_name IS m.test_name AND a.status IS m.status AND a.detail IS m.detail
+      AND a.duration_ms IS m.duration_ms AND a.acted_at IS m.completed_at
   )) AS mismatches;
 
 SELECT 'custom_themes' AS dataset,
