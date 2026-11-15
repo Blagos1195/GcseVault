@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS admin_setup;
+SELECT 1;
