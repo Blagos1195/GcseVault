@@ -1335,6 +1335,10 @@ const AdminManager = {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       const result = await response.json();
+      if (result.alreadyMigrated) {
+        this.migrationStatus = 'Storage is already using D1.';
+        return;
+      }
       const entries = Object.entries(result.namespaces || {});
       const failed = entries.filter(([, value]) => value.error);
       if (failed.length || result.conflicts) throw new Error(`Migration needs attention. Conflicts: ${result.conflicts || 0}. Unavailable namespaces: ${failed.map(([name]) => name).join(', ') || 'none'}.`);
