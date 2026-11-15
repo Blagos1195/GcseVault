@@ -4,4 +4,3 @@
 .env.*
 !.env.example
 node_modules/
-/scripts/load-test-accounts.json
