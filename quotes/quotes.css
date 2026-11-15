@@ -457,3 +457,4 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  #topbar>.btn{order:4}
 }
 #sidebar{display:none!important}
+#page{min-height:0;overscroll-behavior-y:contain}
