@@ -343,7 +343,7 @@ test("custom theme keys reject separators", async () => {
         const bound = statement.bind(...values);
         return {
           ...bound,
-          first: async () => sql.includes("FROM account_credentials")
+          first: async () => sql.includes("password_hash IS NOT NULL")
             ? { user_key: values[0] }
             : { user_key: "account-key", username: "student", role: "user" }
         };
@@ -534,6 +534,49 @@ test("theme storage rejects unknown accounts", async () => {
   const response = await call("/themes/list?userKey=unknown", env);
   assert.equal(response.status, 404);
   assert.equal(listed, false);
+});
+
+test("owner storage migration copies KV values into D1 and leaves the sources intact", async () => {
+  const env = makeEnv();
+  env.FEEDBACK.values.set("report-1", JSON.stringify({ id: "report-1", title: "Test report" }));
+  const quoteValues = env.QUOTEVAULT.values;
+  quoteValues.set("pending-1", JSON.stringify({ id: "pending-1", text: "Pending quote" }));
+  env.QUOTEVAULT.get = async (key, type) => {
+    if (key === "session:test-session") return JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" });
+    const value = quoteValues.get(key);
+    return value === undefined ? null : type === "json" ? JSON.parse(value) : value;
+  };
+  const records = new Map();
+  env.DB.prepare = sql => ({
+    bind: (...values) => ({
+      first: async () => {
+        if (sql.includes("FROM account_sessions WHERE token_hash")) return { user_key: "admin-key" };
+        if (sql.includes("FROM users WHERE user_key = ?")) return { user_key: "admin-key", username: "owner", role: "owner" };
+        if (sql.includes("SELECT value FROM kv_store")) return records.has(values[0] + ":" + values[1]) ? { value: records.get(values[0] + ":" + values[1]) } : null;
+        if (sql.includes("COUNT(*) AS total")) return { total: [...records.keys()].filter(key => key.startsWith(values[0] + ":")).length };
+        return null;
+      },
+      run: async () => {
+        if (sql.includes("INSERT OR IGNORE INTO kv_store")) {
+          const key = values[0] + ":" + values[1];
+          if (records.has(key)) return { meta: { changes: 0 } };
+          records.set(key, values[2]);
+          return { meta: { changes: 1 } };
+        }
+        return { meta: { changes: 1 } };
+      }
+    })
+  });
+  const response = await call("/admin/storage-migrate", env, {}, { "X-Session-Token": "test-session" });
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.success, true);
+  assert.equal(data.namespaces.FEEDBACK.copied, 1);
+  assert.equal(data.namespaces.QUOTEVAULT.copied, 1);
+  assert.equal(records.get("FEEDBACK:report-1"), env.FEEDBACK.values.get("report-1"));
+  assert.equal(records.get("QUOTEVAULT:pending-1"), quoteValues.get("pending-1"));
+  assert.equal(env.FEEDBACK.values.has("report-1"), true);
+  assert.equal(quoteValues.has("pending-1"), true);
 });
 
 test("QuoteVault withdrawal requires an account key", async () => {
@@ -1038,8 +1081,8 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
     const originalBind = statement.bind;
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) bound.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
-      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
+      if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
+      if (sql.includes("PRAGMA table_info(users)")) statement.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
       return bound;
     };
     return statement;
@@ -1059,8 +1102,8 @@ test("Test Centre reports missing migrations without changing the database", asy
     const originalBind = statement.bind;
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) bound.all = async () => ({results:[{name:"account_sessions"}]});
-      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
+      if (sql.includes("sqlite_master")) statement.all = async () => ({results:[{name:"account_sessions"}]});
+      if (sql.includes("PRAGMA table_info(users)")) statement.all = async () => ({results:[{name:"role"}]});
       return bound;
     };
     return statement;
