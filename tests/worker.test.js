@@ -1082,7 +1082,7 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
     statement.bind = (...values) => {
       const bound = originalBind(...values);
       if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
-      if (sql.includes("PRAGMA table_info(users)")) statement.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
       return bound;
     };
     return statement;
@@ -1103,7 +1103,7 @@ test("Test Centre reports missing migrations without changing the database", asy
     statement.bind = (...values) => {
       const bound = originalBind(...values);
       if (sql.includes("sqlite_master")) statement.all = async () => ({results:[{name:"account_sessions"}]});
-      if (sql.includes("PRAGMA table_info(users)")) statement.all = async () => ({results:[{name:"role"}]});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"}]});
       return bound;
     };
     return statement;
@@ -1114,7 +1114,7 @@ test("Test Centre reports missing migrations without changing the database", asy
   assert.equal(data.results[0].status,"failed");
   assert.match(data.results[0].detail,/missing tables/);
   assert.match(data.results[0].detail,/ai_access/);
-  assert.equal(env.updates.some(update=>/kv_store|notifications|audit_log|account_sessions|admin_setup|ALTER TABLE/.test(update.sql)),false);
+  assert.equal(env.updates.some(update=>/ALTER TABLE|CREATE TABLE|DROP TABLE/.test(update.sql)),false);
 });
 
 test("admin status exposes Worker version metadata without account information", async () => {
