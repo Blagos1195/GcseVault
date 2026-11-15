@@ -24,10 +24,15 @@ export default {
           if (!row) return null;
           return type === "json" ? JSON.parse(row.value) : row.value;
         },
+        async getWithMetadata(key, type) {
+          const row = await env.DB.prepare("SELECT value, updated_at FROM kv_store WHERE namespace = ? AND key = ? AND (expires_at IS NULL OR expires_at > ?)").bind(namespace, String(key), Math.floor(Date.now() / 1000)).first();
+          if (!row) return null;
+          return { value: type === "json" ? JSON.parse(row.value) : row.value, updatedAt: row.updated_at || null };
+        },
         async put(key, value, options = {}) {
           const now = Math.floor(Date.now() / 1000);
           const expiresAt = options.expirationTtl ? now + Math.max(60, Number(options.expirationTtl)) : options.expiration ? Number(options.expiration) : null;
-          await env.DB.prepare("INSERT INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at").bind(namespace, String(key), String(value), expiresAt, options.metadata ? JSON.stringify(options.metadata) : null, new Date().toISOString()).run();
+          await env.DB.prepare("INSERT INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, expires_at = excluded.expires_at, metadata_json = excluded.metadata_json, updated_at = excluded.updated_at").bind(namespace, String(key), String(value), expiresAt, options.metadata ? JSON.stringify(options.metadata) : null, options.updatedAt || new Date().toISOString()).run();
         },
         async delete(key) {
           await env.DB.prepare("DELETE FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, String(key)).run();
@@ -1997,9 +2002,10 @@ export default {
       if (!["qv", "dv"].includes(site)) return new Response("Invalid site", { status: 400, headers: cors });
       if (request.method === "GET") {
         const key = "schedules:" + session.user_key + ":" + site;
-        let schedules = {};
-        try { schedules = await storage("USER_DATA").get(key, "json") || {}; } catch {}
-        return new Response(JSON.stringify({ found: Object.keys(schedules).length > 0, schedules, updatedAt: null }), { headers: { ...cors, "Content-Type": "application/json" } });
+        let stored = null;
+        try { stored = await storage("USER_DATA").getWithMetadata(key, "json"); } catch {}
+        const schedules = stored?.value || {};
+        return new Response(JSON.stringify({ found: Boolean(stored), schedules, updatedAt: stored?.updatedAt || null }), { headers: { ...cors, "Content-Type": "application/json" } });
       }
       const body = await request.json();
       const incoming = body.schedules && typeof body.schedules === "object" && !Array.isArray(body.schedules) ? body.schedules : null;
@@ -2015,7 +2021,7 @@ export default {
         if (!current || (incomingAt && incomingAt >= currentAt)) merged[id] = schedule;
       }
       const updatedAt = new Date().toISOString();
-      await storage("USER_DATA").put(key, JSON.stringify(merged));
+      await storage("USER_DATA").put(key, JSON.stringify(merged), { updatedAt });
       return new Response(JSON.stringify({ success: true, schedules: merged, updatedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
