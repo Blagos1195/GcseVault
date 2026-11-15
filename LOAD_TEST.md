@@ -1,45 +1,81 @@
 # Live load test
 
-This test makes read-only requests to the live GitHub Pages site and the production Worker. It does not create accounts, change progress, submit content, send notifications or call Workers AI.
+The test suite has two parts:
 
-It measures concurrent authenticated sessions, not the maximum number of account rows the database can store.
+- A Playwright browser pass that opens all five live site pages, downloads their assets and runs their JavaScript.
+- A k6 API pass that measures concurrent authenticated account requests.
+
+Both use dedicated test accounts. Do not use real users' accounts.
 
 ## Prepare test accounts
 
-Create dedicated test accounts in GCSE Vault. Do not use real users' accounts.
-
-For each test account, sign in on the live site, open the browser developer console and run:
+Create dedicated test accounts in GCSE Vault. For each account, sign in on the live site, open the browser developer console and run:
 
 ```js
 localStorage.getItem("vault_account_session")
+localStorage.getItem("vault_userKey")
 ```
 
-Copy the returned 64-character token and the value of `localStorage.getItem("vault_userKey")` into `scripts/load-test-accounts.json`. Keep the file private. It contains active login sessions and account keys.
+Copy both values into `scripts/load-test-accounts.json`. The session must be a 64-character token. Keep this file private: it contains active login sessions and account keys.
 
-Copy `scripts/load-test-accounts.example.json` to `scripts/load-test-accounts.json`, then replace the example values with the test tokens. The real file is ignored by Git.
+Copy `scripts/load-test-accounts.example.json` to `scripts/load-test-accounts.json`, then replace the example values. The real file is ignored by Git.
 
-Do not paste session tokens into chat, commit them, or share them. Sign out of the test accounts when finished to revoke their sessions.
+Do not paste these values into chat, commit them or share them. Sign out of the test accounts when finished to revoke their sessions.
 
-## Install and run
+Set the live site URL shown in your browser, including the `/GcseVault` path. For example:
 
-Install Grafana k6 using its official Windows installation instructions. From the repository root in the VS Code terminal, first run the normal regression tests:
+```powershell
+$env:BASE_URL = "https://your-live-site/GcseVault"
+```
+
+## 1. Full browser pass
+
+From the repository root in the VS Code terminal, install Playwright and Chromium:
+
+```powershell
+npm install --no-save --package-lock=false playwright
+npx playwright install chromium
+```
+
+Start with three concurrent test accounts:
+
+```powershell
+$env:MAX_ACCOUNTS = "3"
+node scripts/live-browser-load.mjs
+```
+
+Then repeat with five and ten accounts only if the site and your computer remain responsive:
+
+```powershell
+$env:MAX_ACCOUNTS = "5"
+node scripts/live-browser-load.mjs
+$env:MAX_ACCOUNTS = "10"
+node scripts/live-browser-load.mjs
+```
+
+Each browser context visits the root dashboard, QuoteVault, DateVault, Revision and the progress dashboard. The script records page-load times, JavaScript errors, failed first-party requests and HTTP errors. It suppresses automatic feedback submissions so a failed resource does not create test bug reports or admin notifications.
+
+The browser pass is capped at ten accounts because each virtual user runs a real browser.
+
+## 2. API concurrency pass
+
+Install Grafana k6 using its official Windows installation instructions. First run the normal regression suite:
 
 ```powershell
 npm test
 ```
 
-Set BASE_URL to the live site address shown in your browser, including the `/GcseVault` path. Then start with five concurrent test accounts:
+Start with five concurrent authenticated accounts:
 
 ```powershell
 k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=5 scripts/live-load.k6.js
 ```
 
-The test ramps up gradually, holds the selected load, and then ramps down. Each virtual user uses a different test-account session. Each iteration requests one of the five live site pages and the authenticated account progress endpoint.
+The k6 test ramps up gradually, holds the selected load, then ramps down. Each virtual user uses a different test-account session. Each iteration requests one of the five site pages and the authenticated account progress endpoint.
 
-The initial script caps the test at 20 concurrent accounts. Run the levels separately, increasing only after reviewing the previous results:
+The initial script caps the test at 20 concurrent accounts. Increase in separate runs, reviewing each result before moving on:
 
 ```powershell
-k6 run -e MAX_VUS=5 scripts/live-load.k6.js
 k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=10 scripts/live-load.k6.js
 k6 run -e BASE_URL=https://your-live-site/GcseVault -e MAX_VUS=20 scripts/live-load.k6.js
 ```
@@ -48,13 +84,15 @@ You need at least the same number of distinct test-account sessions as the selec
 
 ## Reading the results
 
-Check the k6 summary for:
+For k6, check:
 
 - `account_api_duration p(95)`: 95% of authenticated API requests should complete in under 1.5 seconds.
 - `account_api_failure_rate`: should remain below 1%.
 - `page_duration p(95)`: 95% of page requests should complete in under 1.5 seconds.
 - `page_failure_rate`: should remain below 1%.
 
-A failed threshold means that load level did not meet the target. It does not automatically mean the Worker is broken; inspect Cloudflare Worker metrics and D1 metrics at the same timestamps.
+For Playwright, check the page-load p95 and the `failures` array.
 
-This is a controlled first-pass test, not a maximum-capacity or denial-of-service test. It deliberately avoids writes and AI generation. Account creation, login throughput, moderation writes and Revision sync writes need separate tests using an isolated staging database before they are measured.
+A failed threshold means that load level did not meet the target. It does not automatically mean the Worker is broken; compare the test timestamps with Cloudflare Worker and D1 metrics.
+
+These are controlled first-pass tests, not denial-of-service tests. They avoid AI generation and content submissions. Account creation, login throughput, moderation writes and Revision sync writes need separate tests using an isolated staging database.
