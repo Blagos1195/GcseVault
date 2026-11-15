@@ -459,7 +459,7 @@ export default {
       const completedAt = new Date().toISOString();
       for (const result of results) {
         await env.DB.prepare("INSERT INTO audit_log (event_type, actor_username, action, test_name, status, detail, duration_ms, acted_at) VALUES ('test', ?, 'test_run', ?, ?, ?, ?, ?)").bind(
-          crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
+          actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
         ).run();
       }
       return new Response(JSON.stringify({ results, completed_at: completedAt }), { headers: { ...cors, "Content-Type": "application/json" } });
@@ -2007,16 +2007,14 @@ export default {
         env.DB.prepare("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp, streak, max_streak, updated_at FROM users WHERE user_key = ?").bind(session.user_key).first()
       ]);
       const today = new Date().toISOString().slice(0, 10);
-      const summarizeSchedules = (row, mastered, xp) => {
-        let schedules = {};
-        try { schedules = row ? JSON.parse(row.schedules_json || "{}") : {}; } catch {}
-        const values = Object.values(schedules).filter(item => item && typeof item === "object" && !Array.isArray(item));
+      const summarizeSchedules = (schedules, mastered, xp) => {
+        const values = Object.values(schedules || {}).filter(item => item && typeof item === "object" && !Array.isArray(item));
         return {
           scheduled: values.length,
           due: values.filter(item => !item.due || String(item.due).slice(0, 10) <= today).length,
           mastered: Number(mastered) || 0,
           xp: Number(xp) || 0,
-          updatedAt: [row?.updated_at, accountRow?.updated_at].filter(Boolean).sort().at(-1) || null
+          updatedAt: accountRow?.updated_at || null
         };
       };
       let revisionData = {};
