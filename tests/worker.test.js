@@ -543,6 +543,8 @@ test("theme storage rejects unknown accounts", async () => {
 
 test("owner storage migration copies KV values into D1 and leaves the sources intact", async () => {
   const env = makeEnv();
+  env.REVISION = memoryKV();
+  env.THEMES = memoryKV();
   env.FEEDBACK.values.set("report-1", JSON.stringify({ id: "report-1", title: "Test report" }));
   const quoteValues = env.QUOTEVAULT.values;
   quoteValues.set("pending-1", JSON.stringify({ id: "pending-1", text: "Pending quote" }));
