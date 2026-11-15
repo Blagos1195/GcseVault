@@ -438,7 +438,7 @@ export default {
             const row = await env.DB.prepare("SELECT id, read_at FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!row) throw new Error("Could not retrieve the temporary notification");
             await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
-            const read = await env.DB.prepare("SELECT read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            const read = await env.DB.prepare("SELECT read_at FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!read?.read_at) throw new Error("Could not mark the temporary notification as read");
             await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run();
             return "Notification creation, retrieval, mark-read and deletion all passed without sending a push alert.";
