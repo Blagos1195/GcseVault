@@ -1,10 +1,17 @@
 # Cloudflare storage consolidation rollout
 
-This change is deliberately staged. Do not delete KV namespaces or legacy D1 tables during the first deployment.
+This rollout moves the seven KV namespaces into D1, consolidates the relational tables, and leaves six permanent application tables:
+
+- `users`
+- `account_sessions`
+- `admin_push_subscriptions`
+- `notifications`
+- `audit_log`
+- `kv_store`
+
+Do not delete KV namespaces or legacy D1 tables until the D1-backed Worker has been deployed and verified. Keep the existing D1 and KV backups private and available throughout the rollout.
 
 ## Stage 1: create the consolidated D1 structures
-
-The existing D1 and KV backups must remain available.
 
 From the repository root in the VS Code terminal:
 
@@ -13,17 +20,19 @@ npx wrangler d1 migrations apply leaderboard --remote
 npx wrangler deploy
 ```
 
-Migration 0008 is additive: it copies existing relational data into the consolidated tables and adds the new account columns, but it does not drop the old tables. This lets the existing Worker continue operating until the new Worker is deployed.
+Migration 0008 copies relational data into the consolidated tables while retaining the source tables. Migration 0009 is intentionally non-destructive; the completed `admin_setup` table is dropped only during the final cleanup. Deploy while `STORAGE_MODE` is still `kv`, so the current Worker continues using its existing KV data sources.
 
 ## Stage 2: copy KV data
 
-Sign in to the owner Admin Panel and run the storage migration action once. It now copies every key from all seven KV namespaces into D1, preserving expiration and metadata. It is safe to run again.
+Sign in to the owner Admin Panel and run the storage migration action once. It copies all unexpired keys from the seven KV namespaces into D1, preserving expiration and metadata. It is safe to run again.
 
-Do not continue if the report shows unavailable namespaces or conflicts. A successful report should list all seven namespaces and show zero conflicts. Revision personal-sync and leaderboard keys are skipped only when their data matches the corresponding D1 user record exactly.
+The report must include all seven namespaces and show zero conflicts and zero errors. Revision personal-sync and leaderboard keys are skipped only when their data exactly matches the corresponding D1 user record. Expired KV keys are intentionally not copied.
+
+Do not continue if any namespace is unavailable or the report is unsuccessful.
 
 ## Stage 3: switch reads and writes to D1
 
-After the copy succeeds, change this line in `wrangler.toml`:
+After Stage 2 succeeds, change this line in `wrangler.toml`:
 
 ```toml
 STORAGE_MODE = "kv"
@@ -35,27 +44,39 @@ to:
 STORAGE_MODE = "d1"
 ```
 
-Deploy again:
+Then deploy:
 
 ```powershell
 npx wrangler deploy
 ```
 
-The existing KV bindings are intentionally left configured for this verification period, but the Worker will use D1 for all storage operations.
+Keep all seven KV bindings configured during verification. The Worker will now use D1 for application storage while the original KV namespaces remain untouched as a rollback source.
 
-Check account login, admin login, notifications, QuoteVault submissions/moderation, DateVault submissions/moderation, Revision sync/publication, themes, feedback and rate limits. Do not delete the KV namespaces yet.
+Check account login, admin login, notifications, QuoteVault submissions and moderation, DateVault submissions and moderation, Revision sync and publication, themes, feedback, and rate limits. Run the owner Test Centre health and migrations tests as well.
 
-## Stage 4: remove the legacy storage
+## Stage 4: verify data before cleanup
 
-Only after Stage 3 has been verified, run the read-only parity checks in `maintenance/storage-preflight.sql`:
+Run the read-only parity checks:
 
 ```powershell
 npx wrangler d1 execute leaderboard --remote --file maintenance/storage-preflight.sql
 ```
 
-Every mismatch count must be zero. Then run `maintenance/storage-drop-legacy.sql` to remove the eleven superseded D1 tables. A separate configuration change will remove the seven KV bindings. Then the old KV namespaces can be deleted in Cloudflare.
+Every reported mismatch count must be zero. Review the namespace totals and expired-key counts too. Do not proceed if any source record is missing or differs from its consolidated copy.
 
-The old D1 tables are deliberately retained by migration 0008 so the first deployment cannot destroy the current Worker’s data sources. The cleanup migration must be applied only after the D1-backed Worker is confirmed live.
+Then, and only then, run the final D1 cleanup:
+
+```powershell
+npx wrangler d1 execute leaderboard --remote --file maintenance/storage-drop-legacy.sql
+```
+
+This removes the twelve superseded tables, including `admin_setup`. The six permanent application tables remain.
+
+## Stage 5: remove KV bindings and namespaces
+
+Only after the D1-backed Worker and all functional checks pass, remove the seven KV bindings from `wrangler.toml` in a separate code change and deploy it. The application uses the D1 storage adapter; no live application route should depend on the old KV bindings.
+
+After that deployment is confirmed healthy, delete the seven now-unused KV namespaces in Cloudflare. Keep the local backups private; do not commit them.
 
 ## Useful verification queries
 
