@@ -320,10 +320,15 @@ export default {
         do {
           const page = await source.list({ limit: 1000, ...(cursor ? { cursor } : {}) });
           pages++;
+          let expired = 0;
           for (const key of page.keys || []) {
+            const expiration = Number(key.expiration) || null;
+            if (expiration && expiration <= Math.floor(Date.now() / 1000)) {
+              expired++;
+              continue;
+            }
             const value = await source.get(key.name);
             if (value === null || value === undefined) continue;
-            const expiration = Number(key.expiration) || null;
             const metadata = key.metadata == null ? null : JSON.stringify(key.metadata);
             const inserted = await env.DB.prepare("INSERT OR IGNORE INTO kv_store (namespace, key, value, expires_at, metadata_json, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(namespace, key.name, String(value), expiration, metadata, new Date().toISOString()).run();
             const stored = await env.DB.prepare("SELECT value FROM kv_store WHERE namespace = ? AND key = ?").bind(namespace, key.name).first();
@@ -337,7 +342,7 @@ export default {
           cursor = page.list_complete ? null : page.cursor;
         } while (cursor);
         const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM kv_store WHERE namespace = ?").bind(namespace).first();
-        report[namespace] = { copied, alreadyPresent: existing, totalInD1: Number(count?.total || 0), pages };
+        report[namespace] = { copied, alreadyPresent: existing, expired, totalInD1: Number(count?.total || 0), pages };
       }
       return new Response(JSON.stringify({ success: conflicts === 0, conflicts, namespaces: report }), { status: conflicts ? 409 : 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
