@@ -41,23 +41,25 @@ for (const file of files) {
 }
 
 
-test("storage migration summary aggregates all phases", async () => {
+test("storage migration summary reports the consolidated KV copy", async () => {
   const source = fs.readFileSync(new URL("../shared.js", import.meta.url), "utf8");
-  const phases = {
-    revision: { processed: 2, migrated: 1, alreadyPresent: 1, skipped: 0, complete: true, cursor: null },
-    "revision-leaderboard": { processed: 3, migrated: 1, alreadyPresent: 1, skipped: 1, complete: true, cursor: null },
-    themes: { processed: 4, migrated: 2, alreadyPresent: 2, skipped: 0, complete: true, cursor: null }
-  };
   const context = {
     document: { addEventListener() {} },
     window: { render() {}, addEventListener() {}, __vaultAccountFetchWrapped: true },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
     sessionStorage: { getItem() { return "test-session"; }, setItem() {}, removeItem() {} },
     fetch: async (_url, options) => {
-      const { phase } = JSON.parse(options.body);
+      assert.equal(JSON.parse(options.body).phase, undefined);
       return {
         ok: true,
-        json: async () => phases[phase]
+        json: async () => ({
+          success: true,
+          conflicts: 0,
+          namespaces: {
+            QUOTEVAULT: { copied: 2, alreadyPresent: 1, expired: 0, duplicatesSkipped: 0 },
+            REVISION: { copied: 1, alreadyPresent: 0, expired: 1, duplicatesSkipped: 2 }
+          }
+        })
       };
     },
     console,
@@ -70,7 +72,7 @@ test("storage migration summary aggregates all phases", async () => {
   manager.role = "owner";
   manager.refresh = async () => {};
   await manager.migrateStorage();
-  assert.equal(manager.migrationStatus, "Migration finished: 4 copied, 4 already present, 1 skipped. Review skipped records before relying on D1-only data. Original KV copies remain available.");
+  assert.equal(manager.migrationStatus, "Migration complete: 3 copied, 1 already present, 2 verified duplicates skipped, 1 expired. All original KV records remain available until the D1 switch is verified.");
 });
 
 
@@ -1096,10 +1098,10 @@ test("icon-only navigation and data controls have accessible names", () => {
 
 test("owner account permission changes are included in the admin history", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
-  const backendMigration = fs.readFileSync(new URL("../migrations/0007_backend_schema_and_indexes.sql", import.meta.url), "utf8");
-  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS admin_account_audit/);
+  const backendMigration = fs.readFileSync(new URL("../migrations/0008_storage_consolidation.sql", import.meta.url), "utf8");
+  assert.match(backendMigration, /CREATE TABLE IF NOT EXISTS audit_log/);
   assert.match(worker, /recordAccountAdminAction/);
-  assert.match(worker, /SELECT target_username, actor_username, action, acted_at FROM admin_account_audit/);
+  assert.match(worker, /SELECT target_username, actor_username, action, acted_at FROM audit_log WHERE event_type = 'account'/);
 });
 
 
