@@ -29,6 +29,11 @@ function memoryKV() {
       if (value === undefined) return null;
       return type === "json" ? JSON.parse(value) : value;
     },
+    async getWithMetadata(key, type) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      return { value: type === "json" ? JSON.parse(value) : value, updatedAt: null };
+    },
     async put(key, value) {
       values.set(key, String(value));
     },
