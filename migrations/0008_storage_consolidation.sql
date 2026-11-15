@@ -129,6 +129,13 @@ SELECT 'REVISION_SYNC_ORPHAN', user_key, data_json, updated_at
 FROM revision_sync_data
 WHERE user_key NOT IN (SELECT user_key FROM users);
 
+INSERT OR IGNORE INTO kv_store (namespace, key, value, updated_at)
+SELECT 'REVISION_LEADERBOARD_ORPHAN', user_key,
+       json_object('username', username, 'xp', xp, 'streak', streak, 'updatedAt', updated_at),
+       updated_at
+FROM revision_leaderboard
+WHERE user_key NOT IN (SELECT user_key FROM users);
+
 DROP TABLE account_credentials;
 DROP TABLE revision_sync_data;
 DROP TABLE revision_leaderboard;
