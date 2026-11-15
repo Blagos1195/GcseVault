@@ -1090,7 +1090,7 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   const response = await call("/admin/test-run",env,{test:"migrations"},{"X-Session-Token":"test-session"});
   const data = await response.json();
   assert.equal(response.status,200);
-  assert.equal(data.results[0].status,"passed");
+  assert.equal(data.results[0].status,"passed",data.results[0].detail);
   assert.match(data.results[0].detail,/consolidated storage tables/);
 });
 
