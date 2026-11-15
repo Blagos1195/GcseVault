@@ -20,10 +20,36 @@ async function derivePasswordHash(password, passwordSalt) {
   return Buffer.from(bits).toString("hex");
 }
 
+function memoryKV() {
+  const values = new Map();
+  return {
+    values,
+    async get(key, type) {
+      const value = values.get(key);
+      if (value === undefined) return null;
+      return type === "json" ? JSON.parse(value) : value;
+    },
+    async put(key, value) {
+      values.set(key, String(value));
+    },
+    async delete(key) {
+      values.delete(key);
+    },
+    async list({ prefix = "" } = {}) {
+      return { keys: [...values.keys()].filter(key => key.startsWith(prefix)).sort().map(name => ({ name })), list_complete: true };
+    }
+  };
+}
+
 function makeEnv(rows = []) {
   const updates = [];
   const batchCalls = [];
+  const userData = memoryKV();
   return {
+    USER_DATA: userData,
+    FEEDBACK: memoryKV(),
+    PUBLIC_QUOTES: memoryKV(),
+    DV_PUBLIC: memoryKV(),
     ADMIN_KEY: "test-admin",
     updates,
     batchCalls,
@@ -62,12 +88,11 @@ function makeEnv(rows = []) {
       }
     },
     QUOTEVAULT: {
+      ...memoryKV(),
       get: async key => key === "session:test-session" ? JSON.stringify({ userKey: "admin-key", accountTokenHash: "test-account-session-hash" }) : null,
       delete: async () => {}
     },
-    DV_PENDING: {
-      delete: async () => {}
-    },
+    DV_PENDING: memoryKV(),
     REVISION: {
       get: async () => null,
       put: async () => {},
