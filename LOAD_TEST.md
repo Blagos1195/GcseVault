@@ -14,7 +14,7 @@ For each test account, sign in on the live site, open the browser developer cons
 localStorage.getItem("vault_account_session")
 ```
 
-Copy the returned 64-character token into `scripts/load-test-accounts.json`. Keep the file private. It contains active login sessions.
+Copy the returned 64-character token and the value of `localStorage.getItem("vault_userKey")` into `scripts/load-test-accounts.json`. Keep the file private. It contains active login sessions and account keys.
 
 Copy `scripts/load-test-accounts.example.json` to `scripts/load-test-accounts.json`, then replace the example values with the test tokens. The real file is ignored by Git.
 
