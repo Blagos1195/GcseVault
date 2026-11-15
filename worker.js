@@ -134,7 +134,7 @@ export default {
     }
 
     async function recordAccountAdminAction(targetUsername, actorUsername, action) {
-      await env.DB.prepare("INSERT INTO admin_account_audit (target_username, actor_username, action, acted_at) VALUES (?, ?, ?, ?)").bind(
+      await env.DB.prepare("INSERT INTO audit_log (event_type, target_username, actor_username, action, acted_at) VALUES ('account', ?, ?, ?, ?)").bind(
         String(targetUsername), String(actorUsername), String(action), new Date().toISOString()
       ).run();
     }
@@ -233,7 +233,7 @@ export default {
       const createdAt = new Date().toISOString();
       const pushJobs = [];
       for (const admin of results || []) {
-        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
+        const inserted = await env.DB.prepare("INSERT OR IGNORE INTO notifications (kind, id, user_key, site, item_id, title, submitter, created_at) VALUES ('admin', ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + admin.user_key, admin.user_key, site, String(id), title, String(submitter || "Unknown submitter"), createdAt).run();
         if (inserted.meta?.changes) pushJobs.push(sendAdminPush(admin.user_key, { title: "New GCSE Vault submission", body: site + ": " + title + " · " + String(submitter || "Unknown submitter"), tag: site + ":" + id, url: "/GcseVault/admin/" }));
       }
       if (ctx?.waitUntil) ctx.waitUntil(Promise.allSettled(pushJobs));
@@ -262,11 +262,11 @@ export default {
       delete original.userKey;
       delete original.originalSubmission;
       const payload = JSON.stringify({ original, approved: approvedItem || null });
-      await env.DB.prepare("INSERT OR IGNORE INTO submission_notifications (id, user_key, site, item_id, title, status, payload, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO notifications (kind, id, user_key, site, item_id, title, status, payload, created_at) VALUES ('submission', ?, ?, ?, ?, ?, ?, ?, ?)").bind(site + ":" + id + ":" + status, userKey, site, String(id), title, status, payload, new Date().toISOString()).run();
     }
     async function recordModerationAction(site, id, item, actor, action) {
       const title = String(item.text || item.event || item.title || item.description || "Untitled submission").slice(0, 500);
-      await env.DB.prepare("INSERT OR IGNORE INTO moderation_audit (site, item_id, item_title, submitted_by, moderator, action, acted_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO audit_log (event_type, site, item_id, item_title, submitted_by, actor_username, action, acted_at) VALUES ('moderation', ?, ?, ?, ?, ?, ?, ?)").bind(site, String(id), title, String(item.submittedBy || "Unknown submitter"), String(actor.username || "Unknown admin"), action, new Date().toISOString()).run();
     }
     async function recordApproval(site, id, item, actor) {
       return recordModerationAction(site, id, item, actor, "approved");
@@ -429,15 +429,15 @@ export default {
         notifications: async () => {
           const id = "test-centre:" + crypto.randomUUID();
           try {
-            await env.DB.prepare("INSERT INTO admin_notifications (id, user_key, site, item_id, title, submitter, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
-            const row = await env.DB.prepare("SELECT id, read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
+            await env.DB.prepare("INSERT INTO notifications (kind, id, user_key, site, item_id, title, submitter, created_at) VALUES ('admin', ?, ?, ?, ?, ?, ?, ?)").bind(id, actor.user_key, "Test Centre", id, "Synthetic notification test", "Test Centre", new Date().toISOString()).run();
+            const row = await env.DB.prepare("SELECT id, read_at FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!row) throw new Error("Could not retrieve the temporary notification");
-            await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
+            await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(new Date().toISOString(), id, actor.user_key).run();
             const read = await env.DB.prepare("SELECT read_at FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).first();
             if (!read?.read_at) throw new Error("Could not mark the temporary notification as read");
-            await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+            await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run();
             return "Notification creation, retrieval, mark-read and deletion all passed without sending a push alert.";
-          } finally { await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run(); }
+          } finally { await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run(); }
         },
         permissions: async () => {
           if (actor.role !== "owner") throw new Error("The current session is not an owner session");
@@ -458,7 +458,7 @@ export default {
       }
       const completedAt = new Date().toISOString();
       for (const result of results) {
-        await env.DB.prepare("INSERT INTO test_run_history (id, actor_username, test_name, status, detail, duration_ms, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(
+        await env.DB.prepare("INSERT INTO audit_log (event_type, actor_username, action, test_name, status, detail, duration_ms, acted_at) VALUES ('test', ?, 'test_run', ?, ?, ?, ?, ?)").bind(
           crypto.randomUUID(), actor.username, result.name, result.status, result.detail, result.duration_ms, completedAt
         ).run();
       }
@@ -469,7 +469,7 @@ export default {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       if (actor.role !== "owner") return new Response("Owner access required", { status: 403, headers: cors });
-      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, completed_at FROM test_run_history ORDER BY completed_at DESC LIMIT 50").bind().all();
+      const history = await env.DB.prepare("SELECT actor_username, test_name, status, detail, duration_ms, acted_at AS completed_at FROM audit_log WHERE event_type = 'test' ORDER BY acted_at DESC LIMIT 50").bind().all();
       return new Response(JSON.stringify({ history: history.results || [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
@@ -815,8 +815,8 @@ export default {
       const quotes = await listPendingItems(env.PUBLIC_QUOTES);
       const dates = await listPendingItems(env.DV_PUBLIC);
       const [quoteAudit, dateAudit] = await Promise.all([
-        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'quote' AND action = 'approved'").all(),
-        env.DB.prepare("SELECT item_id, submitted_by FROM moderation_audit WHERE site = 'date' AND action = 'approved'").all()
+        env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'quote' AND action = 'approved'").all(),
+        env.DB.prepare("SELECT item_id, submitted_by FROM audit_log WHERE event_type = 'moderation' AND site = 'date' AND action = 'approved'").all()
       ]);
       const quoteOwners = new Map((quoteAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
       const dateOwners = new Map((dateAudit.results || []).map(item => [String(item.item_id), item.submitted_by]));
@@ -874,7 +874,7 @@ export default {
     if (url.pathname === "/admin/notifications" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM admin_notifications WHERE user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, submitter, created_at, read_at FROM notifications WHERE kind = 'admin' AND user_key = ? AND id NOT LIKE 'test-centre:%' ORDER BY created_at DESC LIMIT 100").bind(actor.user_key).all();
       return new Response(JSON.stringify({ notifications: results }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/read" && request.method === "POST") {
@@ -884,7 +884,7 @@ export default {
       const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean).slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
       const now = new Date().toISOString();
-      for (const id of ids) await env.DB.prepare("UPDATE admin_notifications SET read_at = ? WHERE id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
+      for (const id of ids) await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE kind = 'admin' AND id = ? AND user_key = ? AND read_at IS NULL").bind(now, id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/notifications/delete" && request.method === "POST") {
@@ -893,15 +893,15 @@ export default {
       const body = await request.json();
       const ids = Array.isArray(body.ids) ? [...new Set(body.ids.map(String).filter(Boolean))].slice(0, 100) : [];
       if (!ids.length) return new Response("Missing notification IDs", { status: 400, headers: cors });
-      for (const id of ids) await env.DB.prepare("DELETE FROM admin_notifications WHERE id = ? AND user_key = ?").bind(id, actor.user_key).run();
+      for (const id of ids) await env.DB.prepare("DELETE FROM notifications WHERE kind = 'admin' AND id = ? AND user_key = ?").bind(id, actor.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/admin/moderation-log" && request.method === "GET") {
       const actor = await getSessionUser(url, request);
       if (!actor) return new Response("Unauthorized", { status: 401, headers: cors });
       const [moderation, accountChanges] = await Promise.all([
-        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, moderator, action, acted_at FROM moderation_audit ORDER BY acted_at DESC LIMIT 500").all(),
-        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM admin_account_audit ORDER BY acted_at DESC LIMIT 500").all()
+        env.DB.prepare("SELECT site, item_id, item_title, submitted_by, actor_username AS moderator, action, acted_at FROM audit_log WHERE event_type = 'moderation' ORDER BY acted_at DESC LIMIT 500").all(),
+        env.DB.prepare("SELECT target_username, actor_username, action, acted_at FROM audit_log WHERE event_type = 'account' ORDER BY acted_at DESC LIMIT 500").all()
       ]);
       const entries = [
         ...(moderation.results || []),
@@ -912,7 +912,7 @@ export default {
     if (url.pathname === "/submissions/notifications" && request.method === "GET") {
       const account = await getAccountSession(request);
       if (!account) return new Response("Sign in to view submission updates.", { status: 401, headers: cors });
-      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM submission_notifications WHERE user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
+      const { results } = await env.DB.prepare("SELECT id, site, item_id, title, status, payload, created_at FROM notifications WHERE kind = 'submission' AND user_key = ? AND acknowledged_at IS NULL ORDER BY created_at ASC LIMIT 20").bind(account.user_key).all();
       return new Response(JSON.stringify({ notifications: results.map(item => ({ ...item, payload: JSON.parse(item.payload || "{}") })) }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
     if (url.pathname === "/submissions/private/remove" && request.method === "POST") {
@@ -944,7 +944,7 @@ export default {
       const id = String(body.id || "");
       const choice = String(body.choice || "");
       if (!id || !["keep", "replace", "remove"].includes(choice)) return new Response("Invalid notification choice.", { status: 400, headers: cors });
-      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM submission_notifications WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
+      const notification = await env.DB.prepare("SELECT site, item_id, status, payload FROM notifications WHERE kind = 'submission' AND id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(id, account.user_key).first();
       if (!notification) return new Response("Notification not found or already handled.", { status: 404, headers: cors });
       const validChoice = notification.status === "approved"
         ? ["keep", "replace"].includes(choice)
@@ -968,7 +968,7 @@ export default {
         }
         await env.DB.prepare("UPDATE users SET " + pendingDataColumn + " = ?, " + rejectedColumn + " = ?, updated_at = ? WHERE user_key = ?").bind(JSON.stringify(pendingData), JSON.stringify(rejectedIds), new Date().toISOString(), account.user_key).run();
       }
-      await env.DB.prepare("UPDATE submission_notifications SET acknowledged_at = ?, choice = ? WHERE id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
+      await env.DB.prepare("UPDATE notifications SET acknowledged_at = ?, choice = ? WHERE kind = 'submission' AND id = ? AND user_key = ? AND acknowledged_at IS NULL").bind(new Date().toISOString(), choice, id, account.user_key).run();
       return new Response(JSON.stringify({ success: true }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
