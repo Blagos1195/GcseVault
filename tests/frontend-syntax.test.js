@@ -861,8 +861,8 @@ test("central admin workspace includes owner account management controls", () =>
 test("Revision leaderboard excludes accounts hidden by owner controls", () => {
   const worker = fs.readFileSync(new URL("../worker.js", import.meta.url), "utf8");
   const route = worker.slice(worker.indexOf('url.pathname === "/revision/leaderboard"'), worker.indexOf('url.pathname === "/revision/public"'));
-  assert.match(route, /LEFT JOIN users u ON u\.user_key = r\.user_key/);
-  assert.match(route, /COALESCE\(u\.leaderboard_hidden, 0\) = 0/);
+  assert.match(route, /FROM users/);
+  assert.match(route, /COALESCE\(leaderboard_hidden, 0\) = 0/);
 });
 
 test("admin submissions use Web Push when the admin site is closed", () => {
