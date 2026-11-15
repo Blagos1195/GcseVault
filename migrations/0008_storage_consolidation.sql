@@ -136,14 +136,4 @@ SELECT 'REVISION_LEADERBOARD_ORPHAN', user_key,
 FROM revision_leaderboard
 WHERE user_key NOT IN (SELECT user_key FROM users);
 
-DROP TABLE account_credentials;
-DROP TABLE revision_sync_data;
-DROP TABLE revision_leaderboard;
-DROP TABLE custom_themes;
-DROP TABLE account_course_selections;
-DROP TABLE review_schedules;
-DROP TABLE admin_notifications;
-DROP TABLE submission_notifications;
-DROP TABLE moderation_audit;
-DROP TABLE admin_account_audit;
-DROP TABLE test_run_history;
+-- Legacy tables remain until the D1-backed Worker has been deployed and verified.
