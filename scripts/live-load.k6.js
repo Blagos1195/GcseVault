@@ -4,7 +4,9 @@ import { Rate, Trend } from "k6/metrics";
 
 const baseUrl = (__ENV.BASE_URL || "https://blagos1195.github.io/GcseVault").replace(/\/$/, "");
 const workerUrl = (__ENV.WORKER_URL || "https://quotevault-api.noah-l-barker.workers.dev").replace(/\/$/, "");
-const maxVUs = Math.min(20, Math.max(1, Math.floor(Number(__ENV.MAX_VUS || 5))));
+const requestedMaxVUs = Number(__ENV.MAX_VUS || 5);
+const maxVUs = Number.isFinite(requestedMaxVUs) ? Math.min(20, Math.max(1, Math.floor(requestedMaxVUs))) : 5;
+const accounts = JSON.parse(open("./scripts/load-test-accounts.json"));
 const pageFailures = new Rate("page_failure_rate");
 const apiFailures = new Rate("account_api_failure_rate");
 const pageDuration = new Trend("page_duration");
@@ -30,7 +32,6 @@ export const options = {
 const pages = ["/", "/quotes/", "/dates/", "/revision/", "/progress/"];
 
 export function setup() {
-  const accounts = JSON.parse(open("./scripts/load-test-accounts.json"));
   if (!Array.isArray(accounts) || accounts.length < maxVUs) {
     throw new Error("Add at least " + maxVUs + " dedicated test-account sessions to scripts/load-test-accounts.json.");
   }
