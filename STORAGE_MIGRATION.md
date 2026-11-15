@@ -47,7 +47,13 @@ Check account login, admin login, notifications, QuoteVault submissions/moderati
 
 ## Stage 4: remove the legacy storage
 
-Only after Stage 3 has been verified, a follow-up migration will drop the superseded D1 tables. A separate configuration change will remove the seven KV bindings. Then the old KV namespaces can be deleted in Cloudflare.
+Only after Stage 3 has been verified, run the read-only parity checks in `maintenance/storage-preflight.sql`:
+
+```powershell
+npx wrangler d1 execute leaderboard --remote --file maintenance/storage-preflight.sql
+```
+
+Every mismatch count must be zero. Then run `maintenance/storage-drop-legacy.sql` to remove the eleven superseded D1 tables. A separate configuration change will remove the seven KV bindings. Then the old KV namespaces can be deleted in Cloudflare.
 
 The old D1 tables are deliberately retained by migration 0008 so the first deployment cannot destroy the current Worker’s data sources. The cleanup migration must be applied only after the D1-backed Worker is confirmed live.
 
