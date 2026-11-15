@@ -588,11 +588,11 @@ test("password account setup hashes passwords, creates sessions and protects acc
     bind(...values) {
       return {
         first: async () => {
-          if (sql.includes("SELECT user_key FROM users WHERE user_key")) return values[0] === account.user_key ? { user_key: account.user_key } : null;
-          if (sql.includes("password_hash IS NOT NULL")) return credential ? { user_key: account.user_key } : null;
+          if (sql === "SELECT user_key FROM users WHERE user_key = ?") return values[0] === account.user_key ? { user_key: account.user_key } : null;
+          if (sql.includes("SELECT user_key FROM users WHERE user_key = ? AND password_hash IS NOT NULL")) return credential ? { user_key: account.user_key } : null;
           if (sql.includes("SELECT username, role FROM users")) return { username: account.username, role: account.role };
           if (sql.includes("SELECT password_salt FROM users")) return credential ? { password_salt: credential.password_salt } : null;
-          if (sql.includes("password_hash IS NOT NULL")) {
+          if (sql.includes("SELECT user_key, username, role, password_hash, password_salt FROM users")) {
             return credential && values[0].toLowerCase() === account.username.toLowerCase()
               ? { ...account, password_hash: credential.password_hash, password_salt: credential.password_salt }
               : null;
@@ -784,7 +784,7 @@ test("review schedule routes authenticate and always scope writes to the signed-
     schedules: { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } }
   }, { "X-Account-Session": token });
   assert.equal(saved.status, 200);
-  assert.ok(env.updates.some(update => update.sql.includes("INSERT INTO review_schedules") && update.values[0] === "account-key" && update.values[1] === "qv"));
+  assert.deepEqual(JSON.parse(env.USER_DATA.values.get("schedules:account-key:qv")), { cardA: { due: "2026-11-12", updatedAt: "2026-11-11T10:00:00.000Z" } });
 });
 
 
@@ -804,12 +804,13 @@ test("progress summary is account-scoped and returns aggregates without study co
       { id: "set-b", cards: [{ id: "card-c" }], progress: { "card-c": { reviews: 1, due: Date.now() - 1000 } }, xp: 40 }
     ]
   };
+  await env.USER_DATA.put("schedules:account-key:qv", JSON.stringify(schedules.qv));
+  await env.USER_DATA.put("schedules:account-key:dv", JSON.stringify(schedules.dv));
   env.DB.prepare = sql => ({
     bind: (...values) => ({
       first: async () => {
         if (sql.includes("FROM account_sessions s JOIN users")) return { user_key: "account-key", username: "student", role: "user" };
         if (sql.includes("password_hash IS NOT NULL")) return { user_key: "account-key" };
-        if (sql.includes("SELECT schedules_json, updated_at FROM review_schedules")) return { schedules_json: JSON.stringify(schedules[values[1]] || {}), updated_at: "2026-11-13T10:00:00.000Z" };
         if (sql.includes("revision_data_json AS data_json")) return { data_json: JSON.stringify(revisionData), updated_at: "2026-11-13T11:00:00.000Z" };
         if (sql.includes("SELECT username, qv_mastered, dv_mastered, qv_xp, dv_xp")) return { username: "student", qv_mastered: 7, dv_mastered: 5, qv_xp: 1200, dv_xp: 600, streak: 4, max_streak: 9, updated_at: "2026-11-13T12:00:00.000Z" };
         return null;
@@ -954,7 +955,7 @@ test("QuoteVault submission, approval and publication complete as one Worker lif
         return { results: [] };
       },
       run: async () => {
-        if (sql.includes("INSERT OR IGNORE INTO notifications")) {
+        if (sql.includes("INSERT OR IGNORE INTO notifications") && sql.includes("VALUES ('submission'")) {
           notifications.push({
             id: values[0], user_key: values[1], site: values[2], item_id: values[3],
             title: values[4], status: values[5], payload: values[6], created_at: values[7],
@@ -1037,8 +1038,8 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
     const originalBind = statement.bind;
     statement.bind = (...values) => {
       const bound = originalBind(...values);
-      if (sql.includes("sqlite_master")) bound.all = async () => ({results:values.map(name=>({name}))});
-      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:[{name:"role"},{name:"ai_access"}]});
+      if (sql.includes("sqlite_master")) bound.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
+      if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
       return bound;
     };
     return statement;
@@ -1047,7 +1048,7 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   const data = await response.json();
   assert.equal(response.status,200);
   assert.equal(data.results[0].status,"passed");
-  assert.match(data.results[0].detail,/six migration-managed tables/);
+  assert.match(data.results[0].detail,/consolidated storage tables/);
 });
 
 test("Test Centre reports missing migrations without changing the database", async () => {
@@ -1070,7 +1071,7 @@ test("Test Centre reports missing migrations without changing the database", asy
   assert.equal(data.results[0].status,"failed");
   assert.match(data.results[0].detail,/missing tables/);
   assert.match(data.results[0].detail,/ai_access/);
-  assert.equal(env.updates.some(update=>/revision_sync_data|custom_themes|account_credentials|account_sessions|revision_leaderboard|ALTER TABLE/.test(update.sql)),false);
+  assert.equal(env.updates.some(update=>/kv_store|notifications|audit_log|account_sessions|admin_setup|ALTER TABLE/.test(update.sql)),false);
 });
 
 test("admin status exposes Worker version metadata without account information", async () => {
