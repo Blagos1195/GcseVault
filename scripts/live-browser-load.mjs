@@ -65,7 +65,7 @@ try {
     } finally {
       await context.close();
     }
-  });
+  }));
 } finally {
   await browser.close();
 }
