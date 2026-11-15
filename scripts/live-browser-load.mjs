@@ -13,7 +13,7 @@ if (!Array.isArray(accounts) || accounts.length < maxAccounts) {
   throw new Error("Add at least " + maxAccounts + " dedicated test-account sessions to scripts/load-test-accounts.json.");
 }
 for (let index = 0; index < maxAccounts; index++) {
-  if (!/^[a-f0-9]{64}$/i.test(String(accounts[index]?.session || ""))) {
+  if (!/^[a-f0-9]{64}$/i.test(String(accounts[index]?.session || "")) || !String(accounts[index]?.userKey || "").trim()) {
     throw new Error("Test account " + (index + 1) + " does not contain a valid 64-character account session.");
   }
 }
@@ -26,10 +26,12 @@ const startedAt = Date.now();
 try {
   await Promise.all(accounts.slice(0, maxAccounts).map(async (account, index) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    await context.addInitScript(session => {
+    await context.addInitScript(({ session, userKey }) => {
       localStorage.setItem("vault_account_session", session);
-    }, account.session);
+      localStorage.setItem("vault_userKey", userKey);
+    }, { session: account.session, userKey: account.userKey });
     const page = await context.newPage();
+    await page.route(workerUrl + "/feedback/submit", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true, id: "load-test" }) }));
     page.on("pageerror", error => failures.push({ account: index + 1, type: "pageerror", message: error.message }));
     page.on("requestfailed", request => {
       const url = request.url();
