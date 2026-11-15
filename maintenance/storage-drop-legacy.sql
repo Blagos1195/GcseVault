@@ -9,3 +9,4 @@ DROP TABLE IF EXISTS submission_notifications;
 DROP TABLE IF EXISTS moderation_audit;
 DROP TABLE IF EXISTS admin_account_audit;
 DROP TABLE IF EXISTS test_run_history;
+DROP TABLE IF EXISTS admin_setup;

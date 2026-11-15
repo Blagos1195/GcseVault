@@ -396,8 +396,8 @@ export default {
           return "D1 query and consolidated storage table passed.";
         },
         migrations: async () => {
-          const requiredTables = ["kv_store", "notifications", "audit_log", "admin_setup", "account_sessions", "admin_push_subscriptions"];
-          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('kv_store', 'notifications', 'audit_log', 'admin_setup', 'account_sessions', 'admin_push_subscriptions')").all();
+          const requiredTables = ["kv_store", "notifications", "audit_log", "account_sessions", "admin_push_subscriptions"];
+          const tableRows = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('kv_store', 'notifications', 'audit_log', 'account_sessions', 'admin_push_subscriptions')").all();
           const presentTables = new Set((tableRows.results || []).map(row => row.name));
           const missingTables = requiredTables.filter(name => !presentTables.has(name));
           const userColumns = await env.DB.prepare("PRAGMA table_info(users)").bind().all();
@@ -513,7 +513,7 @@ export default {
 
     if (url.pathname === "/admin/status" && request.method === "GET") {
       const owner = await env.DB.prepare(
-        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') UNION SELECT user_key FROM admin_setup WHERE id = 1 LIMIT 1"
+        "SELECT user_key FROM users WHERE role IN ('owner', 'admin') LIMIT 1"
       ).first();
       const metadata = env.CF_VERSION_METADATA || {};
       const deployment = metadata.id ? {
@@ -537,16 +537,12 @@ export default {
         "SELECT user_key FROM users WHERE user_key = ? AND role = 'user'"
       ).bind(userKey).first();
       if (!account) return new Response("Account not found or not eligible for owner setup", { status: 404, headers: cors });
-      const usedAt = new Date().toISOString();
       const results = await env.DB.batch([
         env.DB.prepare(
-          "INSERT OR IGNORE INTO admin_setup (id, user_key, used_at) SELECT 1, ?, ? WHERE NOT EXISTS (SELECT 1 FROM admin_setup WHERE id = 1) AND NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin')) AND EXISTS (SELECT 1 FROM users WHERE user_key = ? AND role = 'user')"
-        ).bind(userKey, usedAt, userKey),
-        env.DB.prepare(
-          "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user' AND EXISTS (SELECT 1 FROM admin_setup WHERE id = 1 AND user_key = ?)"
-        ).bind(userKey, userKey)
+          "UPDATE users SET role = 'owner' WHERE user_key = ? AND role = 'user' AND NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin'))"
+        ).bind(userKey)
       ]);
-      if (!results?.[0]?.meta?.changes || !results?.[1]?.meta?.changes) {
+      if (!results?.[0]?.meta?.changes) {
         return new Response("Owner setup has already been completed", { status: 409, headers: cors });
       }
       return new Response(JSON.stringify({ success: true }), {

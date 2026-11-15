@@ -404,8 +404,9 @@ test("owner bootstrap permanently claims the one-time setup lock", async () => {
   });
   assert.equal(response.status, 200);
   assert.equal(env.batchCalls.length, 1);
-  assert.ok(env.batchCalls[0][0].sql.includes("INSERT OR IGNORE INTO admin_setup"));
-  assert.ok(env.batchCalls[0][1].sql.includes("SET role = 'owner'"));
+  assert.equal(env.batchCalls[0].length, 1);
+  assert.ok(env.batchCalls[0][0].sql.includes("SET role = 'owner'"));
+  assert.ok(env.batchCalls[0][0].sql.includes("NOT EXISTS (SELECT 1 FROM users WHERE role IN ('owner', 'admin'))"));
 });
 
 test("a second account cannot reuse the one-time admin key", async () => {
@@ -1118,7 +1119,7 @@ test("owner Test Centre verifies migration-managed tables and account columns", 
   env.DB.prepare = sql => {
     const statement = originalPrepare(sql);
     const originalBind = statement.bind;
-    if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","admin_setup","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
+    if (sql.includes("sqlite_master")) statement.all = async () => ({results:["kv_store","notifications","audit_log","account_sessions","admin_push_subscriptions"].map(name=>({name}))});
     statement.bind = (...values) => {
       const bound = originalBind(...values);
       if (sql.includes("PRAGMA table_info(users)")) bound.all = async () => ({results:["role","ai_access","password_hash","revision_data_json","revision_xp"].map(name=>({name}))});
