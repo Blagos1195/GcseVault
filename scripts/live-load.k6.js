@@ -2,7 +2,7 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 import { Rate, Trend } from "k6/metrics";
 
-const baseUrl = (__ENV.BASE_URL || "https://blagos1195.github.io/GcseVault").replace(/\/$/, "");
+const baseUrl = String(__ENV.BASE_URL || "").replace(/\/$/, "");
 const workerUrl = (__ENV.WORKER_URL || "https://quotevault-api.noah-l-barker.workers.dev").replace(/\/$/, "");
 const requestedMaxVUs = Number(__ENV.MAX_VUS || 5);
 const maxVUs = Number.isFinite(requestedMaxVUs) ? Math.min(20, Math.max(1, Math.floor(requestedMaxVUs))) : 5;
@@ -32,6 +32,7 @@ export const options = {
 const pages = ["/", "/quotes/", "/dates/", "/revision/", "/progress/"];
 
 export function setup() {
+  if (!baseUrl.startsWith("https://")) throw new Error("Set BASE_URL to the live site URL, including its /GcseVault path.");
   if (!Array.isArray(accounts) || accounts.length < maxVUs) {
     throw new Error("Add at least " + maxVUs + " dedicated test-account sessions to scripts/load-test-accounts.json.");
   }
